@@ -1,11 +1,11 @@
 import { MinRectVec } from ".";
-import { BaseShape } from "./shape";
 export interface Vec2 {
     x: number;
     y: number;
 }
 /** 計算函式 / 工具函式 */
 export declare class UtilTools {
+    static generateMinRect(v1: Vec2, v2: Vec2): MinRectVec;
     /**
      * 計算新座標是否影響矩形
      * @param vec 座標
@@ -19,7 +19,6 @@ export declare class UtilTools {
      * @returns 可包含所有矩形之最小矩形
      */
     static mergeMinRect(...arge: MinRectVec[]): MinRectVec;
-    static findAreaPath(r: MinRectVec, ...shapes: BaseShape[]): BaseShape[];
     /** 深拷貝 */
     static deepClone<T extends Object>(o: T): T;
     /** 事件分辨 */

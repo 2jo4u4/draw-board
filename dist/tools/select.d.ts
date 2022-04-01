@@ -9,8 +9,15 @@ export declare class SelectTools implements BaseTools {
     private beforeSelectScreen;
     /** 滑鼠起點 */
     private startPosition;
+    /** 被選中的圖形 */
+    private chooseShapes;
+    /** 固定選取框 */
+    private selectRect;
     constructor(board: Board);
     onEventStart(v: Vec2): void;
     onEventMove(v: Vec2): void;
     onEventEnd(v: Vec2): void;
+    private isSelected;
+    private isVec2;
+    private isInRectBlock;
 }
