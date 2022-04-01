@@ -11,10 +11,6 @@ import {
 } from ".";
 
 type MouseFlag = "active" | "inactive";
-interface Offset {
-  offsetTop: number;
-  offsetLeft: number;
-}
 /**
  * 繪圖板，介接各個插件
  */
