@@ -1,4 +1,4 @@
-import { Board, Vec2 } from ".";
+import { Board, Vec2 } from "..";
 
 export interface MinRectVec {
   leftTop: Vec2;
@@ -15,7 +15,7 @@ export const defaultStyle: Styles = {
   lineWidth: 2,
   fillColor: undefined,
 };
-const padding = 8; // px
+export const padding = 8; // px
 /**
  * 圖形基本類
  */
@@ -30,7 +30,7 @@ export class BaseShape {
     leftTop: { x: 0, y: 0 },
     rightBottom: { x: 0, y: 0 },
   };
-  /** 被選擇時的外框 */
+  /** 判斷是否被選取的路徑 */
   selectRectPath: Path2D;
   constructor(
     id: string,
@@ -49,6 +49,7 @@ export class BaseShape {
       rightBottom: { x: eX, y: eY },
     } = minRect;
     this.selectRectPath = new Path2D();
+    // 稍微加大範圍
     this.selectRectPath.rect(
       sX - padding,
       sY - padding,
@@ -57,11 +58,7 @@ export class BaseShape {
     );
   }
 
-  isSelected(v: Vec2): Boolean {
-    return this.board.ctx.isPointInPath(this.selectRectPath, v.x, v.y);
-  }
-
   openSelectRect() {
-    this.board.updata(this.selectRectPath);
+    this.board.ctx.stroke(this.selectRectPath);
   }
 }

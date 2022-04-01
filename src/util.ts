@@ -8,6 +8,16 @@ export interface Vec2 {
 
 /** 計算函式 / 工具函式 */
 export class UtilTools {
+  static generateMinRect(v1: Vec2, v2: Vec2): MinRectVec {
+    const { x: x1, y: y1 } = v1;
+    const { x: x2, y: y2 } = v2;
+
+    return {
+      leftTop: { x: Math.min(x1, x2), y: Math.min(y1, y2) },
+      rightBottom: { x: Math.max(x1, x2), y: Math.max(y1, y2) },
+    };
+  }
+
   /**
    * 計算新座標是否影響矩形
    * @param vec 座標
@@ -52,17 +62,13 @@ export class UtilTools {
         rightBottom: { x: nex, y: ney },
       } = rect;
 
-      rect.leftTop.x = Math.min(sx, ex, nsx);
-      rect.leftTop.y = Math.min(sy, ey, nsy);
-      rect.rightBottom.y = Math.max(sx, ex, nex);
-      rect.rightBottom.y = Math.max(sy, ey, ney);
+      rect.leftTop.x = Math.min(sx, nsx);
+      rect.leftTop.y = Math.min(sy, nsy);
+      rect.rightBottom.x = Math.max(ex, nex);
+      rect.rightBottom.y = Math.max(ey, ney);
     });
 
     return rect;
-  }
-
-  static findAreaPath(r: MinRectVec, ...shapes: BaseShape[]): BaseShape[] {
-    return shapes;
   }
 
   /** 深拷貝 */
