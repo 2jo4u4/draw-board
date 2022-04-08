@@ -20,6 +20,7 @@ export abstract class BaseTools {
   onEventStart(v: Vec2): void {}
   onEventMove(v: Vec2): void {}
   onEventEnd(v: Vec2): void {}
+  onDestroy(): void {}
 }
 
 /**
@@ -32,6 +33,7 @@ export class ToolsManagement {
   }
   /** 板子實例 */
   private board: Board;
+  /** 儲存當前選擇的工具 */
   private usingTools!: BaseTools;
   constructor(board: Board) {
     this.board = board;
@@ -57,25 +59,28 @@ export class ToolsManagement {
   }
 
   switchTypeTo(v: ToolsEnum): void {
-    this.__toolsType = v;
-    switch (v) {
-      case ToolsEnum.選擇器:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      case ToolsEnum.鉛筆:
-        this.usingTools = new PencilTools(this.board);
-        break;
-      case ToolsEnum.擦子:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      case ToolsEnum.文字框:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      case ToolsEnum.圖形生成:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      default:
-        break;
+    if (this.__toolsType !== v) {
+      this.usingTools?.onDestroy();
+      this.__toolsType = v;
+      switch (v) {
+        case ToolsEnum.選擇器:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        case ToolsEnum.鉛筆:
+          this.usingTools = new PencilTools(this.board);
+          break;
+        case ToolsEnum.擦子:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        case ToolsEnum.文字框:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        case ToolsEnum.圖形生成:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        default:
+          break;
+      }
     }
   }
 

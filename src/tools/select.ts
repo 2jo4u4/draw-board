@@ -25,6 +25,10 @@ export class SelectTools implements BaseTools {
     this.beforeSelectScreen = board.ctx.getImageData(0, 0, width, height);
     this.selectFlag = "none";
   }
+  onDestroy(): void {
+    // 清空畫面上的選擇框
+    this.board.ctx.putImageData(this.beforeSelectScreen, 0, 0);
+  }
 
   onEventStart(v: Vec2): void {
     this.startPosition = v;

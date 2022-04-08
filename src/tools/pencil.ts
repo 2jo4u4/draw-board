@@ -13,6 +13,7 @@ export class PencilTools implements BaseTools {
   constructor(board: Board) {
     this.board = board;
   }
+  onDestroy(): void {}
 
   changeStyle(s: Styles): void {
     this.drawStyle = s;
