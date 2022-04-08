@@ -57,8 +57,4 @@ export class BaseShape {
       eY - sY + padding * 2
     );
   }
-
-  openSelectRect() {
-    this.board.ctx.stroke(this.selectRectPath);
-  }
 }

@@ -18,7 +18,7 @@ export class SelectTools implements BaseTools {
   /** 被選中的圖形 */
   private chooseShapes: BaseShape[] = [];
   /** 固定選取框 */
-  private selectRect!: Path2D;
+  private selectRect: Path2D | null = null;
   constructor(board: Board) {
     const { width, height } = board.canvas;
     this.board = board;
@@ -60,14 +60,15 @@ export class SelectTools implements BaseTools {
           // 單點選擇圖形
           const shape = Array.from(this.board.shapes)
             .reverse()
-            .find((item) => {
-              return this.isSelected(v, item[1]);
-            });
+            .find((item) => this.isSelected(v, item[1]));
+
           if (shape) {
             const bs = shape[1];
             this.chooseShapes.push(bs);
             this.selectRect = new Path2D(bs.selectRectPath);
             this.board.ctx.stroke(this.selectRect);
+          } else {
+            this.selectRect = null;
           }
         } else {
           // 移動結束
@@ -85,7 +86,6 @@ export class SelectTools implements BaseTools {
             rightBottom: { x: x2, y: y2 },
           } = UtilTools.mergeMinRect(...reg);
           this.selectRect = new Path2D();
-          this.selectRect.moveTo(x1, y1);
           this.selectRect.rect(
             x1 - padding,
             y1 - padding,
@@ -125,8 +125,41 @@ export class SelectTools implements BaseTools {
       rightBottom: { x: x2, y: y2 },
     } = bs.minRect;
 
-    return (
-      (selectx1 <= x1 || selectx2 >= x2) && (selecty1 <= y1 || selecty2 >= y2)
-    );
+    if (selectx1 <= x1 && selecty1 <= y1 && selectx2 >= x2 && selecty2 >= y2) {
+      // 完全包覆
+      return true;
+    } else if (
+      x1 < selectx1 &&
+      y1 < selecty1 &&
+      x2 > selectx2 &&
+      y2 > selecty2
+    ) {
+      // 被包覆(選取框大小 小於 圖形大小)
+      return true;
+    } else if (
+      (selectx1 <= x1 && selectx2 >= x2) || // 半包覆(Ｘ軸包覆)
+      (x1 < selectx1 && x2 >= selectx2) // 被半包覆(Ｙ軸被半包覆, Ｘ軸被包覆)
+    ) {
+      return selecty1 > y1 || selecty1 < y2 || selecty2 > y1 || selecty2 < y2;
+    } else if (
+      (selecty1 <= y1 && selecty2 >= y2) || // 半包覆(Ｙ軸包覆)
+      (y1 < selecty1 && y2 >= selecty2) // 被半包覆(Ｘ軸被半包覆, Ｙ軸被包覆)
+    ) {
+      return selectx1 > x1 || selectx1 < x2 || selectx2 > x1 || selectx2 < x2;
+    } else {
+      // Ｘ軸Ｙ軸都被半包覆(四頂點處在圖形內)
+      // 或 沒被包覆
+      const foreCorner: Vec2[] = [
+        { x: selectx1, y: selecty1 },
+        { x: selectx1, y: selecty2 },
+        { x: selectx2, y: selecty1 },
+        { x: selectx2, y: selecty2 },
+      ];
+      return Boolean(
+        foreCorner.find(({ x, y }) => {
+          return this.board.ctx.isPointInPath(bs.selectRectPath, x, y);
+        })
+      );
+    }
   }
 }
