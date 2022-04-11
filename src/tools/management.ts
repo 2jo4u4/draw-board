@@ -1,6 +1,7 @@
-import { Board, Styles, Vec2 } from "..";
+import { Board } from "..";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";
+import type { Styles, Vec2 } from "..";
 
 export enum ToolsEnum {
   "選擇器" = "select",

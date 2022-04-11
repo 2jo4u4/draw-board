@@ -1,5 +1,4 @@
 import { MinRectVec } from ".";
-import { BaseShape } from "./shape";
 
 export interface Vec2 {
   x: number;

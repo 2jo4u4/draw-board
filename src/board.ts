@@ -4,11 +4,9 @@ import {
   UserAction,
   ToolsEnum,
   ToolsManagement,
-  MinRectVec,
-  Styles,
-  Vec2,
   UtilTools,
 } from ".";
+import type { Vec2, Styles, MinRectVec } from ".";
 
 type MouseFlag = "active" | "inactive";
 /**
@@ -27,6 +25,8 @@ export class Board {
   }
   /** 滑鼠旗標（是否點擊） */
   private mouseFlag: MouseFlag = "inactive";
+  /** 像素密度 */
+  private decivePixelPatio!: number;
 
   /** 所有被繪製的圖形 */
   shapes = new Map<string, BaseShape>();
@@ -56,8 +56,8 @@ export class Board {
       this.__ctx = canvasEl.getContext("2d") as CanvasRenderingContext2D;
       const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
       this.__tools = new Tools(this);
-      this.__socket = Socket ? Socket : null;
-
+      this.__socket = Socket || null;
+      this.decivePixelPatio = window.devicePixelRatio;
       this.initial();
       this.addListener();
     } else {
@@ -65,16 +65,19 @@ export class Board {
     }
   }
 
-  findShape(id: string): BaseShape | undefined {
+  getShapeById(id: string): BaseShape | undefined {
     return this.shapes.get(id);
   }
 
+  /** 可復原 */
   addShape(p: Path2D, s: Styles, m: MinRectVec) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys()));
     this.shapes.set(id, new BaseShape(id, this, p, s, m));
+    this.saveCanvas();
   }
 
   initial() {
+    this.resizeCanvas();
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
@@ -89,13 +92,9 @@ export class Board {
   }
 
   saveCanvas() {
-    const imageData = this.ctx.getImageData(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.width
+    this.store.push(
+      this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.width)
     );
-    this.store.push(imageData);
   }
 
   resumeCanvas() {}
@@ -111,6 +110,8 @@ export class Board {
     this.canvas.addEventListener("mouseleave", this.onEventEnd.bind(this));
     this.canvas.addEventListener("touchend", this.onEventEnd.bind(this));
     this.canvas.addEventListener("touchcancel", this.onEventEnd.bind(this));
+
+    window.addEventListener("resize", this.resizeCanvas.bind(this));
   }
 
   private removeListener() {
@@ -124,6 +125,8 @@ export class Board {
     this.canvas.removeEventListener("mouseleave", this.onEventEnd.bind(this));
     this.canvas.removeEventListener("touchend", this.onEventEnd.bind(this));
     this.canvas.removeEventListener("touchcancel", this.onEventEnd.bind(this));
+
+    window.removeEventListener("resize", this.resizeCanvas.bind(this));
   }
 
   private onEventStart(event: TouchEvent | MouseEvent) {
@@ -168,8 +171,26 @@ export class Board {
     }
     let box = this.canvas.getBoundingClientRect();
     return {
-      x: (x - box.left) / (this.canvas.width / box.width),
-      y: (y - box.top) / (this.canvas.height / box.height),
+      x:
+        ((x - box.left) /
+          (this.canvas.width / this.decivePixelPatio / box.width)) *
+        this.decivePixelPatio,
+      y:
+        ((y - box.top) /
+          (this.canvas.height / this.decivePixelPatio / box.height)) *
+        this.decivePixelPatio,
     };
+  }
+
+  private resizeCanvas() {
+    const clientWidth =
+      this.canvas.parentElement?.clientWidth || document.body.clientWidth;
+    const clientHeight =
+      this.canvas.parentElement?.clientHeight || document.body.clientHeight;
+
+    this.canvas.width = clientWidth * this.decivePixelPatio;
+    this.canvas.height = clientHeight * this.decivePixelPatio;
+    this.canvas.style.width = `${clientWidth}px`;
+    this.canvas.style.height = `${clientHeight}px`;
   }
 }

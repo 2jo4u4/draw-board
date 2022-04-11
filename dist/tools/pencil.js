@@ -12,6 +12,7 @@ class PencilTools {
         };
         this.board = board;
     }
+    onDestroy() { }
     changeStyle(s) {
         this.drawStyle = s;
     }

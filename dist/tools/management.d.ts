@@ -1,4 +1,5 @@
-import { Board, Styles, Vec2 } from "..";
+import { Board } from "..";
+import type { Styles, Vec2 } from "..";
 export declare enum ToolsEnum {
     "選擇器" = "select",
     "鉛筆" = "pencil",
@@ -15,6 +16,7 @@ export declare abstract class BaseTools {
     onEventStart(v: Vec2): void;
     onEventMove(v: Vec2): void;
     onEventEnd(v: Vec2): void;
+    onDestroy(): void;
 }
 /**
  * 控制插件
@@ -24,6 +26,7 @@ export declare class ToolsManagement {
     get toolsType(): ToolsEnum;
     /** 板子實例 */
     private board;
+    /** 儲存當前選擇的工具 */
     private usingTools;
     constructor(board: Board);
     /** 觸摸/滑鼠下壓 */

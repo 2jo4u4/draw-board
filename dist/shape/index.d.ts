@@ -1,4 +1,5 @@
-import { Board, Vec2 } from "..";
+import { Board } from "..";
+import type { Vec2 } from "..";
 export interface MinRectVec {
     leftTop: Vec2;
     rightBottom: Vec2;
@@ -24,5 +25,4 @@ export declare class BaseShape {
     /** 判斷是否被選取的路徑 */
     selectRectPath: Path2D;
     constructor(id: string, board: Board, path: Path2D, style: Styles, minRect: MinRectVec);
-    openSelectRect(): void;
 }

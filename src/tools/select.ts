@@ -1,5 +1,6 @@
 import { BaseTools } from "./management";
-import { Board, Vec2, BaseShape, MinRectVec, UtilTools, padding } from "..";
+import { Board, BaseShape, UtilTools, padding } from "..";
+import type { Vec2, MinRectVec } from "..";
 
 /**
  * 沒選中 / 選中

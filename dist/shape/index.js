@@ -28,8 +28,5 @@ class BaseShape {
         // 稍微加大範圍
         this.selectRectPath.rect(sX - exports.padding, sY - exports.padding, eX - sX + exports.padding * 2, eY - sY + exports.padding * 2);
     }
-    openSelectRect() {
-        this.board.ctx.stroke(this.selectRectPath);
-    }
 }
 exports.BaseShape = BaseShape;

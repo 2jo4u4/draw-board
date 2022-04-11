@@ -1,5 +1,6 @@
 import { BaseTools } from "./management";
-import { Board, defaultStyle, MinRectVec, Styles, UtilTools, Vec2 } from "..";
+import { Board, defaultStyle, UtilTools } from "..";
+import type { MinRectVec, Styles, Vec2 } from "..";
 
 /** 鉛筆 */
 export class PencilTools implements BaseTools {

@@ -1,4 +1,5 @@
-import { BaseShape, SocketMiddle, ToolsManagement, MinRectVec, Styles } from ".";
+import { BaseShape, SocketMiddle, ToolsManagement } from ".";
+import type { Styles, MinRectVec } from ".";
 /**
  * 繪圖板，介接各個插件
  */
@@ -11,6 +12,8 @@ export declare class Board {
     get ctx(): CanvasRenderingContext2D;
     /** 滑鼠旗標（是否點擊） */
     private mouseFlag;
+    /** 像素密度 */
+    private decivePixelPatio;
     /** 所有被繪製的圖形 */
     shapes: Map<string, BaseShape>;
     /** 紀錄繪圖行為 */
@@ -25,7 +28,8 @@ export declare class Board {
         Socket?: SocketMiddle;
         Tools?: typeof ToolsManagement;
     });
-    findShape(id: string): BaseShape | undefined;
+    getShapeById(id: string): BaseShape | undefined;
+    /** 可復原 */
     addShape(p: Path2D, s: Styles, m: MinRectVec): void;
     initial(): void;
     destroy(): void;
@@ -40,4 +44,5 @@ export declare class Board {
     private onEventEnd;
     /** 事件轉換座標 */
     private eventToPosition;
+    private resizeCanvas;
 }

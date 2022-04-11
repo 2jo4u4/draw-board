@@ -1,4 +1,5 @@
-import { Board, Vec2 } from "..";
+import { Board } from "..";
+import type { Vec2 } from "..";
 
 export interface MinRectVec {
   leftTop: Vec2;

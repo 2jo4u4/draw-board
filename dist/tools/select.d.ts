@@ -1,5 +1,6 @@
 import { BaseTools } from "./management";
-import { Board, Vec2 } from "..";
+import { Board } from "..";
+import type { Vec2 } from "..";
 /** 選擇器 */
 export declare class SelectTools implements BaseTools {
     private board;
@@ -14,6 +15,7 @@ export declare class SelectTools implements BaseTools {
     /** 固定選取框 */
     private selectRect;
     constructor(board: Board);
+    onDestroy(): void;
     onEventStart(v: Vec2): void;
     onEventMove(v: Vec2): void;
     onEventEnd(v: Vec2): void;

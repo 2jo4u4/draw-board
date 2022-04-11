@@ -21,6 +21,7 @@ class BaseTools {
     onEventStart(v) { }
     onEventMove(v) { }
     onEventEnd(v) { }
+    onDestroy() { }
 }
 exports.BaseTools = BaseTools;
 /**
@@ -52,25 +53,29 @@ class ToolsManagement {
         }
     }
     switchTypeTo(v) {
-        this.__toolsType = v;
-        switch (v) {
-            case ToolsEnum.選擇器:
-                this.usingTools = new select_1.SelectTools(this.board);
-                break;
-            case ToolsEnum.鉛筆:
-                this.usingTools = new pencil_1.PencilTools(this.board);
-                break;
-            case ToolsEnum.擦子:
-                this.usingTools = new select_1.SelectTools(this.board);
-                break;
-            case ToolsEnum.文字框:
-                this.usingTools = new select_1.SelectTools(this.board);
-                break;
-            case ToolsEnum.圖形生成:
-                this.usingTools = new select_1.SelectTools(this.board);
-                break;
-            default:
-                break;
+        var _a;
+        if (this.__toolsType !== v) {
+            (_a = this.usingTools) === null || _a === void 0 ? void 0 : _a.onDestroy();
+            this.__toolsType = v;
+            switch (v) {
+                case ToolsEnum.選擇器:
+                    this.usingTools = new select_1.SelectTools(this.board);
+                    break;
+                case ToolsEnum.鉛筆:
+                    this.usingTools = new pencil_1.PencilTools(this.board);
+                    break;
+                case ToolsEnum.擦子:
+                    this.usingTools = new select_1.SelectTools(this.board);
+                    break;
+                case ToolsEnum.文字框:
+                    this.usingTools = new select_1.SelectTools(this.board);
+                    break;
+                case ToolsEnum.圖形生成:
+                    this.usingTools = new select_1.SelectTools(this.board);
+                    break;
+                default:
+                    break;
+            }
         }
     }
     switchTypeToSelect() {
