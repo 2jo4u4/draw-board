@@ -1,15 +1,13 @@
 import { Board, ToolsEnum } from ".";
+// import "./usefabric";
 
 const canvas = document.createElement("canvas");
 const tools = document.createElement("ul");
 const p = document.createElement("p");
-const body = document.body;
+document.body.append(canvas, p, tools);
+
 const board = new Board(canvas);
 initialTools();
-
-body.appendChild(canvas);
-body.appendChild(p);
-body.appendChild(tools);
 
 function AddTools(v: ToolsEnum) {
   const child = document.createElement("li");

@@ -18,8 +18,9 @@ export class SelectTools implements BaseTools {
   private startPosition: Vec2 = { x: 0, y: 0 };
   /** 被選中的圖形 */
   private chooseShapes: BaseShape[] = [];
-  /** 固定選取框 */
+  /** 固定的選取框 */
   private selectRect: Path2D | null = null;
+
   constructor(board: Board) {
     const { width, height } = board.canvas;
     this.board = board;
@@ -142,15 +143,19 @@ export class SelectTools implements BaseTools {
       // 被包覆(選取框大小 小於 圖形大小)
       return true;
     } else if (
-      (selectx1 <= x1 && selectx2 >= x2) || // 半包覆(Ｘ軸包覆)
-      (x1 < selectx1 && x2 >= selectx2) // 被半包覆(Ｙ軸被半包覆, Ｘ軸被包覆)
+      selectx1 <= x1 &&
+      selectx2 >= x2 &&
+      ((selecty2 > y1 && selecty2 < y2) || (selecty1 > y1 && selecty1 < y2))
     ) {
-      return selecty1 > y1 || selecty1 < y2 || selecty2 > y1 || selecty2 < y2;
+      // Ｘ軸包覆，由Ｙ軸判定
+      return true;
     } else if (
-      (selecty1 <= y1 && selecty2 >= y2) || // 半包覆(Ｙ軸包覆)
-      (y1 < selecty1 && y2 >= selecty2) // 被半包覆(Ｘ軸被半包覆, Ｙ軸被包覆)
+      selecty1 <= y1 &&
+      selecty2 >= y2 &&
+      ((selectx2 > x1 && selectx2 < x2) || (selectx1 > x1 && selectx1 < x2))
     ) {
-      return selectx1 > x1 || selectx1 < x2 || selectx2 > x1 || selectx2 < x2;
+      // Ｙ軸包覆，由Ｘ軸判定
+      return true;
     } else {
       // Ｘ軸Ｙ軸都被半包覆(四頂點處在圖形內)
       // 或 沒被包覆
