@@ -13,12 +13,18 @@ interface CanvasStyle {
   width: number;
   height: number;
 }
+interface ActionStore {
+  type: "draw" | "delete";
+  id: string;
+}
 /**
  * 繪圖板，介接各個插件
  */
 export class Board {
-  private htmlDiv!: HTMLDivElement;
-
+  private __rootBlock!: HTMLDivElement;
+  get rootBlock(): HTMLDivElement {
+    return this.__rootBlock;
+  }
   /** Canvas網頁元素（事件層級） */
   private __canvas: HTMLCanvasElement;
   get canvas(): HTMLCanvasElement {
@@ -46,8 +52,10 @@ export class Board {
 
   /** 所有被繪製的圖形 */
   shapes = new Map<string, BaseShape>();
-  /** 紀錄繪圖行為 */
-  store: ImageData[] = [];
+  /** 所有被刪除的圖形 */
+  shapesTrash = new Map<string, BaseShape>();
+  /** 紀錄行為 */
+  actionStore: ActionStore[] = [];
 
   /** 工具包中間件 */
   private __tools: ToolsManagement;
@@ -91,14 +99,28 @@ export class Board {
     this.draw(p, s);
   }
 
+  deleteShape(...idArray: string[]) {
+    idArray.forEach((id) => {
+      const bs = this.shapes.get(id);
+      if (bs) {
+        this.shapesTrash.set(id, bs);
+        this.shapes.delete(id);
+      }
+    });
+    const { width, height } = this.canvasStatic;
+    this.ctxStatic.clearRect(0, 0, width, height);
+    this.shapes.forEach((bs) => {
+      this.ctxStatic.stroke(bs.path);
+    });
+  }
+
   /** 初始化 canvas */
   private initial() {
     this.settingChild();
   }
-
+  /** 繪製到圖層級 */
   draw(p: Path2D, s: Styles) {
-    this.ctxStatic.lineWidth = s.lineWidth;
-    this.ctxStatic.strokeStyle = s.lineColor;
+    UtilTools.injectStyle(this.ctxStatic, s);
     this.ctxStatic.stroke(p);
   }
 
@@ -224,10 +246,11 @@ export class Board {
     el.style.height = `${clientHeight}px`;
   }
 
+  /** 調整使用者給予的 Canvas */
   private settingChild() {
-    this.htmlDiv = document.createElement("div");
-    this.htmlDiv.style.position = "relative";
-    this.canvas.after(this.htmlDiv);
+    this.__rootBlock = document.createElement("div");
+    this.rootBlock.style.position = "relative";
+    this.canvas.after(this.rootBlock);
     this.setCanvasStyle(this.canvas);
     this.canvas.classList.add("event_paint");
     this.canvas.style.position = "absolute";
@@ -236,8 +259,8 @@ export class Board {
     this.setCanvasStyle(this.canvasStatic);
     this.canvasStatic.classList.add("show_paint");
 
-    this.htmlDiv.append(this.canvasStatic);
-    this.htmlDiv.appendChild(this.canvas);
+    this.rootBlock.append(this.canvasStatic);
+    this.rootBlock.appendChild(this.canvas);
   }
 }
 

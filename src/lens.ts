@@ -9,4 +9,8 @@
  */
 export class Lens {
   constructor() {}
+
+  rotate() {}
+
+  translate() {}
 }

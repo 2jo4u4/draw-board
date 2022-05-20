@@ -1,4 +1,5 @@
 import { MinRectVec } from ".";
+import type { Styles } from ".";
 
 export interface Vec2 {
   x: number;
@@ -7,6 +8,7 @@ export interface Vec2 {
 
 /** 計算函式 / 工具函式 */
 export class UtilTools {
+  /** 揉合兩點座標成最小矩形 */
   static generateMinRect(v1: Vec2, v2: Vec2): MinRectVec {
     const { x: x1, y: y1 } = v1;
     const { x: x2, y: y2 } = v2;
@@ -17,8 +19,13 @@ export class UtilTools {
     };
   }
 
+  /** 是否為 Vec2 */
+  static isVec2(v: Vec2 | MinRectVec): v is Vec2 {
+    return Object.prototype.hasOwnProperty.call(v, "x");
+  }
+
   /**
-   * 計算新座標是否影響矩形
+   * 計算新座標是否影響最小矩形
    * @param vec 座標
    * @param minRectVec 矩形座標
    * @returns 新矩形座標
@@ -101,5 +108,12 @@ export class UtilTools {
     } else {
       return id;
     }
+  }
+
+  /** 樣式注入 */
+  static injectStyle(p: CanvasRenderingContext2D, s: Styles) {
+    const { lineColor, lineWidth } = s;
+    p.strokeStyle = lineColor;
+    p.lineWidth = lineWidth;
   }
 }

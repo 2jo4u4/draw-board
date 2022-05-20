@@ -18,6 +18,7 @@ export enum LineWidth {
 }
 
 export abstract class BaseTools {
+  constructor(board: Board) {}
   onEventStart(v: Vec2): void {}
   onEventMove(v: Vec2): void {}
   onEventEnd(v: Vec2): void {}

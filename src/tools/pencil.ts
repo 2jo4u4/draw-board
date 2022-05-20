@@ -39,12 +39,12 @@ export class PencilTools implements BaseTools {
     this.path.lineTo(v.x, v.y);
     this.draw();
     this.addToBoard(v);
+    this.drawOver();
   }
 
   // ----有使用到 board --------------------------
   private settingPen() {
-    this.board.ctx.strokeStyle = this.drawStyle.lineColor;
-    this.board.ctx.lineWidth = this.drawStyle.lineWidth;
+    UtilTools.injectStyle(this.board.ctx, this.drawStyle);
   }
   private draw() {
     this.board.ctx.stroke(this.path);
@@ -55,5 +55,9 @@ export class PencilTools implements BaseTools {
       this.drawStyle,
       UtilTools.newMinRect(v, this.minRect)
     );
+  }
+  private drawOver() {
+    const { width, height } = this.board.canvas;
+    this.board.ctx.clearRect(0, 0, width, height);
   }
 }

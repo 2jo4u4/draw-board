@@ -9,6 +9,22 @@ document.body.append(canvas, p, tools);
 const board = new Board(canvas);
 initialTools();
 
+// const path = new Path2D();
+// board.ctx.lineWidth = 6;
+
+// path.rect(100, 100, 100, 100);
+// path.closePath();
+// board.ctx.strokeStyle = "red";
+// board.ctx.stroke(path);
+
+// // board.ctx.strokeStyle = "blue";
+// // board.ctx.translate(150, 150);
+// // board.ctx.stroke(path);
+
+// board.ctx.strokeStyle = "red";
+// board.ctx.rotate(Math.PI);
+// board.ctx.stroke(path);
+
 function AddTools(v: ToolsEnum) {
   const child = document.createElement("li");
   const text =
