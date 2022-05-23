@@ -1,10 +1,11 @@
-import { MinRectVec } from ".";
-import type { Styles } from ".";
-
-export interface Vec2 {
-  x: number;
-  y: number;
-}
+export const defaultStyle: Styles = {
+  lineColor: "#000",
+  lineWidth: 2,
+  fillColor: undefined,
+  lineDash: [],
+};
+export const padding = 8; // px
+export const dashedLine = [10, 10];
 
 /** 計算函式 / 工具函式 */
 export class UtilTools {
@@ -111,9 +112,26 @@ export class UtilTools {
   }
 
   /** 樣式注入 */
-  static injectStyle(p: CanvasRenderingContext2D, s: Styles) {
-    const { lineColor, lineWidth } = s;
-    p.strokeStyle = lineColor;
-    p.lineWidth = lineWidth;
+  static injectStyle(ctx: CanvasRenderingContext2D, s: Styles) {
+    const { lineColor, lineWidth, lineDash } = s;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash(lineDash);
+  }
+
+  /** 利用最小矩形產生路徑 */
+  static drawMinRectVecPath(mrv: MinRectVec, padding = 0): Path2D {
+    const {
+      leftTop: { x: x1, y: y1 },
+      rightBottom: { x: x2, y: y2 },
+    } = mrv;
+    const path = new Path2D();
+    path.rect(
+      x1 - padding,
+      y1 - padding,
+      x2 - x1 + padding * 2,
+      y2 - y1 + padding * 2
+    );
+    return path;
   }
 }

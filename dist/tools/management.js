@@ -18,8 +18,10 @@ var LineWidth;
     LineWidth[LineWidth["\u7C97"] = 4] = "\u7C97";
 })(LineWidth = exports.LineWidth || (exports.LineWidth = {}));
 class BaseTools {
+    constructor(board) { }
     onEventStart(v) { }
-    onEventMove(v) { }
+    onEventMoveActive(v) { }
+    onEventMoveInActive(v) { }
     onEventEnd(v) { }
     onDestroy() { }
 }
@@ -39,9 +41,13 @@ class ToolsManagement {
     onEventStart(v) {
         this.usingTools.onEventStart(v);
     }
-    /** 手指/滑鼠 移動過程 */
-    onEventMove(v) {
-        this.usingTools.onEventMove(v);
+    /** 手指/滑鼠 移動過程(下壓時的移動過程) */
+    onEventMoveActive(v) {
+        this.usingTools.onEventMoveActive(v);
+    }
+    /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
+    onEventMoveInActive(v) {
+        this.usingTools.onEventMoveInActive(v);
     }
     /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
     onEventEnd(v) {

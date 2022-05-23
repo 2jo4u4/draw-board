@@ -6,7 +6,6 @@ import {
   ToolsManagement,
   UtilTools,
 } from ".";
-import type { Vec2, Styles, MinRectVec } from ".";
 
 type MouseFlag = "active" | "inactive";
 interface CanvasStyle {
@@ -99,7 +98,7 @@ export class Board {
     this.draw(p, s);
   }
 
-  deleteShape(...idArray: string[]) {
+  deleteShapeByID(...idArray: string[]) {
     idArray.forEach((id) => {
       const bs = this.shapes.get(id);
       if (bs) {
@@ -109,9 +108,20 @@ export class Board {
     });
     const { width, height } = this.canvasStatic;
     this.ctxStatic.clearRect(0, 0, width, height);
+    this.ctx.clearRect(0, 0, width, height);
     this.shapes.forEach((bs) => {
       this.ctxStatic.stroke(bs.path);
     });
+  }
+
+  deleteShape() {
+    const idArray: string[] = [];
+    this.shapes.forEach((item) => {
+      if (item.isSelect) {
+        idArray.push(item.id);
+      }
+    });
+    this.deleteShapeByID(...idArray);
   }
 
   /** 初始化 canvas */
@@ -171,18 +181,15 @@ export class Board {
     }
   }
   private onEventMove(event: TouchEvent | MouseEvent) {
-    let action = UserAction.移動滑鼠;
+    const position = this.eventToPosition(event);
     if (this.mouseFlag === "active") {
-      const position = this.eventToPosition(event);
-      this.toolsCtrl.onEventMove(position);
-      action =
-        this.toolsCtrl.toolsType === ToolsEnum.鉛筆
-          ? UserAction.新增
-          : UserAction.移動滑鼠;
+      this.toolsCtrl.onEventMoveActive(position);
+    } else {
+      this.toolsCtrl.onEventMoveInActive(position);
     }
-    if (this.socketCtrl) {
-      this.socketCtrl.postData(action);
-    }
+    // if (this.socketCtrl) {
+    //   this.socketCtrl.postData();
+    // }
   }
   private onEventEnd(event: TouchEvent | MouseEvent) {
     if (this.mouseFlag === "active") {
@@ -218,28 +225,23 @@ export class Board {
   }
 
   private resizeCanvas() {
-    const width = window.innerWidth;
-    const height = window.innerHeight - 200;
-    this.setCanvasStyle(this.canvas, { style: { width, height } });
-    this.setCanvasStyle(this.canvasStatic, { style: { width, height } });
+    // 清除畫面
+    const { width, height } = this.canvasStatic;
+    this.ctxStatic.clearRect(0, 0, width, height);
+    this.ctx.clearRect(0, 0, width, height);
+
+    this.setCanvasStyle(this.canvas);
+    this.setCanvasStyle(this.canvasStatic);
+    // 重新繪製
+    this.shapes.forEach((item) => {
+      this.ctxStatic.stroke(item.path);
+      item.closeSolidRect();
+    });
   }
 
-  private setCanvasStyle(
-    el: HTMLCanvasElement,
-    config?: { style: CanvasStyle }
-  ) {
-    let clientWidth = 0,
-      clientHeight = 0;
-    if (config) {
-      const {
-        style: { width, height },
-      } = config;
-      clientWidth = width;
-      clientHeight = height;
-    } else {
-      clientWidth = window.innerWidth;
-      clientHeight = window.innerHeight - 200;
-    }
+  private setCanvasStyle(el: HTMLCanvasElement) {
+    const clientWidth = window.innerWidth;
+    const clientHeight = window.innerHeight;
     el.setAttribute("width", `${clientWidth * this.decivePixelPatio}px`);
     el.setAttribute("height", `${clientHeight * this.decivePixelPatio}px`);
     el.style.width = `${clientWidth}px`;

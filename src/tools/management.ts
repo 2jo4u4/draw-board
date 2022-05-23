@@ -1,7 +1,6 @@
 import { Board } from "..";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";
-import type { Styles, Vec2 } from "..";
 
 export enum ToolsEnum {
   "選擇器" = "select",
@@ -20,7 +19,8 @@ export enum LineWidth {
 export abstract class BaseTools {
   constructor(board: Board) {}
   onEventStart(v: Vec2): void {}
-  onEventMove(v: Vec2): void {}
+  onEventMoveActive(v: Vec2): void {}
+  onEventMoveInActive(v: Vec2): void {}
   onEventEnd(v: Vec2): void {}
   onDestroy(): void {}
 }
@@ -45,9 +45,13 @@ export class ToolsManagement {
   onEventStart(v: Vec2): void {
     this.usingTools.onEventStart(v);
   }
-  /** 手指/滑鼠 移動過程 */
-  onEventMove(v: Vec2): void {
-    this.usingTools.onEventMove(v);
+  /** 手指/滑鼠 移動過程(下壓時的移動過程) */
+  onEventMoveActive(v: Vec2): void {
+    this.usingTools.onEventMoveActive(v);
+  }
+  /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
+  onEventMoveInActive(v: Vec2): void {
+    this.usingTools.onEventMoveInActive(v);
   }
   /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
   onEventEnd(v: Vec2): void {

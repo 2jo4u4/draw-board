@@ -1,12 +1,11 @@
 import { BaseTools } from "./management";
 import { Board, defaultStyle, UtilTools } from "..";
-import type { MinRectVec, Styles, Vec2 } from "..";
 
 /** 鉛筆 */
 export class PencilTools implements BaseTools {
   /** 繪製到 canvas 上 及 設定畫筆 */
-  private board: Board;
-  private drawStyle: Styles = defaultStyle;
+  readonly board: Board;
+  private drawStyle: Styles;
   /** 能包覆此圖形的最小矩形 */
   private minRect: MinRectVec = {
     leftTop: { x: 0, y: 0 },
@@ -14,8 +13,12 @@ export class PencilTools implements BaseTools {
   };
   /** 圖形路徑 */
   private path!: Path2D;
-  constructor(board: Board) {
+  constructor(board: Board, drawStyle = defaultStyle) {
     this.board = board;
+    this.drawStyle = drawStyle;
+  }
+  onEventMoveInActive(v: Vec2): void {
+    throw new Error("Method not implemented.");
   }
   onDestroy(): void {}
 
@@ -30,7 +33,7 @@ export class PencilTools implements BaseTools {
     this.path.lineTo(v.x, v.y);
     this.draw();
   }
-  onEventMove(v: Vec2): void {
+  onEventMoveActive(v: Vec2): void {
     this.path.lineTo(v.x, v.y);
     this.draw();
     this.minRect = UtilTools.newMinRect(v, this.minRect);

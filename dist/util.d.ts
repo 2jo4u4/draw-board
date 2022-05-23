@@ -1,13 +1,14 @@
-import { MinRectVec } from ".";
-export interface Vec2 {
-    x: number;
-    y: number;
-}
+export declare const defaultStyle: Styles;
+export declare const padding = 8;
+export declare const dashedLine: number[];
 /** 計算函式 / 工具函式 */
 export declare class UtilTools {
+    /** 揉合兩點座標成最小矩形 */
     static generateMinRect(v1: Vec2, v2: Vec2): MinRectVec;
+    /** 是否為 Vec2 */
+    static isVec2(v: Vec2 | MinRectVec): v is Vec2;
     /**
-     * 計算新座標是否影響矩形
+     * 計算新座標是否影響最小矩形
      * @param vec 座標
      * @param minRectVec 矩形座標
      * @returns 新矩形座標
@@ -29,4 +30,8 @@ export declare class UtilTools {
      * @returns
      */
     static RandomID(s?: string[]): string;
+    /** 樣式注入 */
+    static injectStyle(ctx: CanvasRenderingContext2D, s: Styles): void;
+    /** 利用最小矩形產生路徑 */
+    static drawMinRectVecPath(mrv: MinRectVec, padding?: number): Path2D;
 }

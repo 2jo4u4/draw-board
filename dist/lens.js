@@ -12,5 +12,7 @@ exports.Lens = void 0;
  */
 class Lens {
     constructor() { }
+    rotate() { }
+    translate() { }
 }
 exports.Lens = Lens;

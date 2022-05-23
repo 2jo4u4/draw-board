@@ -1,7 +1,5 @@
 import { BaseTools } from "./management";
-import { Board, BaseShape, UtilTools, padding } from "..";
-import type { Vec2, MinRectVec, Styles } from "..";
-import trash from "../assets/trash-bin-svgrepo-com.svg";
+import { Board, BaseShape, UtilTools, dashedLine } from "..";
 
 /**
  * 沒選中 / 選中
@@ -10,36 +8,32 @@ type SelectFlag = "none" | "choose";
 const defaultFlexboxStyle: Styles = {
   lineWidth: 2,
   lineColor: "#00000050",
-};
-const defaultSolidboxStyle: Styles = {
-  lineWidth: 2,
-  lineColor: "#00000080",
+  lineDash: dashedLine,
 };
 
-const dashedLine = [10, 10];
-type ActionBarTools = "delete" | "move";
 /** 選擇器 */
 export class SelectTools implements BaseTools {
-  board: Board;
+  readonly board: Board;
   /** 選取狀態旗標 */
   private selectFlag!: SelectFlag;
   /** 紀錄滑鼠起點 */
   private startPosition: Vec2 = { x: 0, y: 0 };
-  /** 被選中的圖形 */
-  private chooseShapes: BaseShape[] = [];
-  /** 固定的選取框 */
+  /** 紀錄固定的選取框（判定下次選取是否需要變更狀態） */
   private solidRect: Path2D | null = null;
-  /** 控制/行為 實例 */
-  private actionBar: ActionBar;
 
   constructor(board: Board) {
     this.board = board;
     this.selectFlag = "none";
-    this.actionBar = new ActionBar(this, ["delete"]);
+  }
+  onEventMoveInActive(v: Vec2): void {
+    throw new Error("Method not implemented.");
   }
   onDestroy(): void {
     const { width, height } = this.board.canvas;
     this.board.ctx.clearRect(0, 0, width, height);
+    this.board.shapes.forEach((item) => {
+      item.actionBar.closeBar();
+    });
   }
 
   onEventStart(v: Vec2): void {
@@ -51,12 +45,14 @@ export class SelectTools implements BaseTools {
       this.selectFlag = "choose";
     } else {
       this.selectFlag = "none";
-      this.chooseShapes = [];
+      // 清除已選圖形
+      this.board.shapes.forEach((bs) => {
+        bs.closeSolidRect();
+      });
       this.settingFlexBox();
-      this.actionBar.closeBar();
     }
   }
-  onEventMove(v: Vec2): void {
+  onEventMoveActive(v: Vec2): void {
     switch (this.selectFlag) {
       case "none":
         // 伸縮選取框
@@ -71,54 +67,43 @@ export class SelectTools implements BaseTools {
     switch (this.selectFlag) {
       case "none":
         this.drawOverFlexBox(); // 伸縮框結束
-        let minRectVec: MinRectVec | null = null;
+        let minRectVec: MinRectVec | undefined = undefined, // 紀錄多選下的最小矩形
+          shape: [string, BaseShape] | undefined = undefined;
         if (v.x === this.startPosition.x && v.y === this.startPosition.y) {
           // 單點選擇圖形
-          const shape = Array.from(this.board.shapes)
+          shape = Array.from(this.board.shapes)
             .reverse()
             .find((item) => this.isSelected(v, item[1]));
-          if (shape) {
-            const bs = shape[1];
-            this.chooseShapes.push(bs);
-            this.solidRect = new Path2D(bs.selectRectPath);
-            minRectVec = bs.minRect;
-          } else {
-            this.solidRect = null;
-          }
         } else {
           // 移動結束
           const minRect = UtilTools.generateMinRect(v, this.startPosition); // 伸縮框的範圍
           // 判定是否有圖形在此路徑內
-          const reg: MinRectVec[] = [];
-          this.board.shapes.forEach((bs) => {
-            if (this.isSelected(minRect, bs)) {
-              reg.push(bs.minRect);
-              this.chooseShapes.push(bs);
-            }
-          });
-          if (reg.length > 0) {
-            minRectVec = UtilTools.mergeMinRect(...reg);
-            const {
-              leftTop: { x: x1, y: y1 },
-              rightBottom: { x: x2, y: y2 },
-            } = minRectVec;
-            this.solidRect = new Path2D();
-            this.solidRect.rect(
-              x1 - padding,
-              y1 - padding,
-              x2 - x1 + padding * 2,
-              y2 - y1 + padding * 2
+          const regBS = Array.from(this.board.shapes).filter((item) =>
+            this.isSelected(minRect, item[1])
+          );
+          if (regBS.length > 0) {
+            shape = regBS[0]; // 只呼叫第一個圖形
+            minRectVec = UtilTools.mergeMinRect(
+              ...regBS.map((_bs) => _bs[1].minRect)
             );
-          } else {
-            this.solidRect = null;
+            // 標記其餘被選中圖形
+            for (let i = 1; i < regBS.length; i++) {
+              const bs = regBS[i][1];
+              bs.isSelect = true;
+            }
           }
         }
-        if (this.solidRect) {
-          this.onSolidBoxStart(); // 固定框開始
-          this.board.ctx.stroke(this.solidRect);
-          this.onSolidBoxOver(minRectVec); // 固定框結束
+        if (shape) {
+          this.selectFlag = "choose";
+          const bs = shape[1];
+          this.solidRect = UtilTools.drawMinRectVecPath(
+            minRectVec || bs.minRect
+          );
+          bs.openSolidRect({ mrv: minRectVec, openBar: true });
+        } else {
+          this.selectFlag = "none";
+          this.solidRect = null;
         }
-        this.selectFlag = this.chooseShapes.length > 0 ? "choose" : "none";
         break;
       case "choose":
         // 移動圖形結束
@@ -126,16 +111,10 @@ export class SelectTools implements BaseTools {
     }
   }
 
-  delete() {
-    this.board.deleteShape(...this.chooseShapes.map((item) => item.id));
-    const { width, height } = this.board.canvas;
-    this.board.ctx.clearRect(0, 0, width, height);
-  }
-
   /** 是否選中 */
   private isSelected(v: Vec2 | MinRectVec, bs: BaseShape): Boolean {
     if (UtilTools.isVec2(v)) {
-      return this.board.ctx.isPointInPath(bs.selectRectPath, v.x, v.y);
+      return this.board.ctx.isPointInPath(bs.solidRectPath, v.x, v.y);
     } else {
       return this.isInRectBlock(v, bs);
     }
@@ -188,7 +167,7 @@ export class SelectTools implements BaseTools {
       ];
       return Boolean(
         foreCorner.find(({ x, y }) => {
-          return this.board.ctx.isPointInPath(bs.selectRectPath, x, y);
+          return this.board.ctx.isPointInPath(bs.solidRectPath, x, y);
         })
       );
     }
@@ -196,7 +175,6 @@ export class SelectTools implements BaseTools {
 
   /** 選取的伸縮框設定 */
   private settingFlexBox() {
-    this.board.ctx.setLineDash(dashedLine);
     UtilTools.injectStyle(this.board.ctx, defaultFlexboxStyle);
   }
   /** 繪製選取的伸縮框 */
@@ -214,79 +192,5 @@ export class SelectTools implements BaseTools {
     const { width, height } = this.board.canvas;
     // 清空選取伸縮框
     this.board.ctx.clearRect(0, 0, width, height);
-    // 清除虛線
-    this.board.ctx.setLineDash([]);
-  }
-
-  /** 選取固定框設定 */
-  private onSolidBoxStart() {
-    this.board.ctx.setLineDash(dashedLine);
-    UtilTools.injectStyle(this.board.ctx, defaultSolidboxStyle);
-  }
-
-  /** 選取固定框清除設定 */
-  private onSolidBoxOver(mr: MinRectVec | null) {
-    this.board.ctx.setLineDash([]);
-    mr && this.actionBar.openBar(mr);
-  }
-}
-
-const interval = 60; //px
-class ActionBar {
-  private selectTools: SelectTools;
-  private board: Board;
-  private rootBlock: HTMLDivElement;
-  private block: HTMLDivElement;
-  private openFlag = false;
-
-  constructor(selectTools: SelectTools, use: ActionBarTools[]) {
-    this.selectTools = selectTools;
-    this.board = selectTools.board;
-    this.rootBlock = selectTools.board.rootBlock;
-    this.block = document.createElement("div");
-    this.initial(use);
-  }
-
-  private initial(use: ActionBarTools[]) {
-    this.block.style.position = "absolute";
-    this.block.style.border = "1px solid red";
-    this.icon(use);
-  }
-
-  openBar(mr: MinRectVec) {
-    if (!this.openFlag) {
-      this.openFlag = true;
-      const {
-        leftTop: { x: x1, y: y1 },
-        rightBottom: { x: x2, y: y2 },
-      } = mr;
-      const width = x2 - x1 + padding * 2 + defaultSolidboxStyle.lineWidth * 2;
-      this.block.style.top = `${y1 - interval}px`;
-      this.block.style.left = `${
-        x1 - padding - defaultSolidboxStyle.lineWidth
-      }px`;
-      this.block.style.width = `${width}px`;
-      this.rootBlock.append(this.block);
-    }
-  }
-
-  closeBar() {
-    if (this.openFlag) {
-      this.openFlag = false;
-      this.block.remove();
-    }
-  }
-
-  private icon(type: ActionBarTools[]) {
-    type.forEach((item) => {
-      const img = new Image(24, 24);
-      img.style.cursor = "pointer";
-      img.src = trash;
-      img.onclick = () => {
-        this.selectTools.delete();
-        this.block.remove();
-      };
-      this.block.append(img);
-    });
   }
 }

@@ -1,25 +1,28 @@
 import { BaseTools } from "./management";
 import { Board } from "..";
-import type { Vec2 } from "..";
 /** 選擇器 */
 export declare class SelectTools implements BaseTools {
-    private board;
+    readonly board: Board;
     /** 選取狀態旗標 */
     private selectFlag;
-    /** 選取前的畫面 */
-    private beforeSelectScreen;
-    /** 滑鼠起點 */
+    /** 紀錄滑鼠起點 */
     private startPosition;
-    /** 被選中的圖形 */
-    private chooseShapes;
-    /** 固定選取框 */
-    private selectRect;
+    /** 紀錄固定的選取框（判定下次選取是否需要變更狀態） */
+    private solidRect;
     constructor(board: Board);
+    onEventMoveInActive(v: Vec2): void;
     onDestroy(): void;
     onEventStart(v: Vec2): void;
-    onEventMove(v: Vec2): void;
+    onEventMoveActive(v: Vec2): void;
     onEventEnd(v: Vec2): void;
+    /** 是否選中 */
     private isSelected;
-    private isVec2;
+    /** 範圍內是否選中 */
     private isInRectBlock;
+    /** 選取的伸縮框設定 */
+    private settingFlexBox;
+    /** 繪製選取的伸縮框 */
+    private drawFlexBox;
+    /** 選取伸縮框結束 */
+    private drawOverFlexBox;
 }

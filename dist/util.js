@@ -1,8 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UtilTools = void 0;
+exports.UtilTools = exports.dashedLine = exports.padding = exports.defaultStyle = void 0;
+exports.defaultStyle = {
+    lineColor: "#000",
+    lineWidth: 2,
+    fillColor: undefined,
+    lineDash: [],
+};
+exports.padding = 8; // px
+exports.dashedLine = [10, 10];
 /** 計算函式 / 工具函式 */
 class UtilTools {
+    /** 揉合兩點座標成最小矩形 */
     static generateMinRect(v1, v2) {
         const { x: x1, y: y1 } = v1;
         const { x: x2, y: y2 } = v2;
@@ -11,8 +20,12 @@ class UtilTools {
             rightBottom: { x: Math.max(x1, x2), y: Math.max(y1, y2) },
         };
     }
+    /** 是否為 Vec2 */
+    static isVec2(v) {
+        return Object.prototype.hasOwnProperty.call(v, "x");
+    }
     /**
-     * 計算新座標是否影響矩形
+     * 計算新座標是否影響最小矩形
      * @param vec 座標
      * @param minRectVec 矩形座標
      * @returns 新矩形座標
@@ -85,6 +98,20 @@ class UtilTools {
         else {
             return id;
         }
+    }
+    /** 樣式注入 */
+    static injectStyle(ctx, s) {
+        const { lineColor, lineWidth, lineDash } = s;
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = lineWidth;
+        ctx.setLineDash(lineDash);
+    }
+    /** 利用最小矩形產生路徑 */
+    static drawMinRectVecPath(mrv, padding = 0) {
+        const { leftTop: { x: x1, y: y1 }, rightBottom: { x: x2, y: y2 }, } = mrv;
+        const path = new Path2D();
+        path.rect(x1 - padding, y1 - padding, x2 - x1 + padding * 2, y2 - y1 + padding * 2);
+        return path;
     }
 }
 exports.UtilTools = UtilTools;
