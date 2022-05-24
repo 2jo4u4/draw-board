@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Board = void 0;
-var _1 = require(".");
-var Board = (function () {
-    function Board(canvas, config) {
+const _1 = require(".");
+class Board {
+    constructor(canvas, config) {
         this.mouseFlag = "inactive";
         this.shapes = new Map();
         this.shapesTrash = new Map();
@@ -12,122 +12,89 @@ var Board = (function () {
         this.__canvas = getCnavasElement(canvas);
         this.__ctx = checkCanvasContext(this.__canvas);
         this.setStaticCanvas();
-        var _a = Object.assign({}, config), Socket = _a.Socket, _b = _a.Tools, Tools = _b === void 0 ? _1.ToolsManagement : _b;
+        const { Socket, Tools = _1.ToolsManagement } = Object.assign({}, config);
         this.__tools = new Tools(this);
         this.__socket = Socket || null;
         this.decivePixelPatio = window.devicePixelRatio;
         this.initial();
         this.addListener();
     }
-    Object.defineProperty(Board.prototype, "rootBlock", {
-        get: function () {
-            return this.__rootBlock;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Board.prototype, "canvas", {
-        get: function () {
-            return this.__canvas;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Board.prototype, "ctx", {
-        get: function () {
-            return this.__ctx;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Board.prototype, "canvasStatic", {
-        get: function () {
-            return this.__canvasStatic;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Board.prototype, "ctxStatic", {
-        get: function () {
-            return this.__ctxStatic;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Board.prototype, "toolsCtrl", {
-        get: function () {
-            return this.__tools;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Board.prototype, "socketCtrl", {
-        get: function () {
-            return this.__socket;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Board.prototype.clearCanvas = function (type) {
-        var _a = this.canvasStatic, width = _a.width, height = _a.height;
+    get rootBlock() {
+        return this.__rootBlock;
+    }
+    get canvas() {
+        return this.__canvas;
+    }
+    get ctx() {
+        return this.__ctx;
+    }
+    get canvasStatic() {
+        return this.__canvasStatic;
+    }
+    get ctxStatic() {
+        return this.__ctxStatic;
+    }
+    get toolsCtrl() {
+        return this.__tools;
+    }
+    get socketCtrl() {
+        return this.__socket;
+    }
+    clearCanvas(type) {
+        const { width, height } = this.canvasStatic;
         type !== "static" && this.ctx.clearRect(0, 0, width, height);
         type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
-    };
-    Board.prototype.getShapeById = function (id) {
+    }
+    getShapeById(id) {
         return this.shapes.get(id);
-    };
-    Board.prototype.addShape = function (p, s, m) {
-        var id = _1.UtilTools.RandomID(Array.from(this.shapes.keys()));
+    }
+    addShape(p, s, m) {
+        const id = _1.UtilTools.RandomID(Array.from(this.shapes.keys()));
         this.shapes.set(id, new _1.BaseShape(id, this, p, s, m));
         this.drawByPath(p, s);
-    };
-    Board.prototype.drawByPath = function (p, s) {
+    }
+    drawByPath(p, s) {
         _1.UtilTools.injectStyle(this.ctxStatic, s);
         this.ctxStatic.stroke(p);
-    };
-    Board.prototype.drawByBs = function (bs) {
+    }
+    drawByBs(bs) {
         this.drawByPath(bs.path, bs.style);
-    };
-    Board.prototype.deleteShapeByID = function () {
-        var _this = this;
-        var idArray = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            idArray[_i] = arguments[_i];
-        }
-        idArray.forEach(function (id) {
-            var bs = _this.shapes.get(id);
+    }
+    deleteShapeByID(...idArray) {
+        idArray.forEach((id) => {
+            const bs = this.shapes.get(id);
             if (bs) {
-                _this.shapesTrash.set(id, bs);
-                _this.shapes.delete(id);
+                this.shapesTrash.set(id, bs);
+                this.shapes.delete(id);
             }
         });
-        var _a = this.canvasStatic, width = _a.width, height = _a.height;
+        const { width, height } = this.canvasStatic;
         this.ctxStatic.clearRect(0, 0, width, height);
         this.ctx.clearRect(0, 0, width, height);
-        this.shapes.forEach(function (bs) {
-            _this.ctxStatic.stroke(bs.path);
+        this.shapes.forEach((bs) => {
+            this.ctxStatic.stroke(bs.path);
         });
-    };
-    Board.prototype.deleteShape = function () {
-        var idArray = [];
-        this.shapes.forEach(function (item) {
+    }
+    deleteShape() {
+        const idArray = [];
+        this.shapes.forEach((item) => {
             if (item.isSelect) {
                 idArray.push(item.id);
             }
         });
-        this.deleteShapeByID.apply(this, idArray);
-    };
-    Board.prototype.initial = function () {
+        this.deleteShapeByID(...idArray);
+    }
+    initial() {
         this.settingChild();
-    };
-    Board.prototype.destroy = function () {
+    }
+    destroy() {
         this.removeListener();
-    };
-    Board.prototype.setStaticCanvas = function () {
+    }
+    setStaticCanvas() {
         this.__canvasStatic = getCnavasElement();
         this.__ctxStatic = checkCanvasContext(this.canvasStatic);
-    };
-    Board.prototype.addListener = function () {
+    }
+    addListener() {
         this.canvas.addEventListener("mousedown", this.onEventStart.bind(this));
         this.canvas.addEventListener("touchstart", this.onEventStart.bind(this));
         this.canvas.addEventListener("mousemove", this.onEventMove.bind(this));
@@ -137,8 +104,8 @@ var Board = (function () {
         this.canvas.addEventListener("touchend", this.onEventEnd.bind(this));
         this.canvas.addEventListener("touchcancel", this.onEventEnd.bind(this));
         window.addEventListener("resize", this.resizeCanvas.bind(this));
-    };
-    Board.prototype.removeListener = function () {
+    }
+    removeListener() {
         this.canvas.removeEventListener("mousedown", this.onEventStart.bind(this));
         this.canvas.removeEventListener("touchstart", this.onEventStart.bind(this));
         this.canvas.removeEventListener("mousemove", this.onEventMove.bind(this));
@@ -148,32 +115,32 @@ var Board = (function () {
         this.canvas.removeEventListener("touchend", this.onEventEnd.bind(this));
         this.canvas.removeEventListener("touchcancel", this.onEventEnd.bind(this));
         window.removeEventListener("resize", this.resizeCanvas.bind(this));
-    };
-    Board.prototype.onEventStart = function (event) {
+    }
+    onEventStart(event) {
         if (this.mouseFlag === "inactive") {
             this.mouseFlag = "active";
-            var position = this.eventToPosition(event);
+            const position = this.eventToPosition(event);
             this.toolsCtrl.onEventStart(position);
         }
-    };
-    Board.prototype.onEventMove = function (event) {
-        var position = this.eventToPosition(event);
+    }
+    onEventMove(event) {
+        const position = this.eventToPosition(event);
         if (this.mouseFlag === "active") {
             this.toolsCtrl.onEventMoveActive(position);
         }
         else {
             this.toolsCtrl.onEventMoveInActive(position);
         }
-    };
-    Board.prototype.onEventEnd = function (event) {
+    }
+    onEventEnd(event) {
         if (this.mouseFlag === "active") {
             this.mouseFlag = "inactive";
-            var position = this.eventToPosition(event);
+            const position = this.eventToPosition(event);
             this.toolsCtrl.onEventEnd(position);
         }
-    };
-    Board.prototype.eventToPosition = function (event) {
-        var x = 0, y = 0;
+    }
+    eventToPosition(event) {
+        let x = 0, y = 0;
         if (_1.UtilTools.isMouseEvent(event)) {
             x = event.clientX;
             y = event.clientY;
@@ -182,33 +149,32 @@ var Board = (function () {
             x = event.touches[0].clientX;
             y = event.touches[0].clientY;
         }
-        var _a = this.canvas.getBoundingClientRect(), left = _a.left, top = _a.top, width = _a.width, height = _a.height;
-        var back = {
+        const { left, top, width, height } = this.canvas.getBoundingClientRect();
+        const back = {
             x: ((x - left) / (this.canvas.width / this.decivePixelPatio / width)) *
                 this.decivePixelPatio,
             y: ((y - top) / (this.canvas.height / this.decivePixelPatio / height)) *
                 this.decivePixelPatio,
         };
         return back;
-    };
-    Board.prototype.resizeCanvas = function () {
-        var _this = this;
+    }
+    resizeCanvas() {
         this.clearCanvas();
         this.setCanvasStyle(this.canvas);
         this.setCanvasStyle(this.canvasStatic);
-        this.shapes.forEach(function (item) {
-            _this.drawByBs(item);
+        this.shapes.forEach((item) => {
+            this.drawByBs(item);
         });
-    };
-    Board.prototype.setCanvasStyle = function (el) {
-        var clientWidth = window.innerWidth;
-        var clientHeight = window.innerHeight;
-        el.setAttribute("width", "".concat(clientWidth * this.decivePixelPatio, "px"));
-        el.setAttribute("height", "".concat(clientHeight * this.decivePixelPatio, "px"));
-        el.style.width = "".concat(clientWidth, "px");
-        el.style.height = "".concat(clientHeight, "px");
-    };
-    Board.prototype.settingChild = function () {
+    }
+    setCanvasStyle(el) {
+        const clientWidth = window.innerWidth;
+        const clientHeight = window.innerHeight;
+        el.setAttribute("width", `${clientWidth * this.decivePixelPatio}px`);
+        el.setAttribute("height", `${clientHeight * this.decivePixelPatio}px`);
+        el.style.width = `${clientWidth}px`;
+        el.style.height = `${clientHeight}px`;
+    }
+    settingChild() {
         this.__rootBlock = document.createElement("div");
         this.rootBlock.style.position = "relative";
         this.rootBlock.classList.add("canvas");
@@ -222,16 +188,15 @@ var Board = (function () {
         this.canvasStatic.classList.add("show_paint");
         this.rootBlock.append(this.canvasStatic);
         this.rootBlock.appendChild(this.canvas);
-    };
-    return Board;
-}());
+    }
+}
 exports.Board = Board;
 function getCnavasElement(c) {
     if (c instanceof HTMLCanvasElement) {
         return c;
     }
     else if (typeof c === "string") {
-        var el = document.getElementById(c);
+        const el = document.getElementById(c);
         if (el && el instanceof HTMLCanvasElement) {
             return el;
         }
@@ -239,7 +204,7 @@ function getCnavasElement(c) {
     return document.createElement("canvas");
 }
 function checkCanvasContext(c) {
-    var ctx = c.getContext("2d");
+    const ctx = c.getContext("2d");
     if (ctx) {
         return ctx;
     }
@@ -247,3 +212,4 @@ function checkCanvasContext(c) {
         throw new Error("無法獲取 getContext");
     }
 }
+//# sourceMappingURL=board.js.map

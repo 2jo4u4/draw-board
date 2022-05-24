@@ -144,13 +144,13 @@ class ActionBar {
     this.block.style.left = `${parseInt(this.block.style.left) + offset[0]}px`;
   }
 
-  openBar(mrv?: MinRectVec) {
+  openBar(mrv: MinRectVec) {
     if (!this.openFlag) {
       this.openFlag = true;
       const {
         leftTop: { x: x1, y: y1 },
         rightBottom: { x: x2, y: y2 },
-      } = mrv || this.baseShape.minRect;
+      } = mrv;
       const width = x2 - x1 + padding * 2 + defaultSolidboxStyle.lineWidth * 2;
       this.block.style.top = `${y1 - interval}px`;
       this.block.style.left = `${

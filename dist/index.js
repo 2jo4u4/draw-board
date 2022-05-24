@@ -19,3 +19,4 @@ __exportStar(require("./board"), exports);
 __exportStar(require("./shape"), exports);
 __exportStar(require("./socket"), exports);
 __exportStar(require("./tools"), exports);
+//# sourceMappingURL=index.js.map

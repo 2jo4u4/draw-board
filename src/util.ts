@@ -58,16 +58,16 @@ export class UtilTools {
       leftTop: { x: Infinity, y: Infinity },
       rightBottom: { x: 0, y: 0 },
     };
+    const {
+      leftTop: { x: nsx, y: nsy },
+      rightBottom: { x: nex, y: ney },
+    } = rect;
 
     arge.forEach((item) => {
       const {
         leftTop: { x: sx, y: sy },
         rightBottom: { x: ex, y: ey },
       } = item;
-      const {
-        leftTop: { x: nsx, y: nsy },
-        rightBottom: { x: nex, y: ney },
-      } = rect;
 
       rect.leftTop.x = Math.min(sx, nsx);
       rect.leftTop.y = Math.min(sy, nsy);

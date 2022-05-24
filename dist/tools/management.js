@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ToolsManagement = exports.BaseTools = exports.LineWidth = exports.ToolsEnum = void 0;
-var pencil_1 = require("./pencil");
-var select_1 = require("./select");
+const pencil_1 = require("./pencil");
+const select_1 = require("./select");
 var ToolsEnum;
 (function (ToolsEnum) {
     ToolsEnum["\u9078\u64C7\u5668"] = "select";
@@ -17,47 +17,41 @@ var LineWidth;
     LineWidth[LineWidth["\u4E00\u822C"] = 2] = "\u4E00\u822C";
     LineWidth[LineWidth["\u7C97"] = 4] = "\u7C97";
 })(LineWidth = exports.LineWidth || (exports.LineWidth = {}));
-var BaseTools = (function () {
-    function BaseTools(board) {
-    }
-    BaseTools.prototype.onEventStart = function (v) { };
-    BaseTools.prototype.onEventMoveActive = function (v) { };
-    BaseTools.prototype.onEventMoveInActive = function (v) { };
-    BaseTools.prototype.onEventEnd = function (v) { };
-    BaseTools.prototype.onDestroy = function () { };
-    return BaseTools;
-}());
+class BaseTools {
+    constructor(board) { }
+    onEventStart(v) { }
+    onEventMoveActive(v) { }
+    onEventMoveInActive(v) { }
+    onEventEnd(v) { }
+    onDestroy() { }
+}
 exports.BaseTools = BaseTools;
-var ToolsManagement = (function () {
-    function ToolsManagement(board) {
+class ToolsManagement {
+    constructor(board) {
         this.board = board;
         this.switchTypeToSelect();
     }
-    Object.defineProperty(ToolsManagement.prototype, "toolsType", {
-        get: function () {
-            return this.__toolsType;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    ToolsManagement.prototype.onEventStart = function (v) {
+    get toolsType() {
+        return this.__toolsType;
+    }
+    onEventStart(v) {
         this.usingTools.onEventStart(v);
-    };
-    ToolsManagement.prototype.onEventMoveActive = function (v) {
+    }
+    onEventMoveActive(v) {
         this.usingTools.onEventMoveActive(v);
-    };
-    ToolsManagement.prototype.onEventMoveInActive = function (v) {
+    }
+    onEventMoveInActive(v) {
         this.usingTools.onEventMoveInActive(v);
-    };
-    ToolsManagement.prototype.onEventEnd = function (v) {
+    }
+    onEventEnd(v) {
         this.usingTools.onEventEnd(v);
-    };
-    ToolsManagement.prototype.changePencilStyle = function (s) {
+    }
+    changePencilStyle(s) {
         if (this.usingTools instanceof pencil_1.PencilTools) {
             this.usingTools.changeStyle(s);
         }
-    };
-    ToolsManagement.prototype.switchTypeTo = function (v) {
+    }
+    switchTypeTo(v) {
         var _a;
         if (this.__toolsType !== v) {
             (_a = this.usingTools) === null || _a === void 0 ? void 0 : _a.onDestroy();
@@ -82,22 +76,22 @@ var ToolsManagement = (function () {
                     break;
             }
         }
-    };
-    ToolsManagement.prototype.switchTypeToSelect = function () {
+    }
+    switchTypeToSelect() {
         this.switchTypeTo(ToolsEnum.選擇器);
-    };
-    ToolsManagement.prototype.switchTypeToPencil = function () {
+    }
+    switchTypeToPencil() {
         this.switchTypeTo(ToolsEnum.鉛筆);
-    };
-    ToolsManagement.prototype.switchTypeToShapeGenerate = function () {
+    }
+    switchTypeToShapeGenerate() {
         this.switchTypeTo(ToolsEnum.圖形生成);
-    };
-    ToolsManagement.prototype.switchTypeToTextRect = function () {
+    }
+    switchTypeToTextRect() {
         this.switchTypeTo(ToolsEnum.文字框);
-    };
-    ToolsManagement.prototype.switchTypeToEraser = function () {
+    }
+    switchTypeToEraser() {
         this.switchTypeTo(ToolsEnum.擦子);
-    };
-    return ToolsManagement;
-}());
+    }
+}
 exports.ToolsManagement = ToolsManagement;
+//# sourceMappingURL=management.js.map

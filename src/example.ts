@@ -1,5 +1,4 @@
 import { Board, ToolsEnum } from ".";
-// import "./usefabric";
 
 const canvas = document.createElement("canvas");
 const tools = document.createElement("ul");
