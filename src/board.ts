@@ -86,18 +86,37 @@ export class Board {
     this.addListener();
   }
 
+  /** 清除指定畫布(若無指定則清除兩畫布) */
+  clearCanvas(type?: "static" | "event") {
+    const { width, height } = this.canvasStatic;
+    type !== "static" && this.ctx.clearRect(0, 0, width, height);
+    type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
+  }
+
   /** 取得圖形物件 */
   getShapeById(id: string): BaseShape | undefined {
     return this.shapes.get(id);
   }
 
-  /** 添加圖形 */
+  /** 添加圖形到圖層級 */
   addShape(p: Path2D, s: Styles, m: MinRectVec) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys()));
     this.shapes.set(id, new BaseShape(id, this, p, s, m));
-    this.draw(p, s);
+    this.drawByPath(p, s);
   }
 
+  /** 繪製到圖層級 */
+  drawByPath(p: Path2D, s: Styles) {
+    UtilTools.injectStyle(this.ctxStatic, s);
+    this.ctxStatic.stroke(p);
+  }
+
+  /** 繪製到圖層級 */
+  drawByBs(bs: BaseShape) {
+    this.drawByPath(bs.path, bs.style);
+  }
+
+  /** 刪除圖層級圖形 */
   deleteShapeByID(...idArray: string[]) {
     idArray.forEach((id) => {
       const bs = this.shapes.get(id);
@@ -114,6 +133,7 @@ export class Board {
     });
   }
 
+  /** 刪除圖層級圖形 */
   deleteShape() {
     const idArray: string[] = [];
     this.shapes.forEach((item) => {
@@ -127,11 +147,6 @@ export class Board {
   /** 初始化 canvas */
   private initial() {
     this.settingChild();
-  }
-  /** 繪製到圖層級 */
-  draw(p: Path2D, s: Styles) {
-    UtilTools.injectStyle(this.ctxStatic, s);
-    this.ctxStatic.stroke(p);
   }
 
   destroy() {
@@ -226,16 +241,12 @@ export class Board {
 
   private resizeCanvas() {
     // 清除畫面
-    const { width, height } = this.canvasStatic;
-    this.ctxStatic.clearRect(0, 0, width, height);
-    this.ctx.clearRect(0, 0, width, height);
-
+    this.clearCanvas();
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);
     // 重新繪製
     this.shapes.forEach((item) => {
-      this.ctxStatic.stroke(item.path);
-      item.closeSolidRect();
+      this.drawByBs(item);
     });
   }
 
@@ -252,6 +263,7 @@ export class Board {
   private settingChild() {
     this.__rootBlock = document.createElement("div");
     this.rootBlock.style.position = "relative";
+    this.rootBlock.classList.add("canvas");
     this.canvas.after(this.rootBlock);
     this.setCanvasStyle(this.canvas);
     this.canvas.classList.add("event_paint");

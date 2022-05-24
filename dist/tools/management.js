@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ToolsManagement = exports.BaseTools = exports.LineWidth = exports.ToolsEnum = void 0;
-const pencil_1 = require("./pencil");
-const select_1 = require("./select");
+var pencil_1 = require("./pencil");
+var select_1 = require("./select");
 var ToolsEnum;
 (function (ToolsEnum) {
     ToolsEnum["\u9078\u64C7\u5668"] = "select";
@@ -17,48 +17,47 @@ var LineWidth;
     LineWidth[LineWidth["\u4E00\u822C"] = 2] = "\u4E00\u822C";
     LineWidth[LineWidth["\u7C97"] = 4] = "\u7C97";
 })(LineWidth = exports.LineWidth || (exports.LineWidth = {}));
-class BaseTools {
-    constructor(board) { }
-    onEventStart(v) { }
-    onEventMoveActive(v) { }
-    onEventMoveInActive(v) { }
-    onEventEnd(v) { }
-    onDestroy() { }
-}
+var BaseTools = (function () {
+    function BaseTools(board) {
+    }
+    BaseTools.prototype.onEventStart = function (v) { };
+    BaseTools.prototype.onEventMoveActive = function (v) { };
+    BaseTools.prototype.onEventMoveInActive = function (v) { };
+    BaseTools.prototype.onEventEnd = function (v) { };
+    BaseTools.prototype.onDestroy = function () { };
+    return BaseTools;
+}());
 exports.BaseTools = BaseTools;
-/**
- * 控制插件
- */
-class ToolsManagement {
-    constructor(board) {
+var ToolsManagement = (function () {
+    function ToolsManagement(board) {
         this.board = board;
-        this.switchTypeToSelect(); // 設定初始工具
+        this.switchTypeToSelect();
     }
-    get toolsType() {
-        return this.__toolsType;
-    }
-    /** 觸摸/滑鼠下壓 */
-    onEventStart(v) {
+    Object.defineProperty(ToolsManagement.prototype, "toolsType", {
+        get: function () {
+            return this.__toolsType;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    ToolsManagement.prototype.onEventStart = function (v) {
         this.usingTools.onEventStart(v);
-    }
-    /** 手指/滑鼠 移動過程(下壓時的移動過程) */
-    onEventMoveActive(v) {
+    };
+    ToolsManagement.prototype.onEventMoveActive = function (v) {
         this.usingTools.onEventMoveActive(v);
-    }
-    /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
-    onEventMoveInActive(v) {
+    };
+    ToolsManagement.prototype.onEventMoveInActive = function (v) {
         this.usingTools.onEventMoveInActive(v);
-    }
-    /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
-    onEventEnd(v) {
+    };
+    ToolsManagement.prototype.onEventEnd = function (v) {
         this.usingTools.onEventEnd(v);
-    }
-    changePencilStyle(s) {
+    };
+    ToolsManagement.prototype.changePencilStyle = function (s) {
         if (this.usingTools instanceof pencil_1.PencilTools) {
             this.usingTools.changeStyle(s);
         }
-    }
-    switchTypeTo(v) {
+    };
+    ToolsManagement.prototype.switchTypeTo = function (v) {
         var _a;
         if (this.__toolsType !== v) {
             (_a = this.usingTools) === null || _a === void 0 ? void 0 : _a.onDestroy();
@@ -83,21 +82,22 @@ class ToolsManagement {
                     break;
             }
         }
-    }
-    switchTypeToSelect() {
+    };
+    ToolsManagement.prototype.switchTypeToSelect = function () {
         this.switchTypeTo(ToolsEnum.選擇器);
-    }
-    switchTypeToPencil() {
+    };
+    ToolsManagement.prototype.switchTypeToPencil = function () {
         this.switchTypeTo(ToolsEnum.鉛筆);
-    }
-    switchTypeToShapeGenerate() {
+    };
+    ToolsManagement.prototype.switchTypeToShapeGenerate = function () {
         this.switchTypeTo(ToolsEnum.圖形生成);
-    }
-    switchTypeToTextRect() {
+    };
+    ToolsManagement.prototype.switchTypeToTextRect = function () {
         this.switchTypeTo(ToolsEnum.文字框);
-    }
-    switchTypeToEraser() {
+    };
+    ToolsManagement.prototype.switchTypeToEraser = function () {
         this.switchTypeTo(ToolsEnum.擦子);
-    }
-}
+    };
+    return ToolsManagement;
+}());
 exports.ToolsManagement = ToolsManagement;

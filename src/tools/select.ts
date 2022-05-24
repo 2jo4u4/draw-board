@@ -1,10 +1,12 @@
+import { SelectSolidRect } from "./../shape/selectRect";
 import { BaseTools } from "./management";
 import { Board, BaseShape, UtilTools, dashedLine } from "..";
+import { padding } from "../util";
 
 /**
  * 沒選中 / 選中
  */
-type SelectFlag = "none" | "choose";
+type SelectFlag = "none" | "selected";
 const defaultFlexboxStyle: Styles = {
   lineWidth: 2,
   lineColor: "#00000050",
@@ -18,103 +20,146 @@ export class SelectTools implements BaseTools {
   private selectFlag!: SelectFlag;
   /** 紀錄滑鼠起點 */
   private startPosition: Vec2 = { x: 0, y: 0 };
-  /** 紀錄固定的選取框（判定下次選取是否需要變更狀態） */
-  private solidRect: Path2D | null = null;
+  /** 固定框 */
+  private selectSolidRect: SelectSolidRect;
 
   constructor(board: Board) {
     this.board = board;
     this.selectFlag = "none";
+    this.selectSolidRect = new SelectSolidRect(board);
   }
-  onEventMoveInActive(v: Vec2): void {
-    throw new Error("Method not implemented.");
-  }
+
   onDestroy(): void {
-    const { width, height } = this.board.canvas;
-    this.board.ctx.clearRect(0, 0, width, height);
+    this.board.clearCanvas("event");
     this.board.shapes.forEach((item) => {
-      item.actionBar.closeBar();
+      // item.actionBar.closeBar();
     });
   }
 
   onEventStart(v: Vec2): void {
     this.startPosition = v;
     if (
-      this.solidRect &&
-      this.board.ctx.isPointInPath(this.solidRect, v.x, v.y)
+      this.board.ctx.isPointInPath(this.selectSolidRect.bindingBox, v.x, v.y)
     ) {
-      this.selectFlag = "choose";
+      this.selectFlag = "selected";
+      this.moveStart(v);
     } else {
       this.selectFlag = "none";
-      // 清除已選圖形
-      this.board.shapes.forEach((bs) => {
-        bs.closeSolidRect();
-      });
-      this.settingFlexBox();
+      this.selectStart(v);
     }
   }
+
   onEventMoveActive(v: Vec2): void {
     switch (this.selectFlag) {
       case "none":
         // 伸縮選取框
-        this.drawFlexBox(v);
+        this.select(v);
         break;
-      case "choose":
+      case "selected":
         // 移動圖形
+        this.move(v);
         break;
     }
   }
+
+  onEventMoveInActive(v: Vec2): void {
+    if (
+      this.board.ctx.isPointInPath(this.selectSolidRect.bindingBox, v.x, v.y)
+    ) {
+      this.board.rootBlock.style.cursor = "move";
+    } else {
+      this.board.rootBlock.style.cursor = "default";
+    }
+  }
+
   onEventEnd(v: Vec2): void {
     switch (this.selectFlag) {
       case "none":
-        this.drawOverFlexBox(); // 伸縮框結束
-        let minRectVec: MinRectVec | undefined = undefined, // 紀錄多選下的最小矩形
-          shape: [string, BaseShape] | undefined = undefined;
-        if (v.x === this.startPosition.x && v.y === this.startPosition.y) {
-          // 單點選擇圖形
-          shape = Array.from(this.board.shapes)
-            .reverse()
-            .find((item) => this.isSelected(v, item[1]));
-        } else {
-          // 移動結束
-          const minRect = UtilTools.generateMinRect(v, this.startPosition); // 伸縮框的範圍
-          // 判定是否有圖形在此路徑內
-          const regBS = Array.from(this.board.shapes).filter((item) =>
-            this.isSelected(minRect, item[1])
-          );
-          if (regBS.length > 0) {
-            shape = regBS[0]; // 只呼叫第一個圖形
-            minRectVec = UtilTools.mergeMinRect(
-              ...regBS.map((_bs) => _bs[1].minRect)
-            );
-            // 標記其餘被選中圖形
-            for (let i = 1; i < regBS.length; i++) {
-              const bs = regBS[i][1];
-              bs.isSelect = true;
-            }
-          }
-        }
-        if (shape) {
-          this.selectFlag = "choose";
-          const bs = shape[1];
-          this.solidRect = UtilTools.drawMinRectVecPath(
-            minRectVec || bs.minRect
-          );
-          bs.openSolidRect({ mrv: minRectVec, openBar: true });
-        } else {
-          this.selectFlag = "none";
-          this.solidRect = null;
-        }
+        this.selectEnd(v);
         break;
-      case "choose":
-        // 移動圖形結束
+      case "selected":
+        this.moveEnd(v);
         break;
     }
+  }
+
+  private selectStart(v: Vec2) {
+    // 清除已選圖形 並 刪除標記
+    this.selectSolidRect.closeSolidRect();
+    this.board.shapes.forEach((bs) => {
+      bs.isSelect = false;
+    });
+    this.settingFlexBox();
+  }
+
+  private select(v: Vec2) {
+    const { width, height } = this.board.canvas,
+      { x, y } = this.startPosition,
+      { x: nX, y: nY } = v;
+    // 先清空上一步的選取伸縮框
+    this.board.ctx.clearRect(0, 0, width, height);
+    // 繪製下一步的伸縮框
+    this.board.ctx.strokeRect(x, y, nX - x, nY - y);
+  }
+
+  private selectEnd(v: Vec2) {
+    this.drawOverFlexBox(); // 伸縮框結束
+    let minRectVec!: MinRectVec, // 紀錄最小矩形
+      shape: [string, BaseShape][] = [];
+    if (v.x === this.startPosition.x && v.y === this.startPosition.y) {
+      // 單點選擇圖形
+      const single = Array.from(this.board.shapes)
+        .reverse()
+        .find((item) => this.isSelected(v, item[1]));
+      if (single) {
+        shape = [single];
+        minRectVec = single[1].minRect;
+      }
+    } else {
+      // 移動結束
+      const minRect = UtilTools.generateMinRect(v, this.startPosition); // 伸縮框的範圍
+      // 判定是否有圖形在此路徑內
+      const regBS = Array.from(this.board.shapes).filter((item) =>
+        this.isSelected(minRect, item[1])
+      );
+      if (regBS.length > 0) {
+        shape = regBS;
+        minRectVec = UtilTools.mergeMinRect(
+          ...regBS.map((bs) => bs[1].minRect)
+        );
+      }
+    }
+    if (shape[0]) {
+      this.selectFlag = "selected";
+      this.selectSolidRect.settingAndOpen(
+        minRectVec,
+        ...shape.map((item) => {
+          // 標記被選中的圖形
+          item[1].isSelect = true;
+          return item[1];
+        })
+      );
+    } else {
+      this.selectFlag = "none";
+    }
+  }
+
+  private moveStart(v: Vec2) {
+    this.selectSolidRect.moveStart(v);
+  }
+
+  private move(v: Vec2) {
+    this.selectSolidRect.move(v);
+  }
+
+  private moveEnd(v: Vec2) {
+    this.selectSolidRect.moveEnd(v);
   }
 
   /** 是否選中 */
   private isSelected(v: Vec2 | MinRectVec, bs: BaseShape): Boolean {
     if (UtilTools.isVec2(v)) {
-      return this.board.ctx.isPointInPath(bs.solidRectPath, v.x, v.y);
+      return this.board.ctx.isPointInPath(bs.bindingBox, v.x, v.y);
     } else {
       return this.isInRectBlock(v, bs);
     }
@@ -167,7 +212,7 @@ export class SelectTools implements BaseTools {
       ];
       return Boolean(
         foreCorner.find(({ x, y }) => {
-          return this.board.ctx.isPointInPath(bs.solidRectPath, x, y);
+          return this.board.ctx.isPointInPath(bs.bindingBox, x, y);
         })
       );
     }
@@ -177,20 +222,9 @@ export class SelectTools implements BaseTools {
   private settingFlexBox() {
     UtilTools.injectStyle(this.board.ctx, defaultFlexboxStyle);
   }
-  /** 繪製選取的伸縮框 */
-  private drawFlexBox(v: Vec2) {
-    const { width, height } = this.board.canvas,
-      { x, y } = this.startPosition,
-      { x: nX, y: nY } = v;
-    // 先清空上一步的選取伸縮框
-    this.board.ctx.clearRect(0, 0, width, height);
-    // 繪製下一步的伸縮框
-    this.board.ctx.strokeRect(x, y, nX - x, nY - y);
-  }
+
   /** 選取伸縮框結束 */
   private drawOverFlexBox() {
-    const { width, height } = this.board.canvas;
-    // 清空選取伸縮框
-    this.board.ctx.clearRect(0, 0, width, height);
+    this.board.clearCanvas("event");
   }
 }

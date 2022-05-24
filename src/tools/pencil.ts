@@ -17,9 +17,7 @@ export class PencilTools implements BaseTools {
     this.board = board;
     this.drawStyle = drawStyle;
   }
-  onEventMoveInActive(v: Vec2): void {
-    throw new Error("Method not implemented.");
-  }
+
   onDestroy(): void {}
 
   changeStyle(s: Styles): void {
@@ -38,6 +36,9 @@ export class PencilTools implements BaseTools {
     this.draw();
     this.minRect = UtilTools.newMinRect(v, this.minRect);
   }
+  onEventMoveInActive(v: Vec2): void {
+    // nothing
+  }
   onEventEnd(v: Vec2): void {
     this.path.lineTo(v.x, v.y);
     this.draw();
@@ -50,9 +51,11 @@ export class PencilTools implements BaseTools {
     UtilTools.injectStyle(this.board.ctx, this.drawStyle);
   }
   private draw() {
+    // 畫在事件層級
     this.board.ctx.stroke(this.path);
   }
   private addToBoard(v: Vec2) {
+    // 新增畫好的圖形
     this.board.addShape(
       this.path,
       this.drawStyle,
@@ -60,7 +63,7 @@ export class PencilTools implements BaseTools {
     );
   }
   private drawOver() {
-    const { width, height } = this.board.canvas;
-    this.board.ctx.clearRect(0, 0, width, height);
+    // 畫完後刪除事件層級的圖
+    this.board.clearCanvas("event");
   }
 }

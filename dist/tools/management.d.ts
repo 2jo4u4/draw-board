@@ -19,24 +19,15 @@ export declare abstract class BaseTools {
     onEventEnd(v: Vec2): void;
     onDestroy(): void;
 }
-/**
- * 控制插件
- */
 export declare class ToolsManagement {
     private __toolsType;
     get toolsType(): ToolsEnum;
-    /** 板子實例 */
     private board;
-    /** 儲存當前選擇的工具 */
     private usingTools;
     constructor(board: Board);
-    /** 觸摸/滑鼠下壓 */
     onEventStart(v: Vec2): void;
-    /** 手指/滑鼠 移動過程(下壓時的移動過程) */
     onEventMoveActive(v: Vec2): void;
-    /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
     onEventMoveInActive(v: Vec2): void;
-    /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
     onEventEnd(v: Vec2): void;
     changePencilStyle(s: Styles): void;
     switchTypeTo(v: ToolsEnum): void;

@@ -120,7 +120,7 @@ export class UtilTools {
   }
 
   /** 利用最小矩形產生路徑 */
-  static drawMinRectVecPath(mrv: MinRectVec, padding = 0): Path2D {
+  static minRectToPath(mrv: MinRectVec, padding = 0): Path2D {
     const {
       leftTop: { x: x1, y: y1 },
       rightBottom: { x: x2, y: y2 },
