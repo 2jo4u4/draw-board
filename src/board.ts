@@ -1,17 +1,6 @@
-import {
-  BaseShape,
-  SocketMiddle,
-  UserAction,
-  ToolsEnum,
-  ToolsManagement,
-  UtilTools,
-} from ".";
+import { BaseShape, SocketMiddle, ToolsManagement, UtilTools } from ".";
 
 type MouseFlag = "active" | "inactive";
-interface CanvasStyle {
-  width: number;
-  height: number;
-}
 interface ActionStore {
   type: "draw" | "delete";
   id: string;
@@ -98,7 +87,7 @@ export class Board {
     return this.shapes.get(id);
   }
 
-  /** 添加圖形到圖層級 */
+  /** 添加圖形到圖層級 & 紀錄 */
   addShape(p: Path2D, s: Styles, m: MinRectVec) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys()));
     this.shapes.set(id, new BaseShape(id, this, p, s, m));
@@ -193,6 +182,7 @@ export class Board {
       this.toolsCtrl.onEventStart(position);
     }
   }
+
   private onEventMove(event: TouchEvent | MouseEvent) {
     const position = this.eventToPosition(event);
     if (this.mouseFlag === "active") {
@@ -204,6 +194,7 @@ export class Board {
     //   this.socketCtrl.postData();
     // }
   }
+
   private onEventEnd(event: TouchEvent | MouseEvent) {
     if (this.mouseFlag === "active") {
       this.mouseFlag = "inactive";
@@ -262,6 +253,7 @@ export class Board {
   private settingChild() {
     this.__rootBlock = document.createElement("div");
     this.rootBlock.style.position = "relative";
+    this.rootBlock.style.overflow = "hidden";
     this.rootBlock.classList.add("canvasRoot");
     this.canvas.after(this.rootBlock);
     this.setCanvasStyle(this.canvas);

@@ -1,6 +1,6 @@
 export const defaultStyle: Styles = {
   lineColor: "#000",
-  lineWidth: 2,
+  lineWidth: 4,
   fillColor: undefined,
   lineDash: [],
 };

@@ -1,7 +1,6 @@
 import { SelectSolidRect } from "./../shape/selectRect";
 import { BaseTools } from "./management";
 import { Board, BaseShape, UtilTools, dashedLine } from "..";
-import { padding } from "../util";
 
 /**
  * 沒選中 / 選中
@@ -31,9 +30,7 @@ export class SelectTools implements BaseTools {
 
   onDestroy(): void {
     this.board.clearCanvas("event");
-    this.board.shapes.forEach((item) => {
-      // item.actionBar.closeBar();
-    });
+    this.selectSolidRect.closeSolidRect();
   }
 
   onEventStart(v: Vec2): void {
@@ -84,10 +81,11 @@ export class SelectTools implements BaseTools {
   }
 
   private selectStart(v: Vec2) {
-    // 清除已選圖形 並 刪除標記
+    // 清除已選圖形 + 刪除標記 + 放回圖層級
     this.selectSolidRect.closeSolidRect();
     this.board.shapes.forEach((bs) => {
       bs.isSelect = false;
+      this.board.drawByBs(bs);
     });
     this.settingFlexBox();
   }
@@ -131,16 +129,28 @@ export class SelectTools implements BaseTools {
     }
     if (shape[0]) {
       this.selectFlag = "selected";
+      this.board.clearCanvas(); // 將選中的圖形提升至事件層前需再次重繪
       this.selectSolidRect.settingAndOpen(
         minRectVec,
-        ...shape.map((item) => {
+        ...shape.map((bs) => {
           // 標記被選中的圖形
-          item[1].isSelect = true;
-          return item[1];
+          bs[1].isSelect = true;
+          return bs[1];
         })
       );
+      // 將選中的圖形提升至事件層
+      this.board.shapes.forEach((bs) => {
+        if (bs.isSelect) {
+          UtilTools.injectStyle(this.board.ctx, bs.style);
+          this.board.ctx.stroke(bs.path);
+        } else {
+          this.board.drawByBs(bs);
+        }
+      });
+      this.board.rootBlock.style.cursor = "move";
     } else {
       this.selectFlag = "none";
+      this.board.rootBlock.style.cursor = "default";
     }
   }
 

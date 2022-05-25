@@ -23,7 +23,7 @@ export class SelectSolidRect extends BaseShape {
       leftTop: { x: 0, y: 0 },
     });
     this.$type = "selectSolid-shape";
-    this.actionBar = new ActionBar(board, this, ["delete"]);
+    this.actionBar = new ActionBar(board, this, ["delete", "rotate"]);
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
@@ -45,6 +45,7 @@ export class SelectSolidRect extends BaseShape {
     this.settingCtx();
     this.actionBar.openBar(mrv);
   }
+
   /** 清除最小矩形 並 關閉控制欄位 */
   closeSolidRect() {
     this.actionBar.closeBar();
@@ -77,15 +78,10 @@ export class SelectSolidRect extends BaseShape {
   }
 
   override moveEnd(v: Vec2): void {
-    // 將圖形放回圖層級
-    this.board.clearCanvas();
     this.shapes.forEach((bs) => {
       bs.moveEnd(v);
     });
     super.moveEnd(v);
-    this.board.shapes.forEach((bs) => {
-      this.board.drawByBs(bs);
-    });
     this.draw();
   }
 
@@ -173,7 +169,7 @@ class ActionBar {
   }
 
   private icon(type: ActionBarTools[]) {
-    type.forEach((item) => {
+    [...new Set(type)].forEach((item) => {
       let btn!: HTMLImageElement;
       switch (item) {
         case "delete":

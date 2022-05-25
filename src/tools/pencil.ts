@@ -23,6 +23,7 @@ export class PencilTools implements BaseTools {
   changeStyle(s: Styles): void {
     this.drawStyle = s;
   }
+
   onEventStart(v: Vec2): void {
     this.settingPen();
     this.minRect = { leftTop: v, rightBottom: v };
@@ -31,14 +32,17 @@ export class PencilTools implements BaseTools {
     this.path.lineTo(v.x, v.y);
     this.draw();
   }
+
   onEventMoveActive(v: Vec2): void {
     this.path.lineTo(v.x, v.y);
     this.draw();
     this.minRect = UtilTools.newMinRect(v, this.minRect);
   }
+
   onEventMoveInActive(v: Vec2): void {
     // nothing
   }
+
   onEventEnd(v: Vec2): void {
     this.path.lineTo(v.x, v.y);
     this.draw();
