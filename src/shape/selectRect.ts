@@ -58,8 +58,7 @@ export class SelectSolidRect extends BaseShape {
       if (bs.isSelect) {
         bs.moveStart(v);
       } else {
-        UtilTools.injectStyle(this.board.ctx, bs.style);
-        this.board.ctxStatic.stroke(bs.path);
+        this.board.drawByBs(bs);
       }
     });
     this.draw();
@@ -140,8 +139,12 @@ class ActionBar {
   }
 
   move(offset: [number, number]) {
-    this.block.style.top = `${parseInt(this.block.style.top) + offset[1]}px`;
-    this.block.style.left = `${parseInt(this.block.style.left) + offset[0]}px`;
+    this.block.style.top = `${
+      parseInt(this.block.style.top) + offset[1] / this.board.decivePixelPatio
+    }px`;
+    this.block.style.left = `${
+      parseInt(this.block.style.left) + offset[0] / this.board.decivePixelPatio
+    }px`;
   }
 
   openBar(mrv: MinRectVec) {
@@ -152,11 +155,12 @@ class ActionBar {
         rightBottom: { x: x2, y: y2 },
       } = mrv;
       const width = x2 - x1 + padding * 2 + defaultSolidboxStyle.lineWidth * 2;
-      this.block.style.top = `${y1 - interval}px`;
+      this.block.style.top = `${y1 / this.board.decivePixelPatio - interval}px`;
       this.block.style.left = `${
-        x1 - padding - defaultSolidboxStyle.lineWidth
+        (x1 - padding - defaultSolidboxStyle.lineWidth) /
+        this.board.decivePixelPatio
       }px`;
-      this.block.style.width = `${width}px`;
+      this.block.style.width = `${width / this.board.decivePixelPatio}px`;
       this.rootBlock.append(this.block);
     }
   }

@@ -47,7 +47,7 @@ export class Board {
   /** 滑鼠旗標（是否點擊） */
   private mouseFlag: MouseFlag = "inactive";
   /** 像素密度 */
-  private decivePixelPatio!: number;
+  readonly decivePixelPatio!: number;
 
   /** 所有被繪製的圖形 */
   shapes = new Map<string, BaseShape>();
@@ -125,15 +125,13 @@ export class Board {
         this.shapes.delete(id);
       }
     });
-    const { width, height } = this.canvasStatic;
-    this.ctxStatic.clearRect(0, 0, width, height);
-    this.ctx.clearRect(0, 0, width, height);
+    this.clearCanvas();
     this.shapes.forEach((bs) => {
-      this.ctxStatic.stroke(bs.path);
+      this.drawByBs(bs);
     });
   }
 
-  /** 刪除圖層級圖形 */
+  /** 刪除已選圖形 */
   deleteShape() {
     const idArray: string[] = [];
     this.shapes.forEach((item) => {
@@ -242,6 +240,7 @@ export class Board {
   private resizeCanvas() {
     // 清除畫面
     this.clearCanvas();
+    // 設定大小
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);
     // 重新繪製
@@ -263,13 +262,13 @@ export class Board {
   private settingChild() {
     this.__rootBlock = document.createElement("div");
     this.rootBlock.style.position = "relative";
-    this.rootBlock.classList.add("canvas");
+    this.rootBlock.classList.add("canvasRoot");
     this.canvas.after(this.rootBlock);
     this.setCanvasStyle(this.canvas);
     this.canvas.classList.add("event_paint");
     this.canvas.style.position = "absolute";
-    this.canvas.style.top = "0";
-    this.canvas.style.left = "0";
+    this.canvas.style.top = "0px";
+    this.canvas.style.left = "0px";
     this.setCanvasStyle(this.canvasStatic);
     this.canvasStatic.classList.add("show_paint");
 
