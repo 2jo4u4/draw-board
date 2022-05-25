@@ -118,15 +118,15 @@ type ActionBarTools = "delete" | "rotate";
  */
 class ActionBar {
   readonly board: Board;
-  readonly baseShape: BaseShape;
+  readonly solidRect: SelectSolidRect;
 
   private rootBlock: HTMLDivElement;
   private block: HTMLDivElement;
   private openFlag = false;
 
-  constructor(board: Board, bs: BaseShape, use: ActionBarTools[]) {
+  constructor(board: Board, ssr: SelectSolidRect, use: ActionBarTools[]) {
     this.board = board;
-    this.baseShape = bs;
+    this.solidRect = ssr;
     this.rootBlock = board.rootBlock;
     this.block = document.createElement("div");
     this.initial(use);
@@ -180,7 +180,7 @@ class ActionBar {
           btn = this.generateBtn(trash);
           btn.onclick = () => {
             this.board.deleteShape();
-            this.block.remove();
+            this.solidRect.closeSolidRect();
           };
           break;
         case "rotate":
