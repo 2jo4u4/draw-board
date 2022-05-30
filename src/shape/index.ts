@@ -16,11 +16,29 @@ export class BaseShape {
   /** 判斷是否被選取的路徑 */
   bindingBox: Path2D;
   /** 是否被選取 */
-  isSelect = false;
+  private __isSelect = false;
+  get isSelect() {
+    return this.__isSelect;
+  }
+  set isSelect(b: boolean) {
+    this.__isSelect = this.__isDelete ? false : b;
+  }
+  /** 是否被刪除 */
+  private __isDelete = false;
+  get isDelete() {
+    return this.__isDelete;
+  }
+  set isDelete(b: boolean) {
+    this.__isSelect = false;
+    this.__isDelete = b;
+  }
+
   /** 暫存移動座標 */
   regPosition!: Vec2;
   /** 暫存初始 */
   startPosition!: Vec2;
+  /** 紀錄 */
+  transferLogs: [] = [];
 
   constructor(
     id: string,
@@ -41,12 +59,25 @@ export class BaseShape {
   moveStart(v: Vec2): void {
     this.regPosition = v;
     this.startPosition = v;
-    UtilTools.injectStyle(this.board.ctx, this.style);
-    this.board.ctx.stroke(this.path);
   }
 
   move(v: Vec2): void {
     const offset = this.getOffset(this.regPosition, v),
+      s = this.style,
+      newPath = new Path2D(),
+      newSSRPath = new Path2D(),
+      matrix = new DOMMatrix([1, 0, 0, 1, ...offset]);
+    newPath.addPath(this.path, matrix);
+    newSSRPath.addPath(this.bindingBox, matrix);
+    this.board.rerenderToEvent({ bs: { p: newPath, s } });
+    this.path = newPath;
+    this.bindingBox = newSSRPath;
+    this.regPosition = v;
+  }
+
+  moveEnd(v: Vec2): void {
+    const offset = this.getOffset(this.regPosition, v),
+      s = this.style,
       newPath = new Path2D(),
       newSSRPath = new Path2D(),
       matrix = new DOMMatrix([1, 0, 0, 1, ...offset]);
@@ -54,19 +85,13 @@ export class BaseShape {
     newSSRPath.addPath(this.bindingBox, matrix);
     this.path = newPath;
     this.bindingBox = newSSRPath;
-    UtilTools.injectStyle(this.board.ctx, this.style);
-    this.board.ctx.stroke(this.path);
-    this.regPosition = v;
-  }
-
-  moveEnd(v: Vec2): void {
-    const offset = this.getOffset(this.regPosition, v),
-      newPath = new Path2D(),
-      matrix = new DOMMatrix([1, 0, 0, 1, ...offset]);
-    newPath.addPath(this.path, matrix);
-    this.path = newPath;
+    this.board.rerenderToEvent({ bs: { p: newPath, s } });
     this.updataMinRect(v);
   }
+
+  rotateStart(v: Vec2) {}
+  rotate(v: Vec2) {}
+  rotateEnd(v: Vec2) {}
 
   /** 取得偏移量(X,Y) */
   protected getOffset(prev: Vec2, next: Vec2): [number, number] {

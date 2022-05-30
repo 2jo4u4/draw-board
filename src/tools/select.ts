@@ -1,20 +1,13 @@
 import { SelectSolidRect } from "./../shape/selectRect";
 import { BaseTools } from "./management";
-import { Board, BaseShape, UtilTools, dashedLine } from "..";
+import { Board, BaseShape, UtilTools, defaultFlexboxStyle } from "..";
 
-/**
- * 沒選中 / 選中
- */
-type SelectFlag = "none" | "selected";
-const defaultFlexboxStyle: Styles = {
-  lineWidth: 2,
-  lineColor: "#00000050",
-  lineDash: dashedLine,
-};
+type SelectFlag = "none" | "selected"; // 是否有選到圖形
 
 /** 選擇器 */
 export class SelectTools implements BaseTools {
   readonly board: Board;
+  readonly flexRectStyle: Styles;
   /** 選取狀態旗標 */
   private selectFlag!: SelectFlag;
   /** 紀錄滑鼠起點 */
@@ -24,12 +17,16 @@ export class SelectTools implements BaseTools {
 
   constructor(board: Board) {
     this.board = board;
+    this.flexRectStyle = defaultFlexboxStyle;
     this.selectFlag = "none";
     this.selectSolidRect = new SelectSolidRect(board);
   }
 
   onDestroy(): void {
-    this.board.clearCanvas("event");
+    this.board.shapes.forEach((bs) => {
+      bs.isSelect = false;
+    });
+    this.board.rerender();
     this.selectSolidRect.closeSolidRect();
   }
 
@@ -85,30 +82,27 @@ export class SelectTools implements BaseTools {
     this.selectSolidRect.closeSolidRect();
     this.board.shapes.forEach((bs) => {
       bs.isSelect = false;
-      this.board.drawByBs(bs);
     });
-    this.settingFlexBox();
+    this.board.rerender();
   }
 
   private select(v: Vec2) {
-    const { width, height } = this.board.canvas,
-      { x, y } = this.startPosition,
-      { x: nX, y: nY } = v;
-    // 先清空上一步的選取伸縮框
-    this.board.ctx.clearRect(0, 0, width, height);
-    // 繪製下一步的伸縮框
-    this.board.ctx.strokeRect(x, y, nX - x, nY - y);
+    const { x, y } = this.startPosition,
+      { x: nX, y: nY } = v,
+      p = new Path2D(),
+      s = this.flexRectStyle;
+    p.rect(x, y, nX - x, nY - y);
+    this.board.rerenderToEvent({ needClear: true, bs: { p, s } });
   }
 
   private selectEnd(v: Vec2) {
-    this.drawOverFlexBox(); // 伸縮框結束
     let minRectVec!: MinRectVec, // 紀錄最小矩形
       shape: [string, BaseShape][] = [];
     if (v.x === this.startPosition.x && v.y === this.startPosition.y) {
       // 單點選擇圖形
       const single = Array.from(this.board.shapes)
         .reverse()
-        .find((item) => this.isSelected(v, item[1]));
+        .find((item) => !item[1].isDelete && this.isSelected(v, item[1]));
       if (single) {
         shape = [single];
         minRectVec = single[1].minRect;
@@ -117,8 +111,8 @@ export class SelectTools implements BaseTools {
       // 移動結束
       const minRect = UtilTools.generateMinRect(v, this.startPosition); // 伸縮框的範圍
       // 判定是否有圖形在此路徑內
-      const regBS = Array.from(this.board.shapes).filter((item) =>
-        this.isSelected(minRect, item[1])
+      const regBS = Array.from(this.board.shapes).filter(
+        (item) => !item[1].isDelete && this.isSelected(minRect, item[1])
       );
       if (regBS.length > 0) {
         shape = regBS;
@@ -129,26 +123,14 @@ export class SelectTools implements BaseTools {
     }
     if (shape[0]) {
       this.selectFlag = "selected";
-      this.board.clearCanvas(); // 將選中的圖形提升至事件層前需再次重繪
-      this.selectSolidRect.settingAndOpen(
-        minRectVec,
-        ...shape.map((bs) => {
-          // 標記被選中的圖形
-          bs[1].isSelect = true;
-          return bs[1];
-        })
-      );
-      // 將選中的圖形提升至事件層
-      this.board.shapes.forEach((bs) => {
-        if (bs.isSelect) {
-          UtilTools.injectStyle(this.board.ctx, bs.style);
-          this.board.ctx.stroke(bs.path);
-        } else {
-          this.board.drawByBs(bs);
-        }
+      shape.forEach((item) => {
+        item[1].isSelect = true;
       });
+      this.board.rerender();
+      this.selectSolidRect.settingAndOpen(minRectVec);
       this.board.rootBlock.style.cursor = "move";
     } else {
+      this.board.clearCanvas("event");
       this.selectFlag = "none";
       this.board.rootBlock.style.cursor = "default";
     }
@@ -226,15 +208,5 @@ export class SelectTools implements BaseTools {
         })
       );
     }
-  }
-
-  /** 選取的伸縮框設定 */
-  private settingFlexBox() {
-    UtilTools.injectStyle(this.board.ctx, defaultFlexboxStyle);
-  }
-
-  /** 選取伸縮框結束 */
-  private drawOverFlexBox() {
-    this.board.clearCanvas("event");
   }
 }

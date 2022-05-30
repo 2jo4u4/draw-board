@@ -1,10 +1,14 @@
 import { BaseShape, SocketMiddle, ToolsManagement, UtilTools } from ".";
 
-type MouseFlag = "active" | "inactive";
+type MouseFlag = "active" | "inactive"; // 滑鼠左鍵 活躍 / 非活躍
+type Action = "draw" | "delete" | "move" | "rotate" | "zoom"; // 可被紀錄的行為
+export type BoardShapeLog = Map<string, BaseShape>;
 interface ActionStore {
-  type: "draw" | "delete";
-  id: string;
+  type: Action;
+  actionNumber: number;
+  shapeId: string[];
 }
+
 /**
  * 繪圖板，介接各個插件
  */
@@ -37,13 +41,20 @@ export class Board {
   private mouseFlag: MouseFlag = "inactive";
   /** 像素密度 */
   readonly decivePixelPatio!: number;
-
   /** 所有被繪製的圖形 */
-  shapes = new Map<string, BaseShape>();
-  /** 所有被刪除的圖形 */
-  shapesTrash = new Map<string, BaseShape>();
+  private __shapes: BoardShapeLog = new Map<string, BaseShape>();
+  get shapes(): BoardShapeLog {
+    return this.__shapes;
+  }
   /** 紀錄行為 */
-  actionStore: ActionStore[] = [];
+  __actionStore: ActionStore[] = [];
+  get actionStore(): ActionStore[] {
+    return this.__actionStore;
+  }
+  /** 可記錄步驟總數 */
+  readonly actionStoreLimit = 10;
+  /** 計數器 */
+  actionStoreCount = 0;
 
   /** 工具包中間件 */
   private __tools: ToolsManagement;
@@ -81,55 +92,110 @@ export class Board {
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
   }
-
   /** 取得圖形物件 */
   getShapeById(id: string): BaseShape | undefined {
     return this.shapes.get(id);
   }
-
   /** 添加圖形到圖層級 & 紀錄 */
   addShape(p: Path2D, s: Styles, m: MinRectVec) {
-    const id = UtilTools.RandomID(Array.from(this.shapes.keys()));
-    this.shapes.set(id, new BaseShape(id, this, p, s, m));
-    this.drawByPath(p, s);
+    const id = UtilTools.RandomID(Array.from(this.shapes.keys())),
+      bs = new BaseShape(id, this, p, s, m);
+    this.shapes.set(id, bs);
+    this.logAction("draw", id);
+    this.rerenderToPaint({ bs });
   }
-
-  /** 繪製到圖層級 */
-  drawByPath(p: Path2D, s: Styles) {
-    UtilTools.injectStyle(this.ctxStatic, s);
-    this.ctxStatic.stroke(p);
-  }
-
-  /** 繪製到圖層級 */
-  drawByBs(bs: BaseShape) {
-    this.drawByPath(bs.path, bs.style);
-  }
-
-  /** 刪除圖層級圖形 */
-  deleteShapeByID(...idArray: string[]) {
-    idArray.forEach((id) => {
-      const bs = this.shapes.get(id);
-      if (bs) {
-        this.shapesTrash.set(id, bs);
-        this.shapes.delete(id);
-      }
-    });
-    this.clearCanvas();
-    this.shapes.forEach((bs) => {
-      this.drawByBs(bs);
-    });
-  }
-
   /** 刪除已選圖形 */
   deleteShape() {
-    const idArray: string[] = [];
-    this.shapes.forEach((item) => {
-      if (item.isSelect) {
-        idArray.push(item.id);
+    const id: string[] = [];
+    this.shapes.forEach((bs) => {
+      if (bs.isSelect) {
+        id.push(bs.id);
+        bs.isDelete = true;
       }
     });
-    this.deleteShapeByID(...idArray);
+    this.logAction("delete", ...id);
+    this.rerender();
   }
+  /** 重新繪製事件層 */
+  rerenderToEvent(v: {
+    needClear?: boolean;
+    bs?: { p: Path2D; s: Styles } | BaseShape;
+  }) {
+    const { needClear, bs } = v;
+    Boolean(needClear) && this.clearCanvas("event");
+    if (bs) {
+      if (UtilTools.isBaseShape(bs)) {
+        UtilTools.injectStyle(this.ctx, bs.style);
+        this.ctx.stroke(bs.path);
+      } else {
+        UtilTools.injectStyle(this.ctx, bs.s);
+        this.ctx.stroke(bs.p);
+      }
+    } else {
+      this.shapes.forEach((_bs) => {
+        if (!_bs.isDelete && _bs.isSelect) {
+          UtilTools.injectStyle(this.ctx, _bs.style);
+          this.ctx.stroke(_bs.path);
+        }
+      });
+    }
+  }
+  /** 重新繪製圖層 */
+  rerenderToPaint(v: { needClear?: boolean; bs?: BaseShape }) {
+    const { needClear, bs } = v;
+    Boolean(needClear) && this.clearCanvas("static");
+    if (bs) {
+      UtilTools.injectStyle(this.ctxStatic, bs.style);
+      this.ctxStatic.stroke(bs.path);
+    } else {
+      this.shapes.forEach((_bs) => {
+        if (!_bs.isDelete && !_bs.isSelect) {
+          UtilTools.injectStyle(this.ctxStatic, _bs.style);
+          this.ctxStatic.stroke(_bs.path);
+        }
+      });
+    }
+  }
+  /** 重新繪製所有層 */
+  rerender() {
+    this.clearCanvas();
+    this.shapes.forEach((bs) => {
+      if (!bs.isDelete) {
+        if (bs.isSelect) {
+          this.rerenderToEvent({ bs });
+        } else {
+          this.rerenderToPaint({ bs });
+        }
+      }
+    });
+  }
+  /** 紀錄行為 */
+  logAction(type: Action, ...id: string[]) {
+    const actionNumber = this.actionStoreCount++;
+    this.actionStore.push({ type, actionNumber, shapeId: id });
+    if (this.actionStore.length > this.actionStoreLimit) {
+      const [store, ...other] = this.actionStore;
+      this.__actionStore = other;
+      if (store.type === "delete") {
+        store.shapeId.forEach((id) => {
+          const bs = this.getShapeById(id);
+          if (bs && bs.isDelete) {
+            this.shapes.delete(id);
+          }
+        });
+      }
+    }
+  }
+  /** 變更Page */
+  changePage(shapes: BoardShapeLog) {
+    this.__shapes = shapes;
+    this.rerender();
+  }
+
+  /** 上一步 */
+  undo() {}
+  /** 下一步 */
+  redo() {}
 
   /** 初始化 canvas */
   private initial() {
@@ -234,10 +300,7 @@ export class Board {
     // 設定大小
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);
-    // 重新繪製
-    this.shapes.forEach((item) => {
-      this.drawByBs(item);
-    });
+    this.rerender();
   }
 
   private setCanvasStyle(el: HTMLCanvasElement) {

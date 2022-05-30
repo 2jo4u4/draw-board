@@ -25,7 +25,6 @@ export class PencilTools implements BaseTools {
   }
 
   onEventStart(v: Vec2): void {
-    this.settingPen();
     this.minRect = { leftTop: v, rightBottom: v };
     this.path = new Path2D();
     this.path.moveTo(v.x - 1, v.y - 1);
@@ -46,25 +45,19 @@ export class PencilTools implements BaseTools {
   onEventEnd(v: Vec2): void {
     this.path.lineTo(v.x, v.y);
     this.draw();
+    this.minRect = UtilTools.newMinRect(v, this.minRect);
     this.addToBoard(v);
     this.drawOver();
   }
 
   // ----有使用到 board --------------------------
-  private settingPen() {
-    UtilTools.injectStyle(this.board.ctx, this.drawStyle);
-  }
   private draw() {
     // 畫在事件層級
-    this.board.ctx.stroke(this.path);
+    this.board.rerenderToEvent({ bs: { p: this.path, s: this.drawStyle } });
   }
   private addToBoard(v: Vec2) {
     // 新增畫好的圖形
-    this.board.addShape(
-      this.path,
-      this.drawStyle,
-      UtilTools.newMinRect(v, this.minRect)
-    );
+    this.board.addShape(this.path, this.drawStyle, this.minRect);
   }
   private drawOver() {
     // 畫完後刪除事件層級的圖

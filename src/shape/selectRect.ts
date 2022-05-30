@@ -1,14 +1,7 @@
 import { BaseShape } from ".";
-import { Board, dashedLine, padding, UtilTools } from "..";
+import { Board, defaultSolidboxStyle, padding, UtilTools } from "..";
 import trash from "../assets/trash-bin-svgrepo-com.svg";
 import rotate from "../assets/redo-svgrepo-com.svg";
-
-const defaultSolidboxStyle: Styles = {
-  lineWidth: 2,
-  lineColor: "#00000080",
-  lineDash: dashedLine,
-  fillColor: undefined,
-};
 
 /** 特殊圖形，用以畫出被選擇的圖形框 */
 export class SelectSolidRect extends BaseShape {
@@ -27,23 +20,21 @@ export class SelectSolidRect extends BaseShape {
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
-  settingAndOpen(mrv: MinRectVec, ...bsArray: BaseShape[]) {
-    this.setting(mrv, ...bsArray);
-    this.draw();
-    this.openSolidRect(mrv);
+  settingAndOpen(mrv: MinRectVec) {
+    this.setting(mrv);
+    const s = this.style,
+      p = this.bindingBox;
+    this.board.rerenderToEvent({ bs: { s, p } });
+    this.actionBar.openBar(mrv);
   }
 
   /** 設定路徑 及 矩形 */
-  setting(mrv: MinRectVec, ...bsArray: BaseShape[]) {
+  setting(mrv: MinRectVec) {
     this.minRect = mrv;
     this.settingPath(UtilTools.minRectToPath(mrv, padding));
-    this.shapes = bsArray;
-  }
-
-  /** 畫出最小矩形 並 打開控制欄位 */
-  openSolidRect(mrv: MinRectVec) {
-    this.settingCtx();
-    this.actionBar.openBar(mrv);
+    this.shapes = Array.from(this.board.shapes)
+      .filter((bs) => !bs[1].isDelete && bs[1].isSelect)
+      .map((bs) => bs[1]);
   }
 
   /** 清除最小矩形 並 關閉控制欄位 */
@@ -53,56 +44,38 @@ export class SelectSolidRect extends BaseShape {
   }
 
   override moveStart(v: Vec2): void {
-    // 提取將被移動的圖形至事件層級
-    this.board.clearCanvas();
-    this.board.shapes.forEach((bs) => {
-      if (bs.isSelect) {
-        bs.moveStart(v);
-      } else {
-        this.board.drawByBs(bs);
-      }
+    this.shapes.forEach((bs) => {
+      bs.moveStart(v);
     });
-    this.draw();
     super.moveStart(v);
   }
 
   override move(v: Vec2): void {
-    // 在事件層移動圖形
     this.board.clearCanvas("event");
     this.shapes.forEach((bs) => {
       bs.move(v);
     });
     this.actionBar.move(this.getOffset(this.regPosition, v));
     super.move(v);
-    this.draw();
   }
 
   override moveEnd(v: Vec2): void {
+    this.board.clearCanvas("event");
     this.shapes.forEach((bs) => {
       bs.moveEnd(v);
     });
     super.moveEnd(v);
-    this.draw();
-  }
-
-  /** 畫出框框 */
-  private draw() {
-    UtilTools.injectStyle(this.board.ctx, this.style);
-    this.board.ctx.stroke(this.bindingBox);
   }
 
   private settingPath(p?: Path2D) {
     if (p) {
+      this.path = p;
       this.bindingBox = p;
     } else {
       const path = new Path2D();
+      this.path = path;
       this.bindingBox = path;
     }
-  }
-
-  /** 選取固定框設定 */
-  private settingCtx() {
-    UtilTools.injectStyle(this.board.ctx, defaultSolidboxStyle);
   }
 }
 
