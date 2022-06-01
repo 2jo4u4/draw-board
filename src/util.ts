@@ -40,7 +40,10 @@ export class UtilTools {
 
   /** 是否為 Vec2 */
   static isVec2(v: Vec2 | MinRectVec): v is Vec2 {
-    return Object.prototype.hasOwnProperty.call(v, "x");
+    return (
+      Object.prototype.hasOwnProperty.call(v, "x") &&
+      Object.prototype.hasOwnProperty.call(v, "y")
+    );
   }
 
   /**
@@ -132,10 +135,11 @@ export class UtilTools {
 
   /** 樣式注入 */
   static injectStyle(ctx: CanvasRenderingContext2D, s: Styles) {
-    const { lineColor, lineWidth, lineDash } = s;
+    const { lineColor, lineWidth, lineDash, fillColor } = s;
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = lineWidth;
     ctx.setLineDash(lineDash || []);
+    ctx.fillStyle = fillColor || "";
   }
 
   /** 利用最小矩形產生路徑 */
@@ -156,5 +160,62 @@ export class UtilTools {
 
   static isBaseShape(bs: unknown): bs is BaseShape {
     return bs instanceof BaseShape;
+  }
+
+  /** 取得中心點 */
+  static getMinRectCenter(mrv: MinRectVec): Vec2 {
+    const {
+      leftTop: { x: x1, y: y1 },
+      rightBottom: { x: x2, y: y2 },
+    } = mrv;
+
+    return { x: x1 + (x2 - x1) / 2, y: y1 + (y2 - y1) / 2 };
+  }
+
+  /** 取得偏移量(dx,dy) */
+  static getOffset(prev: Vec2, next: Vec2): [number, number] {
+    return [next.x - prev.x, next.y - prev.y];
+  }
+
+  /** 移動 */
+  static translate(prev: Vec2, next: Vec2): DOMMatrix {
+    const [dx, dy] = UtilTools.getOffset(prev, next);
+    return new DOMMatrix().translate(dx, dy);
+  }
+  /** 旋轉 */
+  static rotate(center: Vec2 | MinRectVec, prev: Vec2, next: Vec2): DOMMatrix {
+    let ct: Vec2;
+    if (UtilTools.isVec2(center)) {
+      ct = center;
+    } else {
+      ct = UtilTools.getMinRectCenter(center);
+    }
+    return new DOMMatrix()
+      .translate(ct.x, ct.y)
+      .rotate(UtilTools.getAngle(prev, next))
+      .translate(-ct.x, -ct.y);
+  }
+  /** 縮放 */
+  static scale(center: Vec2 | MinRectVec, prev: Vec2, next: Vec2): DOMMatrix {
+    let ct: Vec2;
+    if (UtilTools.isVec2(center)) {
+      ct = center;
+    } else {
+      ct = UtilTools.getMinRectCenter(center);
+    }
+    return new DOMMatrix().scale(
+      next.x / prev.x,
+      next.y / prev.y,
+      1,
+      ct.x,
+      ct.y
+    );
+  }
+
+  /** 取得兩點間之弧度 */
+  static getAngle(prev: Vec2, next: Vec2): number {
+    const { x: x1, y: y1 } = prev,
+      { x: x2, y: y2 } = next;
+    return Math.atan2(y1 - y2, x1 - x2);
   }
 }

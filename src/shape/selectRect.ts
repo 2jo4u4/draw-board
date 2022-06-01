@@ -3,12 +3,35 @@ import { Board, defaultSolidboxStyle, padding, UtilTools } from "..";
 import trash from "../assets/trash-bin-svgrepo-com.svg";
 import rotate from "../assets/redo-svgrepo-com.svg";
 
+type ActionFlag =
+  | "move" // 移動
+  | "rotate" // 旋轉
+  | "nw-scale" // 縮放左上
+  | "ne-scale" // 縮放右上
+  | "sw-scale" // 縮放左下
+  | "se-scale" // 縮放右下
+  | null;
+
+type ScalePoint = [Path2D, Path2D, Path2D, Path2D];
+const defauletScalePoint: Styles = {
+  lineColor: "red",
+  lineWidth: 4,
+  fillColor: "red",
+};
+const defauletRotatePoint: Styles = {
+  lineColor: "blue",
+  lineWidth: 4,
+  fillColor: "blue",
+};
 /** 特殊圖形，用以畫出被選擇的圖形框 */
 export class SelectSolidRect extends BaseShape {
   readonly $type;
   readonly actionBar: ActionBar;
-  /** 紀錄被選取的圖形 */
+  startPosition!: Vec2;
   shapes: BaseShape[] = [];
+  scalePoint: ScalePoint;
+  rotatePoint: Path2D;
+  flag: ActionFlag;
 
   constructor(board: Board) {
     super("selectRect_onlyOne", board, new Path2D(), defaultSolidboxStyle, {
@@ -16,22 +39,27 @@ export class SelectSolidRect extends BaseShape {
       leftTop: { x: 0, y: 0 },
     });
     this.$type = "selectSolid-shape";
-    this.actionBar = new ActionBar(board, this, ["delete", "rotate"]);
+    this.actionBar = new ActionBar(board, this, ["delete"]);
+
+    this.rotatePoint = new Path2D();
+    this.scalePoint = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    this.flag = null;
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
   settingAndOpen(mrv: MinRectVec) {
     this.setting(mrv);
-    const s = this.style,
-      p = this.bindingBox;
-    this.board.rerenderToEvent({ bs: { s, p } });
     this.actionBar.openBar(mrv);
   }
 
-  /** 設定路徑 及 矩形 */
+  /** 設定路徑 / 矩形 / 紀錄被選取的圖形 */
   setting(mrv: MinRectVec) {
     this.minRect = mrv;
-    this.settingPath(UtilTools.minRectToPath(mrv, padding));
+    this.settingBindingBox(UtilTools.minRectToPath(mrv, padding));
+    const s = this.style,
+      p = this.path;
+    this.board.rerenderToEvent({ bs: { s, p } });
+    this.settingRotateAndScale(mrv);
     this.shapes = Array.from(this.board.shapes)
       .filter((bs) => !bs[1].isDelete && bs[1].isSelect)
       .map((bs) => bs[1]);
@@ -40,48 +68,271 @@ export class SelectSolidRect extends BaseShape {
   /** 清除最小矩形 並 關閉控制欄位 */
   closeSolidRect() {
     this.actionBar.closeBar();
-    this.settingPath();
+    this.settingBindingBox();
+    this.shapes = [];
+    this.flag = null;
+    this.board.changeCursor("default");
   }
 
-  override moveStart(v: Vec2): void {
+  isCovered(v: Vec2): boolean {
+    let ans = true;
+    if (this.board.checkPointInPath(this.rotatePoint, v)) {
+      this.flag = "rotate";
+      this.board.changeCursor("grab");
+    } else if (this.board.checkPointInPath(this.scalePoint[0], v)) {
+      this.flag = "nw-scale";
+      this.board.changeCursor("nw-resize");
+    } else if (this.board.checkPointInPath(this.scalePoint[1], v)) {
+      this.flag = "ne-scale";
+      this.board.changeCursor("ne-resize");
+    } else if (this.board.checkPointInPath(this.scalePoint[2], v)) {
+      this.flag = "sw-scale";
+      this.board.changeCursor("sw-resize");
+    } else if (this.board.checkPointInPath(this.scalePoint[3], v)) {
+      this.flag = "se-scale";
+      this.board.changeCursor("se-resize");
+    } else if (this.board.checkPointInPath(this.path, v)) {
+      this.flag = "move";
+      this.board.changeCursor("move");
+    } else {
+      this.board.changeCursor("default");
+      this.flag = null;
+      ans = false;
+    }
+
+    return ans;
+  }
+
+  handleStart(v: Vec2) {
+    this.startPosition = v;
+    switch (this.flag) {
+      case "move":
+        // no need setting
+        break;
+      case "rotate":
+        this.board.changeCursor("grabbing");
+        break;
+      case "nw-scale":
+        break;
+      case "ne-scale":
+        break;
+      case "sw-scale":
+        break;
+      case "se-scale":
+      default:
+        break;
+    }
+  }
+  handleActive(v: Vec2) {
+    switch (this.flag) {
+      case "move":
+        this.move(v, UtilTools.translate(this.startPosition, v));
+        break;
+      case "rotate":
+        this.move(v, UtilTools.rotate(this.minRect, this.startPosition, v));
+        break;
+      case "nw-scale":
+        this.move(
+          v,
+          UtilTools.scale(
+            { x: this.minRect.rightBottom.x, y: this.minRect.rightBottom.y },
+            v,
+            this.startPosition
+          )
+        );
+        break;
+      case "ne-scale":
+        this.move(
+          v,
+          UtilTools.scale(
+            { x: this.minRect.leftTop.x, y: this.minRect.rightBottom.y },
+            { x: this.startPosition.x, y: v.y },
+            { x: v.x, y: this.startPosition.y }
+          )
+        );
+        break;
+      case "sw-scale":
+        this.move(
+          v,
+          UtilTools.scale(
+            { x: this.minRect.rightBottom.x, y: this.minRect.leftTop.y },
+            { x: v.x, y: this.startPosition.y },
+            { x: this.startPosition.x, y: v.y }
+          )
+        );
+        break;
+      case "se-scale":
+        this.move(
+          v,
+          UtilTools.scale(
+            { x: this.minRect.leftTop.x, y: this.minRect.leftTop.y },
+            this.startPosition,
+            v
+          )
+        );
+    }
+  }
+  handleInactive(v: Vec2) {
+    if (this.shapes.length > 0) {
+      this.isCovered(v);
+    }
+  }
+  handleEnd(v: Vec2) {
+    const [dx, dy] = UtilTools.getOffset(this.startPosition, v);
+    switch (this.flag) {
+      case "move":
+        this.moveEnd(
+          dx,
+          dy,
+          UtilTools.translate(this.startPosition, v),
+          "translate"
+        );
+        break;
+      case "rotate":
+        this.board.changeCursor("grab");
+        this.moveEnd(
+          dx,
+          dy,
+          UtilTools.rotate(this.minRect, this.startPosition, v),
+          "rotate"
+        );
+        break;
+      case "nw-scale":
+        this.moveEnd(
+          dx,
+          dy,
+          UtilTools.scale(
+            { x: this.minRect.rightBottom.x, y: this.minRect.rightBottom.y },
+            v,
+            this.startPosition
+          ),
+          "scale"
+        );
+        break;
+      case "ne-scale":
+        this.moveEnd(
+          dx,
+          dy,
+          UtilTools.scale(
+            { x: this.minRect.leftTop.x, y: this.minRect.rightBottom.y },
+            { x: this.startPosition.x, y: v.y },
+            { x: v.x, y: this.startPosition.y }
+          ),
+          "scale"
+        );
+        break;
+      case "sw-scale":
+        this.moveEnd(
+          dx,
+          dy,
+          UtilTools.scale(
+            { x: this.minRect.rightBottom.x, y: this.minRect.leftTop.y },
+            { x: v.x, y: this.startPosition.y },
+            { x: this.startPosition.x, y: v.y }
+          ),
+          "scale"
+        );
+        break;
+      case "se-scale":
+        this.moveEnd(
+          dx,
+          dy,
+          UtilTools.scale(
+            { x: this.minRect.leftTop.x, y: this.minRect.leftTop.y },
+            this.startPosition,
+            v
+          ),
+          "scale"
+        );
+    }
+    this.flag = null;
+  }
+
+  override move(v: Vec2, matrix: DOMMatrix): void {
+    this.board.clearCanvas("event");
+    this.actionBar.closeBar();
     this.shapes.forEach((bs) => {
-      bs.moveStart(v);
+      bs.move(v, matrix);
     });
-    super.moveStart(v);
+    super.move(v, matrix);
   }
 
-  override move(v: Vec2): void {
+  override moveEnd(
+    dx: number,
+    dy: number,
+    matrix: DOMMatrix,
+    type: ShapeActionType
+  ): void {
     this.board.clearCanvas("event");
     this.shapes.forEach((bs) => {
-      bs.move(v);
+      bs.moveEnd(dx, dy, matrix, type);
     });
-    this.actionBar.move(this.getOffset(this.regPosition, v));
-    super.move(v);
+    super.moveEnd(dx, dy, matrix, type);
+    this.actionBar.openBar(this.minRect);
   }
 
-  override moveEnd(v: Vec2): void {
-    this.board.clearCanvas("event");
-    this.shapes.forEach((bs) => {
-      bs.moveEnd(v);
-    });
-    super.moveEnd(v);
-  }
-
-  private settingPath(p?: Path2D) {
+  /** 設定 path (bindingBox 於 特此類中 等價 path) */
+  private settingBindingBox(p?: Path2D) {
     if (p) {
       this.path = p;
-      this.bindingBox = p;
     } else {
       const path = new Path2D();
       this.path = path;
-      this.bindingBox = path;
+    }
+  }
+
+  /** 設定 縮放四點 / 旋轉點 */
+  private settingRotateAndScale(mrv: MinRectVec) {
+    const {
+      leftTop: { x: x1, y: y1 },
+      rightBottom: { x: x2, y: y2 },
+    } = mrv;
+    const fourCorner: Vec2[] = [
+      { x: x1 - padding, y: y1 - padding }, // nw
+      { x: x2 + padding, y: y1 - padding }, // sw
+      { x: x1 - padding, y: y2 + padding }, // ne
+      { x: x2 + padding, y: y2 + padding }, // sw
+    ];
+
+    fourCorner.forEach(({ x, y }, index) => {
+      const p = new Path2D();
+      p.arc(x, y, 8, 0, 2 * Math.PI);
+      this.board.rerenderToEvent({
+        bs: { p, s: defauletScalePoint },
+      });
+      this.scalePoint[index] = p;
+    });
+
+    const p = new Path2D();
+    p.arc(x1 - 3 * padding, y2 + 3 * padding, 10, 0, 2 * Math.PI);
+    this.board.rerenderToEvent({
+      bs: { p, s: defauletRotatePoint },
+    });
+    this.rotatePoint = p;
+  }
+
+  private updateRotateAndScale(matrix: DOMMatrix, updata = false) {
+    const newScalePoint = this.scalePoint.map((path) => {
+      const newPath = new Path2D();
+      newPath.addPath(path, matrix);
+      this.board.rerenderToEvent({ bs: { p: newPath, s: defauletScalePoint } });
+      return newPath;
+    }) as ScalePoint;
+    const rotatePoint = new Path2D();
+    rotatePoint.addPath(this.rotatePoint, matrix);
+    this.board.rerenderToEvent({
+      bs: { p: rotatePoint, s: defauletRotatePoint },
+    });
+
+    if (updata) {
+      this.rotatePoint = rotatePoint;
+      this.scalePoint = newScalePoint;
     }
   }
 }
 
 const interval = 60; //px
-type ActionBarTools = "delete" | "rotate";
-
+type ActionBarTools = "delete";
 /**
  * 選取後的控制欄位
  */
@@ -108,11 +359,12 @@ class ActionBar {
   }
 
   move(offset: [number, number]) {
+    const [dx, dy] = offset;
     this.block.style.top = `${
-      parseInt(this.block.style.top) + offset[1] / this.board.decivePixelPatio
+      parseInt(this.block.style.top) + dy / this.board.devicePixelRatio
     }px`;
     this.block.style.left = `${
-      parseInt(this.block.style.left) + offset[0] / this.board.decivePixelPatio
+      parseInt(this.block.style.left) + dx / this.board.devicePixelRatio
     }px`;
   }
 
@@ -124,12 +376,12 @@ class ActionBar {
         rightBottom: { x: x2, y: y2 },
       } = mrv;
       const width = x2 - x1 + padding * 2 + defaultSolidboxStyle.lineWidth * 2;
-      this.block.style.top = `${y1 / this.board.decivePixelPatio - interval}px`;
+      this.block.style.top = `${y1 / this.board.devicePixelRatio - interval}px`;
       this.block.style.left = `${
         (x1 - padding - defaultSolidboxStyle.lineWidth) /
-        this.board.decivePixelPatio
+        this.board.devicePixelRatio
       }px`;
-      this.block.style.width = `${width / this.board.decivePixelPatio}px`;
+      this.block.style.width = `${width / this.board.devicePixelRatio}px`;
       this.rootBlock.append(this.block);
     }
   }
@@ -150,12 +402,6 @@ class ActionBar {
           btn.onclick = () => {
             this.board.deleteShape();
             this.solidRect.closeSolidRect();
-          };
-          break;
-        case "rotate":
-          btn = this.generateBtn(rotate);
-          btn.onclick = () => {
-            console.log("rotate");
           };
           break;
       }

@@ -32,9 +32,7 @@ export class SelectTools implements BaseTools {
 
   onEventStart(v: Vec2): void {
     this.startPosition = v;
-    if (
-      this.board.ctx.isPointInPath(this.selectSolidRect.bindingBox, v.x, v.y)
-    ) {
+    if (this.selectSolidRect.isCovered(v)) {
       this.selectFlag = "selected";
       this.moveStart(v);
     } else {
@@ -57,13 +55,7 @@ export class SelectTools implements BaseTools {
   }
 
   onEventMoveInActive(v: Vec2): void {
-    if (
-      this.board.ctx.isPointInPath(this.selectSolidRect.bindingBox, v.x, v.y)
-    ) {
-      this.board.rootBlock.style.cursor = "move";
-    } else {
-      this.board.rootBlock.style.cursor = "default";
-    }
+    this.selectSolidRect.handleInactive(v);
   }
 
   onEventEnd(v: Vec2): void {
@@ -128,24 +120,24 @@ export class SelectTools implements BaseTools {
       });
       this.board.rerender();
       this.selectSolidRect.settingAndOpen(minRectVec);
-      this.board.rootBlock.style.cursor = "move";
     } else {
       this.board.clearCanvas("event");
       this.selectFlag = "none";
-      this.board.rootBlock.style.cursor = "default";
     }
+
+    this.selectSolidRect.isCovered(v);
   }
 
   private moveStart(v: Vec2) {
-    this.selectSolidRect.moveStart(v);
+    this.selectSolidRect.handleStart(v);
   }
 
   private move(v: Vec2) {
-    this.selectSolidRect.move(v);
+    this.selectSolidRect.handleActive(v);
   }
 
   private moveEnd(v: Vec2) {
-    this.selectSolidRect.moveEnd(v);
+    this.selectSolidRect.handleEnd(v);
   }
 
   /** 是否選中 */
@@ -196,14 +188,14 @@ export class SelectTools implements BaseTools {
     } else {
       // Ｘ軸Ｙ軸都被半包覆(四頂點處在圖形內)
       // 或 沒被包覆
-      const foreCorner: Vec2[] = [
+      const fourCorner: Vec2[] = [
         { x: selectx1, y: selecty1 },
         { x: selectx1, y: selecty2 },
         { x: selectx2, y: selecty1 },
         { x: selectx2, y: selecty2 },
       ];
       return Boolean(
-        foreCorner.find(({ x, y }) => {
+        fourCorner.find(({ x, y }) => {
           return this.board.ctx.isPointInPath(bs.bindingBox, x, y);
         })
       );

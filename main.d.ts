@@ -18,3 +18,5 @@ interface Vec2 {
   x: number;
   y: number;
 }
+
+type ShapeActionType = "translate" | "rotate" | "scale";

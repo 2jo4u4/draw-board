@@ -40,7 +40,7 @@ export class Board {
   /** 滑鼠旗標（是否點擊） */
   private mouseFlag: MouseFlag = "inactive";
   /** 像素密度 */
-  readonly decivePixelPatio!: number;
+  readonly devicePixelRatio!: number;
   /** 所有被繪製的圖形 */
   private __shapes: BoardShapeLog = new Map<string, BaseShape>();
   get shapes(): BoardShapeLog {
@@ -80,7 +80,7 @@ export class Board {
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__tools = new Tools(this);
     this.__socket = Socket || null;
-    this.decivePixelPatio = window.devicePixelRatio;
+    this.devicePixelRatio = window.devicePixelRatio;
 
     this.initial();
     this.addListener();
@@ -126,10 +126,19 @@ export class Board {
     if (bs) {
       if (UtilTools.isBaseShape(bs)) {
         UtilTools.injectStyle(this.ctx, bs.style);
+        if (bs.style.fillColor) {
+          this.ctx.fill(bs.path);
+        } else {
+          this.ctx.stroke(bs.path);
+        }
         this.ctx.stroke(bs.path);
       } else {
         UtilTools.injectStyle(this.ctx, bs.s);
-        this.ctx.stroke(bs.p);
+        if (bs.s.fillColor) {
+          this.ctx.fill(bs.p);
+        } else {
+          this.ctx.stroke(bs.p);
+        }
       }
     } else {
       this.shapes.forEach((_bs) => {
@@ -146,7 +155,11 @@ export class Board {
     Boolean(needClear) && this.clearCanvas("static");
     if (bs) {
       UtilTools.injectStyle(this.ctxStatic, bs.style);
-      this.ctxStatic.stroke(bs.path);
+      if (bs.style.fillColor) {
+        this.ctxStatic.fill(bs.path);
+      } else {
+        this.ctxStatic.stroke(bs.path);
+      }
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && !_bs.isSelect) {
@@ -190,6 +203,25 @@ export class Board {
   changePage(shapes: BoardShapeLog) {
     this.__shapes = shapes;
     this.rerender();
+  }
+  /** 變更鼠標樣式 */
+  changeCursor(
+    type:
+      | "move"
+      | "default"
+      | "nw-resize"
+      | "ne-resize"
+      | "sw-resize"
+      | "se-resize"
+      | "grab"
+      | "grabbing"
+  ) {
+    this.canvas.style.cursor = type;
+  }
+
+  /** 確認路徑是否包含座標 */
+  checkPointInPath(p: Path2D, v: Vec2): boolean {
+    return this.ctx.isPointInPath(p, v.x, v.y);
   }
 
   /** 上一步 */
@@ -284,11 +316,11 @@ export class Board {
 
     const back = {
       x:
-        ((x - left) / (this.canvas.width / this.decivePixelPatio / width)) *
-        this.decivePixelPatio,
+        ((x - left) / (this.canvas.width / this.devicePixelRatio / width)) *
+        this.devicePixelRatio,
       y:
-        ((y - top) / (this.canvas.height / this.decivePixelPatio / height)) *
-        this.decivePixelPatio,
+        ((y - top) / (this.canvas.height / this.devicePixelRatio / height)) *
+        this.devicePixelRatio,
     };
 
     return back;
@@ -306,8 +338,8 @@ export class Board {
   private setCanvasStyle(el: HTMLCanvasElement) {
     const clientWidth = window.innerWidth;
     const clientHeight = window.innerHeight;
-    el.setAttribute("width", `${clientWidth * this.decivePixelPatio}px`);
-    el.setAttribute("height", `${clientHeight * this.decivePixelPatio}px`);
+    el.setAttribute("width", `${clientWidth * this.devicePixelRatio}px`);
+    el.setAttribute("height", `${clientHeight * this.devicePixelRatio}px`);
     el.style.width = `${clientWidth}px`;
     el.style.height = `${clientHeight}px`;
   }

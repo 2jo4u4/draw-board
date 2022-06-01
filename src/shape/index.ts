@@ -1,5 +1,9 @@
 import { Board, defaultStyle, padding, UtilTools } from "..";
 
+interface ShapeAction {
+  type: ShapeActionType;
+  matrix: DOMMatrix;
+}
 /**
  * 圖形基本類
  */
@@ -33,12 +37,9 @@ export class BaseShape {
     this.__isDelete = b;
   }
 
-  /** 暫存移動座標 */
-  regPosition!: Vec2;
-  /** 暫存初始 */
-  startPosition!: Vec2;
   /** 紀錄 */
-  transferLogs: [] = [];
+  shapeActionLog: ShapeAction[] = [];
+  shapeActionLimit: number;
 
   constructor(
     id: string,
@@ -54,61 +55,63 @@ export class BaseShape {
     this.style = Object.assign(UtilTools.deepClone(defaultStyle), style);
     this.minRect = minRect;
     this.bindingBox = UtilTools.minRectToPath(minRect, padding);
+    this.shapeActionLimit = board.actionStoreLimit;
   }
 
-  moveStart(v: Vec2): void {
-    this.regPosition = v;
-    this.startPosition = v;
-  }
-
-  move(v: Vec2): void {
-    const offset = this.getOffset(this.regPosition, v),
-      s = this.style,
-      newPath = new Path2D(),
-      newSSRPath = new Path2D(),
-      matrix = new DOMMatrix([1, 0, 0, 1, ...offset]);
+  move(v: Vec2, matrix: DOMMatrix): void {
+    // updata shape path  & rerender event layer
+    const s = this.style,
+      newPath = new Path2D();
     newPath.addPath(this.path, matrix);
-    newSSRPath.addPath(this.bindingBox, matrix);
     this.board.rerenderToEvent({ bs: { p: newPath, s } });
-    this.path = newPath;
-    this.bindingBox = newSSRPath;
-    this.regPosition = v;
   }
 
-  moveEnd(v: Vec2): void {
-    const offset = this.getOffset(this.regPosition, v),
-      s = this.style,
-      newPath = new Path2D(),
-      newSSRPath = new Path2D(),
-      matrix = new DOMMatrix([1, 0, 0, 1, ...offset]);
+  moveEnd(
+    dx: number,
+    dy: number,
+    matrix: DOMMatrix,
+    type: ShapeActionType
+  ): void {
+    // updata shape path  & rerender event layer
+    const s = this.style,
+      newPath = new Path2D();
     newPath.addPath(this.path, matrix);
-    newSSRPath.addPath(this.bindingBox, matrix);
     this.path = newPath;
-    this.bindingBox = newSSRPath;
-    this.board.rerenderToEvent({ bs: { p: newPath, s } });
-    this.updataMinRect(v);
-  }
-
-  rotateStart(v: Vec2) {}
-  rotate(v: Vec2) {}
-  rotateEnd(v: Vec2) {}
-
-  /** 取得偏移量(X,Y) */
-  protected getOffset(prev: Vec2, next: Vec2): [number, number] {
-    return [next.x - prev.x, next.y - prev.y];
-  }
-
-  /** 更新最小矩形座標 */
-  private updataMinRect(v: Vec2): void {
-    const [x, y] = this.getOffset(this.startPosition, v);
+    this.board.rerenderToEvent({ bs: { p: this.path, s } });
     const {
       leftTop: { x: oldX1, y: oldY1 },
       rightBottom: { x: oldX2, y: oldY2 },
     } = this.minRect;
 
-    this.minRect = {
-      leftTop: { x: oldX1 + x, y: oldY1 + y },
-      rightBottom: { x: oldX2 + x, y: oldY2 + y },
-    };
+    switch (type) {
+      case "translate":
+        this.minRect = {
+          leftTop: { x: oldX1 + dx, y: oldY1 + dy },
+          rightBottom: { x: oldX2 + dx, y: oldY2 + dy },
+        };
+        break;
+      case "rotate":
+        break;
+      case "scale":
+        break;
+    }
+
+    const newBindingBox = new Path2D();
+    newBindingBox.addPath(this.bindingBox, matrix);
+    this.bindingBox = newBindingBox;
+
+    this.logAction(type, matrix.inverse());
+  }
+
+  undo() {}
+  redo() {}
+
+  logAction(type: ShapeActionType, matrix: DOMMatrix) {
+    this.shapeActionLog.push({ type, matrix });
+
+    if (this.shapeActionLog.length > this.shapeActionLimit) {
+      const [remove, ...keep] = this.shapeActionLog;
+      this.shapeActionLog = keep;
+    }
   }
 }
