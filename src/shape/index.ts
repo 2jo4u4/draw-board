@@ -1,4 +1,4 @@
-import { Board, defaultStyle, padding, UtilTools } from "..";
+import { Board, defaultStyle, padding, UtilTools, Rect } from "..";
 
 interface ShapeAction {
   type: ShapeActionType;
@@ -15,8 +15,15 @@ export class BaseShape {
   path: Path2D;
   /** 樣式 */
   style: Styles;
-  /** 紀錄一個路徑的最小包覆矩形 */
+  /**
+   * @deprecated 用 coveredRect 代替
+   *
+   * 紀錄一個路徑的最小包覆矩形
+   */
   minRect: MinRectVec;
+
+  /** 紀錄一個路徑的最小包覆矩形 */
+  coveredRect: Rect;
   /** 判斷是否被選取的路徑 */
   bindingBox: Path2D;
   /** 是否被選取 */
@@ -53,9 +60,12 @@ export class BaseShape {
     this.board = board;
     this.path = new Path2D(path);
     this.style = Object.assign(UtilTools.deepClone(defaultStyle), style);
-    this.minRect = minRect;
     this.bindingBox = UtilTools.minRectToPath(minRect, padding);
     this.shapeActionLimit = board.actionStoreLimit;
+
+    this.coveredRect = new Rect(minRect);
+    // ------delete------
+    this.minRect = minRect;
   }
 
   /**
@@ -98,6 +108,7 @@ export class BaseShape {
     newPath.addPath(this.path, matrix);
     this.path = newPath;
     this.board.rerenderToEvent({ bs: { p: this.path, s } });
+    // ------delete------
     const {
       leftTop: { x: oldX1, y: oldY1 },
       rightBottom: { x: oldX2, y: oldY2 },
@@ -105,14 +116,18 @@ export class BaseShape {
 
     switch (type) {
       case "translate":
+        // ------delete------
         this.minRect = {
           leftTop: { x: oldX1 + dx, y: oldY1 + dy },
           rightBottom: { x: oldX2 + dx, y: oldY2 + dy },
         };
+        this.coveredRect.translateSelf(matrix);
         break;
       case "rotate":
+        this.coveredRect.rotateSelf(matrix);
         break;
       case "scale":
+        this.coveredRect.scaleSelf(matrix);
         break;
     }
 

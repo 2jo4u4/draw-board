@@ -239,3 +239,69 @@ export class UtilTools {
     return Math.atan2(y1 - y2, x1 - x2);
   }
 }
+
+export class Rect {
+  x1: number;
+  x2: number;
+  y1: number;
+  y2: number;
+  constructor(p1: Vec2 | MinRectVec, p2?: Vec2) {
+    if (UtilTools.isVec2(p1)) {
+      this.x1 = p1.x;
+      this.y1 = p1.y;
+      this.x2 = p2 ? p2.x : p1.x;
+      this.y2 = p2 ? p2.y : p1.y;
+    } else {
+      this.x1 = p1.leftTop.x;
+      this.y1 = p1.leftTop.y;
+      this.x2 = p1.rightBottom.x;
+      this.y2 = p1.rightBottom.y;
+    }
+  }
+
+  get rectPoint(): MinRectVec {
+    return {
+      leftTop: { x: this.x1, y: this.y1 },
+      rightBottom: { x: this.x2, y: this.y2 },
+    };
+  }
+
+  set rectPoint(mrv: MinRectVec) {
+    this.x1 = mrv.leftTop.x;
+    this.y1 = mrv.leftTop.y;
+    this.x2 = mrv.rightBottom.x;
+    this.y2 = mrv.rightBottom.y;
+  }
+
+  get leftTopPoint(): Vec2 {
+    return { x: this.x1, y: this.y1 };
+  }
+
+  get rightBottomPoint(): Vec2 {
+    return { x: this.x2, y: this.y2 };
+  }
+
+  clone(): Rect {
+    return new Rect(this.leftTopPoint, this.rightBottomPoint);
+  }
+
+  translate(matrix: DOMMatrix): Rect {
+    return new Rect(this.leftTopPoint, this.rightBottomPoint);
+  }
+  scale(matrix: DOMMatrix): Rect {
+    return new Rect(this.leftTopPoint, this.rightBottomPoint);
+  }
+  rotate(matrix: DOMMatrix): Rect {
+    return new Rect(this.leftTopPoint, this.rightBottomPoint);
+  }
+
+  translateSelf(matrix: DOMMatrix): Rect {
+    return this;
+  }
+  scaleSelf(matrix: DOMMatrix): Rect {
+    return this;
+  }
+  rotateSelf(matrix: DOMMatrix): Rect {
+    return this;
+  }
+}

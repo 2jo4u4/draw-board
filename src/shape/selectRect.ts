@@ -1,5 +1,5 @@
 import { BaseShape } from ".";
-import { Board, defaultSolidboxStyle, padding, UtilTools } from "..";
+import { Board, defaultSolidboxStyle, padding, UtilTools, Rect } from "..";
 import trash from "../assets/trash-bin-svgrepo-com.svg";
 import rotate from "../assets/redo-svgrepo-com.svg";
 
@@ -54,7 +54,7 @@ export class SelectSolidRect extends BaseShape {
 
   /** 設定路徑 / 矩形 / 紀錄被選取的圖形 */
   setting(mrv: MinRectVec) {
-    this.minRect = mrv;
+    this.coveredRect = new Rect(mrv);
     this.settingBindingBox(UtilTools.minRectToPath(mrv, padding));
     const s = this.style,
       p = this.path;
@@ -129,13 +129,19 @@ export class SelectSolidRect extends BaseShape {
         this.transfer(v, UtilTools.translate(this.startPosition, v));
         break;
       case "rotate":
-        this.transfer(v, UtilTools.rotate(this.minRect, this.startPosition, v));
+        this.transfer(
+          v,
+          UtilTools.rotate(this.coveredRect.rectPoint, this.startPosition, v)
+        );
         break;
       case "nw-scale":
         this.transfer(
           v,
           UtilTools.scale(
-            { x: this.minRect.rightBottom.x, y: this.minRect.rightBottom.y },
+            {
+              x: this.coveredRect.rectPoint.rightBottom.x,
+              y: this.coveredRect.rectPoint.rightBottom.y,
+            },
             v,
             this.startPosition
           )
@@ -145,7 +151,10 @@ export class SelectSolidRect extends BaseShape {
         this.transfer(
           v,
           UtilTools.scale(
-            { x: this.minRect.leftTop.x, y: this.minRect.rightBottom.y },
+            {
+              x: this.coveredRect.leftTopPoint.x,
+              y: this.coveredRect.rightBottomPoint.y,
+            },
             { x: this.startPosition.x, y: v.y },
             { x: v.x, y: this.startPosition.y }
           )
@@ -155,7 +164,10 @@ export class SelectSolidRect extends BaseShape {
         this.transfer(
           v,
           UtilTools.scale(
-            { x: this.minRect.rightBottom.x, y: this.minRect.leftTop.y },
+            {
+              x: this.coveredRect.rightBottomPoint.x,
+              y: this.coveredRect.leftTopPoint.y,
+            },
             { x: v.x, y: this.startPosition.y },
             { x: this.startPosition.x, y: v.y }
           )
@@ -165,7 +177,10 @@ export class SelectSolidRect extends BaseShape {
         this.transfer(
           v,
           UtilTools.scale(
-            { x: this.minRect.leftTop.x, y: this.minRect.leftTop.y },
+            {
+              x: this.coveredRect.leftTopPoint.x,
+              y: this.coveredRect.leftTopPoint.y,
+            },
             this.startPosition,
             v
           )
@@ -193,7 +208,7 @@ export class SelectSolidRect extends BaseShape {
         this.transferEnd(
           dx,
           dy,
-          UtilTools.rotate(this.minRect, this.startPosition, v),
+          UtilTools.rotate(this.coveredRect.rectPoint, this.startPosition, v),
           "rotate"
         );
         break;
@@ -202,7 +217,10 @@ export class SelectSolidRect extends BaseShape {
           dx,
           dy,
           UtilTools.scale(
-            { x: this.minRect.rightBottom.x, y: this.minRect.rightBottom.y },
+            {
+              x: this.coveredRect.rightBottomPoint.x,
+              y: this.coveredRect.rightBottomPoint.y,
+            },
             v,
             this.startPosition
           ),
@@ -214,7 +232,10 @@ export class SelectSolidRect extends BaseShape {
           dx,
           dy,
           UtilTools.scale(
-            { x: this.minRect.leftTop.x, y: this.minRect.rightBottom.y },
+            {
+              x: this.coveredRect.leftTopPoint.x,
+              y: this.coveredRect.rightBottomPoint.y,
+            },
             { x: this.startPosition.x, y: v.y },
             { x: v.x, y: this.startPosition.y }
           ),
@@ -226,7 +247,10 @@ export class SelectSolidRect extends BaseShape {
           dx,
           dy,
           UtilTools.scale(
-            { x: this.minRect.rightBottom.x, y: this.minRect.leftTop.y },
+            {
+              x: this.coveredRect.rightBottomPoint.x,
+              y: this.coveredRect.leftTopPoint.y,
+            },
             { x: v.x, y: this.startPosition.y },
             { x: this.startPosition.x, y: v.y }
           ),
@@ -238,7 +262,10 @@ export class SelectSolidRect extends BaseShape {
           dx,
           dy,
           UtilTools.scale(
-            { x: this.minRect.leftTop.x, y: this.minRect.leftTop.y },
+            {
+              x: this.coveredRect.leftTopPoint.x,
+              y: this.coveredRect.leftTopPoint.y,
+            },
             this.startPosition,
             v
           ),
@@ -268,7 +295,7 @@ export class SelectSolidRect extends BaseShape {
       bs.transferEnd(dx, dy, matrix, type);
     });
     super.transferEnd(dx, dy, matrix, type);
-    this.actionBar.openBar(this.minRect);
+    this.actionBar.openBar(this.coveredRect.rectPoint);
   }
 
   /** 設定 path (bindingBox 於 特此類中 等價 path) */
