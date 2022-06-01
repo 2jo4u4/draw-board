@@ -1,6 +1,11 @@
 import { SelectSolidRect } from "./../shape/selectRect";
-import { BaseTools } from "./management";
-import { Board, BaseShape, UtilTools, defaultFlexboxStyle } from "..";
+import {
+  Board,
+  BaseShape,
+  UtilTools,
+  BaseTools,
+  defaultFlexboxStyle,
+} from "..";
 
 type SelectFlag = "none" | "selected"; // 是否有選到圖形
 

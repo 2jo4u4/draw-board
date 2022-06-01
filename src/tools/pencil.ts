@@ -1,4 +1,4 @@
-import { BaseTools } from "./management";
+import { BaseTools } from ".";
 import { Board, defaultStyle, UtilTools } from "..";
 
 /** 鉛筆 */
