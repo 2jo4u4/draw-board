@@ -96,31 +96,15 @@ export class BaseShape {
     this.board.rerenderToEvent({ bs: { p: newPath, s } });
   }
 
-  transferEnd(
-    dx: number,
-    dy: number,
-    matrix: DOMMatrix,
-    type: ShapeActionType
-  ): void {
+  transferEnd(matrix: DOMMatrix, type: ShapeActionType): void {
     // updata shape path  & rerender event layer
     const s = this.style,
       newPath = new Path2D();
     newPath.addPath(this.path, matrix);
     this.path = newPath;
     this.board.rerenderToEvent({ bs: { p: this.path, s } });
-    // ------delete------
-    const {
-      leftTop: { x: oldX1, y: oldY1 },
-      rightBottom: { x: oldX2, y: oldY2 },
-    } = this.minRect;
-
     switch (type) {
       case "translate":
-        // ------delete------
-        this.minRect = {
-          leftTop: { x: oldX1 + dx, y: oldY1 + dy },
-          rightBottom: { x: oldX2 + dx, y: oldY2 + dy },
-        };
         this.coveredRect.translateSelf(matrix);
         break;
       case "rotate":

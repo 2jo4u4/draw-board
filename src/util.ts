@@ -203,33 +203,34 @@ export class UtilTools {
     return new DOMMatrix().translate(dx, dy);
   }
   /** 旋轉 */
-  static rotate(center: Vec2 | MinRectVec, prev: Vec2, next: Vec2): DOMMatrix {
-    let ct: Vec2;
-    if (UtilTools.isVec2(center)) {
-      ct = center;
-    } else {
-      ct = UtilTools.getMinRectCenter(center);
+  static rotate(prev: Vec2, next: Vec2, v?: Rect | Vec2): DOMMatrix {
+    let center: Vec2 = { x: 0, y: 0 };
+    if (v) {
+      if (v instanceof Rect) {
+        center = v.centerPoint;
+      } else {
+        center = v;
+      }
     }
+
     return new DOMMatrix()
-      .translate(ct.x, ct.y)
+      .translate(center.x, center.y)
       .rotate(UtilTools.getAngle(prev, next))
-      .translate(-ct.x, -ct.y);
+      .translate(-center.x, -center.y);
   }
   /** 縮放 */
-  static scale(center: Vec2 | MinRectVec, prev: Vec2, next: Vec2): DOMMatrix {
-    let ct: Vec2;
-    if (UtilTools.isVec2(center)) {
-      ct = center;
-    } else {
-      ct = UtilTools.getMinRectCenter(center);
+  static scale(prev: Vec2, next: Vec2, v?: Rect | Vec2): DOMMatrix {
+    let center: Vec2 = { x: 0, y: 0 },
+      scaleX = next.x / prev.x,
+      scaleY = next.y / prev.y;
+    if (v) {
+      if (v instanceof Rect) {
+        center = v.centerPoint;
+      } else {
+        center = v;
+      }
     }
-    return new DOMMatrix().scale(
-      next.x / prev.x,
-      next.y / prev.y,
-      1,
-      ct.x,
-      ct.y
-    );
+    return new DOMMatrix().scale(scaleX, scaleY, 1, center.x, center.y);
   }
 
   /** 取得兩點間之弧度 */
@@ -259,6 +260,18 @@ export class Rect {
     }
   }
 
+  get centerPoint(): Vec2 {
+    return {
+      x: this.x1 + (this.x2 - this.x1) / 2,
+      y: this.y1 + (this.y2 - this.y1) / 2,
+    };
+  }
+
+  /** @returns [width, height] */
+  get size(): [number, number] {
+    return [this.x2 - this.x1, this.y2 - this.y1];
+  }
+
   get rectPoint(): MinRectVec {
     return {
       leftTop: { x: this.x1, y: this.y1 },
@@ -281,27 +294,53 @@ export class Rect {
     return { x: this.x2, y: this.y2 };
   }
 
+  get leftBottomPoint(): Vec2 {
+    return { x: this.x1, y: this.y2 };
+  }
+
+  get rightTopPoint(): Vec2 {
+    return { x: this.x2, y: this.y1 };
+  }
+
   clone(): Rect {
     return new Rect(this.leftTopPoint, this.rightBottomPoint);
   }
 
   translate(matrix: DOMMatrix): Rect {
+    console.log(matrix);
     return new Rect(this.leftTopPoint, this.rightBottomPoint);
   }
   scale(matrix: DOMMatrix): Rect {
+    console.log(matrix);
     return new Rect(this.leftTopPoint, this.rightBottomPoint);
   }
   rotate(matrix: DOMMatrix): Rect {
+    console.log(matrix);
     return new Rect(this.leftTopPoint, this.rightBottomPoint);
   }
 
   translateSelf(matrix: DOMMatrix): Rect {
+    const dx = matrix.e,
+      dy = matrix.f;
+    this.x1 += dx;
+    this.x2 += dx;
+    this.y1 += dy;
+    this.y2 += dy;
     return this;
   }
-  scaleSelf(matrix: DOMMatrix): Rect {
+  scaleSelf(matrix: DOMMatrix, relatively?: Vec2): Rect {
+    const dx = matrix.e,
+      dy = matrix.f;
+    const [width, height] = this.size;
+    if (relatively) {
+    } else {
+      this.centerPoint.x;
+    }
+
     return this;
   }
   rotateSelf(matrix: DOMMatrix): Rect {
+    console.log(matrix);
     return this;
   }
 }
