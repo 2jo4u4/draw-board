@@ -1,4 +1,5 @@
 import { BaseShape, SocketMiddle, ToolsManagement, UtilTools } from ".";
+import { PreviewWindow } from "./preview";
 
 type MouseFlag = "active" | "inactive"; // 滑鼠左鍵 活躍 / 非活躍
 type Action = "draw" | "delete" | "move" | "rotate" | "zoom"; // 可被紀錄的行為
@@ -36,6 +37,11 @@ export class Board {
   get ctxStatic(): CanvasRenderingContext2D {
     return this.__ctxStatic;
   }
+  /** Preview Canvas網頁元素 */
+  private __previewCanvas: HTMLCanvasElement;
+  get preview(): HTMLCanvasElement {
+    return this.__previewCanvas;
+  }
 
   /** 滑鼠旗標（是否點擊） */
   private mouseFlag: MouseFlag = "inactive";
@@ -61,6 +67,11 @@ export class Board {
   get toolsCtrl() {
     return this.__tools;
   }
+  /** Preview中間件 */
+  private __preview: PreviewWindow;
+  get previewCtrl() {
+    return this.__preview;
+  }
   /** 網路請求中間件 */
   private __socket: SocketMiddle | null = null;
   get socketCtrl() {
@@ -79,6 +90,14 @@ export class Board {
     this.setStaticCanvas();
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__tools = new Tools(this);
+
+    const {
+      preview,
+      canvas: previewCanvas,
+      tools: previewTools,
+    } = this.initialPreview();
+    this.__previewCanvas = previewCanvas;
+    this.__preview = new PreviewWindow(previewCanvas, this);
     this.__socket = Socket || null;
     this.devicePixelRatio = window.devicePixelRatio;
 
@@ -103,6 +122,7 @@ export class Board {
     this.shapes.set(id, bs);
     this.logAction("draw", id);
     this.rerenderToPaint({ bs });
+    this.previewCtrl.rerender();
   }
   /** 刪除已選圖形 */
   deleteShape() {
@@ -181,6 +201,7 @@ export class Board {
         }
       }
     });
+    this.previewCtrl.rerender();
   }
   /** 紀錄行為 */
   logAction(type: Action, ...id: string[]) {
@@ -228,6 +249,17 @@ export class Board {
   undo() {}
   /** 下一步 */
   redo() {}
+
+  private initialPreview() {
+    const preview = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    const tools = document.createElement("ul");
+
+    document.body.append(preview, canvas, tools);
+
+    // const previewWindow = new PreviewWindow(canvas, board);
+    return { preview, canvas, tools };
+  }
 
   /** 初始化 canvas */
   private initial() {

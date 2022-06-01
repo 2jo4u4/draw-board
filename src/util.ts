@@ -27,6 +27,26 @@ export const defaultFlexboxStyle: Styles = {
 
 /** 計算函式 / 工具函式 */
 export class UtilTools {
+  static getCnavasElement(c?: string | HTMLElement): HTMLCanvasElement {
+    if (c instanceof HTMLCanvasElement) {
+      return c;
+    } else if (typeof c === "string") {
+      const el = document.getElementById(c);
+      if (el && el instanceof HTMLCanvasElement) {
+        return el;
+      }
+    }
+    return document.createElement("canvas");
+  }
+  static checkCanvasContext(c: HTMLCanvasElement) {
+    const ctx = c.getContext("2d");
+    if (ctx) {
+      return ctx;
+    } else {
+      throw new Error("無法獲取 getContext");
+    }
+  }
+
   /** 揉合兩點座標成最小矩形 */
   static generateMinRect(v1: Vec2, v2: Vec2): MinRectVec {
     const { x: x1, y: y1 } = v1;
