@@ -126,13 +126,13 @@ export class SelectSolidRect extends BaseShape {
   handleActive(v: Vec2) {
     switch (this.flag) {
       case "move":
-        this.move(v, UtilTools.translate(this.startPosition, v));
+        this.transfer(v, UtilTools.translate(this.startPosition, v));
         break;
       case "rotate":
-        this.move(v, UtilTools.rotate(this.minRect, this.startPosition, v));
+        this.transfer(v, UtilTools.rotate(this.minRect, this.startPosition, v));
         break;
       case "nw-scale":
-        this.move(
+        this.transfer(
           v,
           UtilTools.scale(
             { x: this.minRect.rightBottom.x, y: this.minRect.rightBottom.y },
@@ -142,7 +142,7 @@ export class SelectSolidRect extends BaseShape {
         );
         break;
       case "ne-scale":
-        this.move(
+        this.transfer(
           v,
           UtilTools.scale(
             { x: this.minRect.leftTop.x, y: this.minRect.rightBottom.y },
@@ -152,7 +152,7 @@ export class SelectSolidRect extends BaseShape {
         );
         break;
       case "sw-scale":
-        this.move(
+        this.transfer(
           v,
           UtilTools.scale(
             { x: this.minRect.rightBottom.x, y: this.minRect.leftTop.y },
@@ -162,7 +162,7 @@ export class SelectSolidRect extends BaseShape {
         );
         break;
       case "se-scale":
-        this.move(
+        this.transfer(
           v,
           UtilTools.scale(
             { x: this.minRect.leftTop.x, y: this.minRect.leftTop.y },
@@ -181,7 +181,7 @@ export class SelectSolidRect extends BaseShape {
     const [dx, dy] = UtilTools.getOffset(this.startPosition, v);
     switch (this.flag) {
       case "move":
-        this.moveEnd(
+        this.transferEnd(
           dx,
           dy,
           UtilTools.translate(this.startPosition, v),
@@ -190,7 +190,7 @@ export class SelectSolidRect extends BaseShape {
         break;
       case "rotate":
         this.board.changeCursor("grab");
-        this.moveEnd(
+        this.transferEnd(
           dx,
           dy,
           UtilTools.rotate(this.minRect, this.startPosition, v),
@@ -198,7 +198,7 @@ export class SelectSolidRect extends BaseShape {
         );
         break;
       case "nw-scale":
-        this.moveEnd(
+        this.transferEnd(
           dx,
           dy,
           UtilTools.scale(
@@ -210,7 +210,7 @@ export class SelectSolidRect extends BaseShape {
         );
         break;
       case "ne-scale":
-        this.moveEnd(
+        this.transferEnd(
           dx,
           dy,
           UtilTools.scale(
@@ -222,7 +222,7 @@ export class SelectSolidRect extends BaseShape {
         );
         break;
       case "sw-scale":
-        this.moveEnd(
+        this.transferEnd(
           dx,
           dy,
           UtilTools.scale(
@@ -234,7 +234,7 @@ export class SelectSolidRect extends BaseShape {
         );
         break;
       case "se-scale":
-        this.moveEnd(
+        this.transferEnd(
           dx,
           dy,
           UtilTools.scale(
@@ -248,16 +248,16 @@ export class SelectSolidRect extends BaseShape {
     this.flag = null;
   }
 
-  override move(v: Vec2, matrix: DOMMatrix): void {
+  override transfer(v: Vec2, matrix: DOMMatrix): void {
     this.board.clearCanvas("event");
     this.actionBar.closeBar();
     this.shapes.forEach((bs) => {
-      bs.move(v, matrix);
+      bs.transfer(v, matrix);
     });
-    super.move(v, matrix);
+    super.transfer(v, matrix);
   }
 
-  override moveEnd(
+  override transferEnd(
     dx: number,
     dy: number,
     matrix: DOMMatrix,
@@ -265,9 +265,9 @@ export class SelectSolidRect extends BaseShape {
   ): void {
     this.board.clearCanvas("event");
     this.shapes.forEach((bs) => {
-      bs.moveEnd(dx, dy, matrix, type);
+      bs.transferEnd(dx, dy, matrix, type);
     });
-    super.moveEnd(dx, dy, matrix, type);
+    super.transferEnd(dx, dy, matrix, type);
     this.actionBar.openBar(this.minRect);
   }
 

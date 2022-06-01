@@ -58,7 +58,27 @@ export class BaseShape {
     this.shapeActionLimit = board.actionStoreLimit;
   }
 
-  move(v: Vec2, matrix: DOMMatrix): void {
+  /**
+   * @deprecated
+   *
+   * 移除function
+   */
+  moveStart(v: Vec2) {}
+  /**
+   * @deprecated
+   *
+   * 使用 transfer 替代
+   */
+  move(v: Vec2) {}
+  /**
+   * @deprecated
+   *
+   * 使用 transferEnd 替代
+   *
+   */
+  moveEnd(v: Vec2) {}
+
+  transfer(v: Vec2, matrix: DOMMatrix): void {
     // updata shape path  & rerender event layer
     const s = this.style,
       newPath = new Path2D();
@@ -66,7 +86,7 @@ export class BaseShape {
     this.board.rerenderToEvent({ bs: { p: newPath, s } });
   }
 
-  moveEnd(
+  transferEnd(
     dx: number,
     dy: number,
     matrix: DOMMatrix,
