@@ -11,7 +11,7 @@ interface Styles {
   lineColor: string;
   lineWidth: number;
   fillColor?: string;
-  lineDash: number[];
+  lineDash?: number[];
 }
 
 interface Vec2 {

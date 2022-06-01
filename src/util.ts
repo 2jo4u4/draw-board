@@ -1,11 +1,29 @@
+import { BaseShape } from ".";
+
+const dashedLine = [10, 10];
+export const padding = 8; // px
+// 畫筆預設樣式
 export const defaultStyle: Styles = {
   lineColor: "#000",
-  lineWidth: 2,
+  lineWidth: 4,
   fillColor: undefined,
   lineDash: [],
 };
-export const padding = 8; // px
-export const dashedLine = [10, 10];
+
+// 選擇固定框預設樣式
+export const defaultSolidboxStyle: Styles = {
+  lineWidth: 2,
+  lineColor: "#00000080",
+  lineDash: dashedLine,
+  fillColor: undefined,
+};
+
+// 選擇伸縮框預設樣式
+export const defaultFlexboxStyle: Styles = {
+  lineWidth: 2,
+  lineColor: "#00000050",
+  lineDash: dashedLine,
+};
 
 /** 計算函式 / 工具函式 */
 export class UtilTools {
@@ -117,7 +135,7 @@ export class UtilTools {
     const { lineColor, lineWidth, lineDash } = s;
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = lineWidth;
-    ctx.setLineDash(lineDash);
+    ctx.setLineDash(lineDash || []);
   }
 
   /** 利用最小矩形產生路徑 */
@@ -134,5 +152,9 @@ export class UtilTools {
       y2 - y1 + padding * 2
     );
     return path;
+  }
+
+  static isBaseShape(bs: unknown): bs is BaseShape {
+    return bs instanceof BaseShape;
   }
 }
