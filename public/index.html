@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -9,19 +10,21 @@
       body {
         margin: 0;
         padding: 0;
+        width: 100%;
+        height: 100%;
       }
-      canvas {
+      .canvasRoot {
         border: 1px #00000030 solid;
+        display: block;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      * {
+        box-sizing: border-box;
       }
     </style>
   </head>
-  <body>
-    <canvas id="myCanvas" width="500" height="500"></canvas>
-    <p id="status"></p>
-    <ul id="myTools" style="cursor: pointer">
-      <li id="pencil">鉛筆</li>
-      <li id="select">選擇器</li>
-      <li id="eraser">橡皮擦</li>
-    </ol>
-  </body>
+  <body></body>
 </html>

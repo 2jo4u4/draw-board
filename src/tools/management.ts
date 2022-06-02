@@ -1,4 +1,5 @@
-import { Board, Styles, Vec2 } from "..";
+import { Board } from "..";
+import { BaseTools } from "./base";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";
 
@@ -16,12 +17,6 @@ export enum LineWidth {
   "粗" = 4,
 }
 
-export abstract class BaseTools {
-  onEventStart(v: Vec2): void {}
-  onEventMove(v: Vec2): void {}
-  onEventEnd(v: Vec2): void {}
-}
-
 /**
  * 控制插件
  */
@@ -32,6 +27,7 @@ export class ToolsManagement {
   }
   /** 板子實例 */
   private board: Board;
+  /** 儲存當前選擇的工具 */
   private usingTools!: BaseTools;
   constructor(board: Board) {
     this.board = board;
@@ -39,14 +35,22 @@ export class ToolsManagement {
   }
   /** 觸摸/滑鼠下壓 */
   onEventStart(v: Vec2): void {
+    console.log("onEventStart");
     this.usingTools.onEventStart(v);
   }
-  /** 手指/滑鼠 移動過程 */
-  onEventMove(v: Vec2): void {
-    this.usingTools.onEventMove(v);
+  /** 手指/滑鼠 移動過程(下壓時的移動過程) */
+  onEventMoveActive(v: Vec2): void {
+    console.log("onEventMoveActive");
+    this.usingTools.onEventMoveActive(v);
+  }
+  /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
+  onEventMoveInActive(v: Vec2): void {
+    console.log("onEventMoveInActive");
+    this.usingTools.onEventMoveInActive(v);
   }
   /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
   onEventEnd(v: Vec2): void {
+    console.log("onEventEnd");
     this.usingTools.onEventEnd(v);
   }
 
@@ -57,25 +61,28 @@ export class ToolsManagement {
   }
 
   switchTypeTo(v: ToolsEnum): void {
-    this.__toolsType = v;
-    switch (v) {
-      case ToolsEnum.選擇器:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      case ToolsEnum.鉛筆:
-        this.usingTools = new PencilTools(this.board);
-        break;
-      case ToolsEnum.擦子:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      case ToolsEnum.文字框:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      case ToolsEnum.圖形生成:
-        this.usingTools = new SelectTools(this.board);
-        break;
-      default:
-        break;
+    if (this.__toolsType !== v) {
+      this.usingTools?.onDestroy();
+      this.__toolsType = v;
+      switch (v) {
+        case ToolsEnum.選擇器:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        case ToolsEnum.鉛筆:
+          this.usingTools = new PencilTools(this.board);
+          break;
+        case ToolsEnum.擦子:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        case ToolsEnum.文字框:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        case ToolsEnum.圖形生成:
+          this.usingTools = new SelectTools(this.board);
+          break;
+        default:
+          break;
+      }
     }
   }
 

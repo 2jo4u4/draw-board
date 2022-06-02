@@ -1,37 +1,53 @@
-import { Board, Vec2 } from "..";
+import { Board, defaultStyle, padding, UtilTools, Rect } from "..";
 
-export interface MinRectVec {
-  leftTop: Vec2;
-  rightBottom: Vec2;
+interface ShapeAction {
+  type: ShapeActionType;
+  matrix: DOMMatrix;
 }
-export interface Styles {
-  lineColor: string;
-  lineWidth: number;
-  fillColor?: string;
-}
-
-export const defaultStyle: Styles = {
-  lineColor: "#000",
-  lineWidth: 2,
-  fillColor: undefined,
-};
-export const padding = 8; // px
 /**
  * 圖形基本類
  */
 export class BaseShape {
-  readonly $type = "base-shape";
+  readonly $type;
   readonly id: string;
+  readonly board: Board;
+  /** 圖形路徑 */
   path: Path2D;
-  board: Board;
+  /** 樣式 */
   style: Styles;
+  /**
+   * @deprecated 用 coveredRect 代替
+   *
+   * 紀錄一個路徑的最小包覆矩形
+   */
+  minRect: MinRectVec;
+
   /** 紀錄一個路徑的最小包覆矩形 */
-  minRect: MinRectVec = {
-    leftTop: { x: 0, y: 0 },
-    rightBottom: { x: 0, y: 0 },
-  };
+  coveredRect: Rect;
   /** 判斷是否被選取的路徑 */
-  selectRectPath: Path2D;
+  bindingBox: Path2D;
+  /** 是否被選取 */
+  private __isSelect = false;
+  get isSelect() {
+    return this.__isSelect;
+  }
+  set isSelect(b: boolean) {
+    this.__isSelect = this.__isDelete ? false : b;
+  }
+  /** 是否被刪除 */
+  private __isDelete = false;
+  get isDelete() {
+    return this.__isDelete;
+  }
+  set isDelete(b: boolean) {
+    this.__isSelect = false;
+    this.__isDelete = b;
+  }
+
+  /** 紀錄 */
+  shapeActionLog: ShapeAction[] = [];
+  shapeActionLimit: number;
+
   constructor(
     id: string,
     board: Board,
@@ -39,26 +55,84 @@ export class BaseShape {
     style: Styles,
     minRect: MinRectVec
   ) {
+    this.$type = "base-shape";
     this.id = id;
     this.board = board;
     this.path = new Path2D(path);
-    this.style = Object.assign(defaultStyle, style);
+    this.style = Object.assign(UtilTools.deepClone(defaultStyle), style);
+    this.bindingBox = UtilTools.minRectToPath(minRect, padding);
+    this.shapeActionLimit = board.actionStoreLimit;
+
+    this.coveredRect = new Rect(minRect);
+    // ------delete------
     this.minRect = minRect;
-    const {
-      leftTop: { x: sX, y: sY },
-      rightBottom: { x: eX, y: eY },
-    } = minRect;
-    this.selectRectPath = new Path2D();
-    // 稍微加大範圍
-    this.selectRectPath.rect(
-      sX - padding,
-      sY - padding,
-      eX - sX + padding * 2,
-      eY - sY + padding * 2
-    );
   }
 
-  openSelectRect() {
-    this.board.ctx.stroke(this.selectRectPath);
+  /**
+   * @deprecated
+   *
+   * 移除function
+   */
+  moveStart(v: Vec2) {}
+  /**
+   * @deprecated
+   *
+   * 使用 transfer 替代
+   */
+  move(v: Vec2) {}
+  /**
+   * @deprecated
+   *
+   * 使用 transferEnd 替代
+   *
+   */
+  moveEnd(v: Vec2) {}
+
+  transfer(v: Vec2, matrix: DOMMatrix): void {
+    // updata shape path  & rerender event layer
+    const s = this.style,
+      newPath = new Path2D();
+    newPath.addPath(this.path, matrix);
+    this.board.rerenderToEvent({ bs: { p: newPath, s } });
+  }
+
+  transferEnd(v: Vec2, matrix: DOMMatrix, type: ShapeActionType): void {
+    // updata shape path  & rerender event layer
+    const s = this.style,
+      newPath = new Path2D();
+    newPath.addPath(this.path, matrix);
+    this.path = newPath;
+    this.board.rerenderToEvent({ bs: { p: this.path, s } });
+    switch (type) {
+      case "translate":
+        this.coveredRect.translateSelf(matrix);
+        break;
+      case "rotate":
+        this.coveredRect.rotateSelf(matrix);
+        break;
+      case "ne-scale":
+      case "nw-scale":
+      case "se-scale":
+      case "sw-scale":
+        this.coveredRect.scaleSelf(matrix);
+        break;
+    }
+
+    const newBindingBox = new Path2D();
+    newBindingBox.addPath(this.bindingBox, matrix);
+    this.bindingBox = newBindingBox;
+    this.logAction(type, matrix.inverse());
+  }
+
+  undo() {}
+  redo() {}
+
+  logAction(type: ShapeActionType, matrix: DOMMatrix) {
+    this.shapeActionLog.push({ type, matrix });
+
+    if (this.shapeActionLog.length > this.shapeActionLimit) {
+      const [remove, ...keep] = this.shapeActionLog;
+      this.shapeActionLog = keep;
+    }
   }
 }
