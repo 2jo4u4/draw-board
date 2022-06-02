@@ -96,7 +96,7 @@ export class BaseShape {
     this.board.rerenderToEvent({ bs: { p: newPath, s } });
   }
 
-  transferEnd(matrix: DOMMatrix, type: ShapeActionType): void {
+  transferEnd(v: Vec2, matrix: DOMMatrix, type: ShapeActionType): void {
     // updata shape path  & rerender event layer
     const s = this.style,
       newPath = new Path2D();
@@ -110,7 +110,10 @@ export class BaseShape {
       case "rotate":
         this.coveredRect.rotateSelf(matrix);
         break;
-      case "scale":
+      case "ne-scale":
+      case "nw-scale":
+      case "se-scale":
+      case "sw-scale":
         this.coveredRect.scaleSelf(matrix);
         break;
     }
@@ -118,7 +121,6 @@ export class BaseShape {
     const newBindingBox = new Path2D();
     newBindingBox.addPath(this.bindingBox, matrix);
     this.bindingBox = newBindingBox;
-
     this.logAction(type, matrix.inverse());
   }
 

@@ -3,15 +3,6 @@ import { Board, defaultSolidboxStyle, padding, UtilTools, Rect } from "..";
 import trash from "../assets/trash-bin-svgrepo-com.svg";
 import rotate from "../assets/redo-svgrepo-com.svg";
 
-type ActionFlag =
-  | "move" // 移動
-  | "rotate" // 旋轉
-  | "nw-scale" // 縮放左上
-  | "ne-scale" // 縮放右上
-  | "sw-scale" // 縮放左下
-  | "se-scale" // 縮放右下
-  | null;
-
 type ScalePoint = [Path2D, Path2D, Path2D, Path2D];
 const defauletScalePoint: Styles = {
   lineColor: "red",
@@ -31,7 +22,8 @@ export class SelectSolidRect extends BaseShape {
   shapes: BaseShape[] = [];
   scalePoint: ScalePoint;
   rotatePoint: Path2D;
-  flag: ActionFlag;
+  flag: ShapeActionType | null;
+  initDegree: number;
 
   constructor(board: Board) {
     super("selectRect_onlyOne", board, new Path2D(), defaultSolidboxStyle, {
@@ -44,6 +36,7 @@ export class SelectSolidRect extends BaseShape {
     this.rotatePoint = new Path2D();
     this.scalePoint = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
     this.flag = null;
+    this.initDegree = 0;
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
@@ -92,7 +85,7 @@ export class SelectSolidRect extends BaseShape {
       this.flag = "se-scale";
       this.board.changeCursor("se-resize");
     } else if (this.board.checkPointInPath(this.path, v)) {
-      this.flag = "move";
+      this.flag = "translate";
       this.board.changeCursor("move");
     } else {
       this.board.changeCursor("default");
@@ -104,73 +97,77 @@ export class SelectSolidRect extends BaseShape {
   }
 
   handleStart(v: Vec2) {
-    console.log("start", v);
-
     this.startPosition = v;
+    this.initDegree = UtilTools.getDegree(
+      UtilTools.getAngle(this.coveredRect.centerPoint, v)
+    );
     switch (this.flag) {
-      case "move":
-        // no need setting
-        break;
       case "rotate":
         this.board.changeCursor("grabbing");
         break;
-      case "nw-scale":
-        break;
-      case "ne-scale":
-        break;
-      case "sw-scale":
-        break;
-      case "se-scale":
       default:
         break;
     }
   }
   handleActive(v: Vec2) {
     switch (this.flag) {
-      case "move":
-        this.transfer(v, UtilTools.translate(this.startPosition, v));
+      case "translate":
+        {
+          const matrix = UtilTools.translate(this.startPosition, v);
+          this.transfer(v, matrix);
+          this.updateRotateAndScale(matrix);
+        }
         break;
       case "rotate":
-        this.transfer(
-          v,
-          UtilTools.rotate(this.startPosition, v, this.coveredRect)
-        );
+        {
+          const matrix = UtilTools.rotate(
+            this.coveredRect.centerPoint,
+            v,
+            this.initDegree
+          );
+          this.transfer(v, matrix);
+        }
         break;
       case "nw-scale":
-        this.transfer(
-          v,
-          UtilTools.scale(
+        {
+          const matrix = UtilTools.scale(
             v,
             this.startPosition,
-            this.coveredRect.rightBottomPoint
-          )
-        );
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer(v, matrix);
+        }
         break;
       case "ne-scale":
-        this.transfer(
-          v,
-          UtilTools.scale(
+        {
+          const matrix = UtilTools.scale(
             { x: this.startPosition.x, y: v.y },
             { x: v.x, y: this.startPosition.y },
-            this.coveredRect.leftBottomPoint
-          )
-        );
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer(v, matrix);
+        }
         break;
       case "sw-scale":
-        this.transfer(
-          v,
-          UtilTools.scale(
+        {
+          const matrix = UtilTools.scale(
             { x: v.x, y: this.startPosition.y },
             { x: this.startPosition.x, y: v.y },
-            this.coveredRect.rightTopPoint
-          )
-        );
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer(v, matrix);
+        }
         break;
       case "se-scale":
-        this.transfer(
-          v,
-          UtilTools.scale(this.startPosition, v, this.coveredRect.leftTopPoint)
-        );
+        {
+          const matrix = UtilTools.scale(
+            this.startPosition,
+            v,
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer(v, matrix);
+        }
+        break;
     }
   }
   handleInactive(v: Vec2) {
@@ -179,77 +176,90 @@ export class SelectSolidRect extends BaseShape {
     }
   }
   handleEnd(v: Vec2) {
-    console.log("end", v);
-
     switch (this.flag) {
-      case "move":
-        this.transferEnd(
-          UtilTools.translate(this.startPosition, v),
-          "translate"
-        );
+      case "translate":
+        {
+          const matrix = UtilTools.translate(this.startPosition, v);
+          this.transferEnd(v, matrix);
+          this.updateRotateAndScale(matrix, true);
+        }
         break;
       case "rotate":
-        this.board.changeCursor("grab");
-        this.transferEnd(
-          UtilTools.rotate(this.startPosition, v, this.coveredRect),
-          "rotate"
-        );
+        {
+          const matrix = UtilTools.rotate(
+            this.coveredRect.centerPoint,
+            v,
+            this.initDegree
+          );
+          this.board.changeCursor("grab");
+          this.transferEnd(v, matrix);
+        }
+
         break;
       case "nw-scale":
-        this.transferEnd(
-          UtilTools.scale(
+        {
+          const matrix = UtilTools.scale(
             v,
             this.startPosition,
-            this.coveredRect.rightBottomPoint
-          ),
-          "scale"
-        );
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix);
+        }
         break;
       case "ne-scale":
-        this.transferEnd(
-          UtilTools.scale(
+        {
+          const matrix = UtilTools.scale(
             { x: this.startPosition.x, y: v.y },
             { x: v.x, y: this.startPosition.y },
-            this.coveredRect.leftBottomPoint
-          ),
-          "scale"
-        );
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix);
+        }
         break;
       case "sw-scale":
-        this.transferEnd(
-          UtilTools.scale(
+        {
+          const matrix = UtilTools.scale(
             { x: v.x, y: this.startPosition.y },
             { x: this.startPosition.x, y: v.y },
-            this.coveredRect.rightTopPoint
-          ),
-          "scale"
-        );
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix);
+        }
         break;
       case "se-scale":
-        this.transferEnd(
-          UtilTools.scale(this.startPosition, v, this.coveredRect.leftTopPoint),
-          "scale"
-        );
+        {
+          const matrix = UtilTools.scale(
+            this.startPosition,
+            v,
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix);
+        }
+        break;
     }
     this.flag = null;
   }
 
   override transfer(v: Vec2, matrix: DOMMatrix): void {
-    this.board.clearCanvas("event");
-    this.actionBar.closeBar();
-    this.shapes.forEach((bs) => {
-      bs.transfer(v, matrix);
-    });
-    super.transfer(v, matrix);
+    if (this.flag !== null) {
+      this.board.clearCanvas("event");
+      this.actionBar.closeBar();
+      this.shapes.forEach((bs) => {
+        bs.transfer(v, matrix);
+      });
+      super.transfer(v, matrix);
+    }
   }
 
-  override transferEnd(matrix: DOMMatrix, type: ShapeActionType): void {
-    this.board.clearCanvas("event");
-    this.shapes.forEach((bs) => {
-      bs.transferEnd(matrix, type);
-    });
-    super.transferEnd(matrix, type);
-    this.actionBar.openBar(this.coveredRect.rectPoint);
+  override transferEnd(v: Vec2, matrix: DOMMatrix): void {
+    if (this.flag !== null) {
+      this.board.clearCanvas("event");
+      this.shapes.forEach((bs) => {
+        bs.transferEnd(v, matrix, this.flag as ShapeActionType);
+      });
+      super.transferEnd(v, matrix, this.flag);
+      this.actionBar.openBar(this.coveredRect.rectPoint);
+    }
   }
 
   /** 設定 path (bindingBox 於 特此類中 等價 path) */
@@ -356,13 +366,11 @@ class ActionBar {
         leftTop: { x: x1, y: y1 },
         rightBottom: { x: x2, y: y2 },
       } = mrv;
-      const width = x2 - x1 + padding * 2 + defaultSolidboxStyle.lineWidth * 2;
       this.block.style.top = `${y1 / this.board.devicePixelRatio - interval}px`;
       this.block.style.left = `${
         (x1 - padding - defaultSolidboxStyle.lineWidth) /
         this.board.devicePixelRatio
       }px`;
-      this.block.style.width = `${width / this.board.devicePixelRatio}px`;
       this.rootBlock.append(this.block);
     }
   }

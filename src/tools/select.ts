@@ -102,7 +102,7 @@ export class SelectTools implements BaseTools {
         .find((item) => !item[1].isDelete && this.isSelected(v, item[1]));
       if (single) {
         shape = [single];
-        minRectVec = single[1].minRect;
+        minRectVec = single[1].coveredRect.rectPoint;
       }
     } else {
       // 移動結束
@@ -114,7 +114,7 @@ export class SelectTools implements BaseTools {
       if (regBS.length > 0) {
         shape = regBS;
         minRectVec = UtilTools.mergeMinRect(
-          ...regBS.map((bs) => bs[1].minRect)
+          ...regBS.map((bs) => bs[1].coveredRect.rectPoint)
         );
       }
     }
@@ -163,7 +163,7 @@ export class SelectTools implements BaseTools {
     const {
       leftTop: { x: x1, y: y1 },
       rightBottom: { x: x2, y: y2 },
-    } = bs.minRect;
+    } = bs.coveredRect.rectPoint;
 
     if (selectx1 <= x1 && selecty1 <= y1 && selectx2 >= x2 && selecty2 >= y2) {
       // 完全包覆

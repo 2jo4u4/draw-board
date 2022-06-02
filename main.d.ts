@@ -19,4 +19,10 @@ interface Vec2 {
   y: number;
 }
 
-type ShapeActionType = "translate" | "rotate" | "scale";
+type ShapeActionType =
+  | "translate" // 移動
+  | "rotate" // 旋轉
+  | "nw-scale" // 縮放左上
+  | "ne-scale" // 縮放右上
+  | "sw-scale" // 縮放左下
+  | "se-scale"; // 縮放右下

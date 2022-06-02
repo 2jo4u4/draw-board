@@ -203,34 +203,27 @@ export class UtilTools {
     return new DOMMatrix().translate(dx, dy);
   }
   /** 旋轉 */
-  static rotate(prev: Vec2, next: Vec2, v?: Rect | Vec2): DOMMatrix {
-    let center: Vec2 = { x: 0, y: 0 };
-    if (v) {
-      if (v instanceof Rect) {
-        center = v.centerPoint;
-      } else {
-        center = v;
-      }
-    }
-
+  static rotate(center: Vec2, next: Vec2, initDegree?: number): DOMMatrix {
     return new DOMMatrix()
       .translate(center.x, center.y)
-      .rotate(UtilTools.getAngle(prev, next))
+      .rotate(UtilTools.getDegree(UtilTools.getAngle(center, next), initDegree))
       .translate(-center.x, -center.y);
   }
   /** 縮放 */
-  static scale(prev: Vec2, next: Vec2, v?: Rect | Vec2): DOMMatrix {
-    let center: Vec2 = { x: 0, y: 0 },
-      scaleX = next.x / prev.x,
+  static scale(prev: Vec2, next: Vec2, c?: Rect | Vec2): DOMMatrix {
+    let center: Vec2 | undefined = undefined;
+    const scaleX = next.x / prev.x,
       scaleY = next.y / prev.y;
-    if (v) {
-      if (v instanceof Rect) {
-        center = v.centerPoint;
+    if (c) {
+      if (c instanceof Rect) {
+        center = c.centerPoint;
       } else {
-        center = v;
+        center = c;
       }
     }
-    return new DOMMatrix().scale(scaleX, scaleY, 1, center.x, center.y);
+    return center
+      ? new DOMMatrix().scale(scaleX, scaleY, 1, center.x, center.y)
+      : new DOMMatrix().scale(scaleX, scaleY);
   }
 
   /** 取得兩點間之弧度 */
@@ -238,6 +231,10 @@ export class UtilTools {
     const { x: x1, y: y1 } = prev,
       { x: x2, y: y2 } = next;
     return Math.atan2(y1 - y2, x1 - x2);
+  }
+
+  static getDegree(angle: number, initDegree = 0): number {
+    return ((angle * 180) / Math.PI - initDegree) % 360;
   }
 }
 
@@ -320,27 +317,62 @@ export class Rect {
   }
 
   translateSelf(matrix: DOMMatrix): Rect {
-    const dx = matrix.e,
-      dy = matrix.f;
-    this.x1 += dx;
-    this.x2 += dx;
-    this.y1 += dy;
-    this.y2 += dy;
+    const p1 = matrix.transformPoint(new DOMPoint(this.x1, this.y1));
+    const p2 = matrix.transformPoint(new DOMPoint(this.x2, this.y2));
+    this.x1 = p1.x;
+    this.y1 = p1.y;
+    this.x2 = p2.x;
+    this.y2 = p2.y;
     return this;
   }
-  scaleSelf(matrix: DOMMatrix, relatively?: Vec2): Rect {
-    const dx = matrix.e,
-      dy = matrix.f;
-    const [width, height] = this.size;
-    if (relatively) {
-    } else {
-      this.centerPoint.x;
-    }
+  scaleSelf(matrix: DOMMatrix): Rect {
+    const p1 = matrix.transformPoint(new DOMPoint(this.x1, this.y1));
+    const p2 = matrix.transformPoint(new DOMPoint(this.x2, this.y2));
+    this.rectPoint = { leftTop: p1, rightBottom: p2 };
 
     return this;
   }
   rotateSelf(matrix: DOMMatrix): Rect {
-    console.log(matrix);
+    const p1 = matrix.transformPoint(new DOMPoint(this.x1, this.y1));
+    const p2 = matrix.transformPoint(new DOMPoint(this.x2, this.y2));
+    this.x1 = Math.min(p1.x, p2.x);
+    this.x2 = Math.max(p1.x, p2.x);
+    this.y1 = Math.min(p1.y, p2.y);
+    this.y2 = Math.max(p1.y, p2.y);
     return this;
+  }
+
+  getReferPointOpposite(type: ShapeActionType): Vec2 {
+    switch (type) {
+      case "nw-scale":
+        return this.rightBottomPoint;
+      case "ne-scale":
+        return this.leftBottomPoint;
+      case "sw-scale":
+        return this.rightTopPoint;
+      case "se-scale":
+        return this.leftTopPoint;
+      case "rotate":
+      case "translate":
+      default:
+        return this.centerPoint;
+    }
+  }
+
+  getReferPointSameSide(type: ShapeActionType): Vec2 {
+    switch (type) {
+      case "nw-scale":
+        return this.leftTopPoint;
+      case "ne-scale":
+        return this.rightTopPoint;
+      case "sw-scale":
+        return this.leftBottomPoint;
+      case "se-scale":
+        return this.rightBottomPoint;
+      case "rotate":
+      case "translate":
+      default:
+        return this.centerPoint;
+    }
   }
 }
