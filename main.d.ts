@@ -7,6 +7,13 @@ interface MinRectVec {
   leftTop: Vec2;
   rightBottom: Vec2;
 }
+
+interface ParallelogramVec {
+  nw: Vec2;
+  ne: Vec2;
+  sw: Vec2;
+  se: Vec2;
+}
 interface Styles {
   lineColor: string;
   lineWidth: number;

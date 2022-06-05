@@ -1,5 +1,4 @@
 import { Board, defaultStyle, padding, UtilTools, Rect } from "..";
-
 interface ShapeAction {
   type: ShapeActionType;
   matrix: DOMMatrix;
@@ -53,19 +52,22 @@ export class BaseShape {
     board: Board,
     path: Path2D,
     style: Styles,
-    minRect: MinRectVec
+    minRect: MinRectVec | Rect
   ) {
     this.$type = "base-shape";
     this.id = id;
     this.board = board;
     this.path = new Path2D(path);
     this.style = Object.assign(UtilTools.deepClone(defaultStyle), style);
-    this.bindingBox = UtilTools.minRectToPath(minRect, padding);
     this.shapeActionLimit = board.actionStoreLimit;
-
-    this.coveredRect = new Rect(minRect);
-    // ------delete------
-    this.minRect = minRect;
+    if (minRect instanceof Rect) {
+      this.coveredRect = minRect;
+    } else {
+      this.coveredRect = new Rect(minRect);
+    }
+    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
+    // delete
+    this.minRect = this.coveredRect.rectPoint;
   }
 
   /**

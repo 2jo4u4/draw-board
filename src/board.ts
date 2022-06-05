@@ -1,8 +1,9 @@
-import { BaseShape, SocketMiddle, ToolsManagement, UtilTools } from ".";
+import { BaseShape, Rect, SocketMiddle, ToolsManagement, UtilTools } from ".";
 import { PreviewWindow } from "./preview";
+import { pencil, earser } from "./assets";
 
 type MouseFlag = "active" | "inactive"; // 滑鼠左鍵 活躍 / 非活躍
-type Action = "draw" | "delete" | "move" | "rotate" | "zoom"; // 可被紀錄的行為
+type Action = "draw" | "delete" | "translate" | "rotate" | "scale" | "putImage"; // 可被紀錄的行為
 export type BoardShapeLog = Map<string, BaseShape>;
 interface ActionStore {
   type: Action;
@@ -116,7 +117,7 @@ export class Board {
     return this.shapes.get(id);
   }
   /** 添加圖形到圖層級 & 紀錄 */
-  addShape(p: Path2D, s: Styles, m: MinRectVec) {
+  addShape(p: Path2D, s: Styles, m: Rect) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys())),
       bs = new BaseShape(id, this, p, s, m);
     this.shapes.set(id, bs);
@@ -124,6 +125,8 @@ export class Board {
     this.rerenderToPaint({ bs });
     this.previewCtrl.rerender();
   }
+
+  addShapeWithFile() {}
   /** 刪除已選圖形 */
   deleteShape() {
     const id: string[] = [];
@@ -236,8 +239,16 @@ export class Board {
       | "se-resize"
       | "grab"
       | "grabbing"
+      | "earser"
+      | "pencil"
   ) {
-    this.canvas.style.cursor = type;
+    if (type === "earser") {
+      this.canvas.style.cursor = earser;
+    } else if (type === "pencil") {
+      this.canvas.style.cursor = pencil;
+    } else {
+      this.canvas.style.cursor = type;
+    }
   }
 
   /** 確認路徑是否包含座標 */

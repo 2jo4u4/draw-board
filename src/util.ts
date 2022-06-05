@@ -10,6 +10,20 @@ export const defaultStyle: Styles = {
   lineDash: [],
 };
 
+export const defaultImageShapeStyle: Styles = {
+  lineColor: "#000000",
+  lineWidth: 4,
+  fillColor: "#00000030",
+  lineDash: [],
+};
+
+export const defaultDeleteStyle: Styles = {
+  lineColor: "red",
+  lineWidth: 4,
+  fillColor: undefined,
+  lineDash: [],
+};
+
 // 選擇固定框預設樣式
 export const defaultSolidboxStyle: Styles = {
   lineWidth: 2,
@@ -48,21 +62,29 @@ export class UtilTools {
   }
 
   /** 揉合兩點座標成最小矩形 */
-  static generateMinRect(v1: Vec2, v2: Vec2): MinRectVec {
+  static generateMinRect(v1: Vec2, v2: Vec2): Rect {
     const { x: x1, y: y1 } = v1;
     const { x: x2, y: y2 } = v2;
 
-    return {
+    return new Rect({
       leftTop: { x: Math.min(x1, x2), y: Math.min(y1, y2) },
       rightBottom: { x: Math.max(x1, x2), y: Math.max(y1, y2) },
-    };
+    });
   }
 
   /** 是否為 Vec2 */
-  static isVec2(v: Vec2 | MinRectVec): v is Vec2 {
+  static isVec2(v: unknown): v is Vec2 {
     return (
       Object.prototype.hasOwnProperty.call(v, "x") &&
       Object.prototype.hasOwnProperty.call(v, "y")
+    );
+  }
+
+  /** 是否為 MinRectVec */
+  static isMinRectVec(v: unknown): v is MinRectVec {
+    return (
+      Object.prototype.hasOwnProperty.call(v, "leftTop") &&
+      Object.prototype.hasOwnProperty.call(v, "rightBottom")
     );
   }
 
@@ -94,7 +116,7 @@ export class UtilTools {
    * @param arge 各個矩形
    * @returns 可包含所有矩形之最小矩形
    */
-  static mergeMinRect(...arge: MinRectVec[]): MinRectVec {
+  static mergeMinRect(...arge: MinRectVec[]): Rect {
     const rect: MinRectVec = {
       leftTop: { x: Infinity, y: Infinity },
       rightBottom: { x: 0, y: 0 },
@@ -117,7 +139,7 @@ export class UtilTools {
       rect.rightBottom.y = Math.max(ey, ney);
     });
 
-    return rect;
+    return new Rect(rect);
   }
 
   /** 深拷貝 */
@@ -162,20 +184,36 @@ export class UtilTools {
     ctx.fillStyle = fillColor || "";
   }
 
-  /** 利用最小矩形產生路徑 */
-  static minRectToPath(mrv: MinRectVec, padding = 0): Path2D {
-    const {
-      leftTop: { x: x1, y: y1 },
-      rightBottom: { x: x2, y: y2 },
-    } = mrv;
-    const path = new Path2D();
-    path.rect(
-      x1 - padding,
-      y1 - padding,
-      x2 - x1 + padding * 2,
-      y2 - y1 + padding * 2
-    );
-    return path;
+  /**
+   * 利用最小矩形產生路徑
+   *
+   * @deprecated parameter(padding) will delete
+   */
+  static minRectToPath(mrv: Rect | MinRectVec, padding = 0): Path2D {
+    const scaleX = 1.2,
+      scaleY = 1.2,
+      path = new Path2D(),
+      m = new DOMMatrix();
+    if (mrv instanceof Rect) {
+      const { nw, ne, sw, se } = mrv;
+      path.moveTo(nw.x, nw.y);
+      path.lineTo(ne.x, ne.y);
+      path.lineTo(se.x, se.y);
+      path.lineTo(sw.x, sw.y);
+      path.lineTo(nw.x, nw.y);
+      m.scale(scaleX, scaleY, 1, mrv.centerPoint.x, mrv.centerPoint.y);
+    } else {
+      const {
+        leftTop: { x: x1, y: y1 },
+        rightBottom: { x: x2, y: y2 },
+      } = mrv;
+      path.rect(x1, y1, x2 - x1, y2 - y1);
+      m.scale(scaleX, scaleY, 1, x1 + (x2 - x1), y1 + (y2 - y1));
+    }
+    const mp = new Path2D();
+    mp.addPath(path, m);
+
+    return mp;
   }
 
   static isBaseShape(bs: unknown): bs is BaseShape {
@@ -239,119 +277,116 @@ export class UtilTools {
 }
 
 export class Rect {
-  x1: number;
-  x2: number;
-  y1: number;
-  y2: number;
-  constructor(p1: Vec2 | MinRectVec, p2?: Vec2) {
-    if (UtilTools.isVec2(p1)) {
-      this.x1 = p1.x;
-      this.y1 = p1.y;
-      this.x2 = p2 ? p2.x : p1.x;
-      this.y2 = p2 ? p2.y : p1.y;
+  nw: DOMPoint;
+  ne: DOMPoint;
+  sw: DOMPoint;
+  se: DOMPoint;
+
+  rotatePoint: DOMPoint;
+  constructor(
+    nw?: Vec2 | MinRectVec | DOMPoint,
+    ne?: Vec2 | DOMPoint,
+    sw?: Vec2 | DOMPoint,
+    se?: Vec2 | DOMPoint
+  ) {
+    if (nw) {
+      if (UtilTools.isMinRectVec(nw)) {
+        this.nw = new DOMPoint(nw.leftTop.x, nw.leftTop.y);
+        this.ne = new DOMPoint(nw.rightBottom.x, nw.leftTop.y);
+        this.sw = new DOMPoint(nw.leftTop.x, nw.rightBottom.y);
+        this.se = new DOMPoint(nw.rightBottom.x, nw.rightBottom.y);
+      } else {
+        this.nw = new DOMPoint(nw.x, nw.y);
+        this.ne = ne ? new DOMPoint(ne.x, ne.y) : new DOMPoint(nw.x, nw.y);
+        this.sw = sw ? new DOMPoint(sw.x, sw.y) : new DOMPoint(nw.x, nw.y);
+        this.se = se ? new DOMPoint(se.x, se.y) : new DOMPoint(nw.x, nw.y);
+      }
     } else {
-      this.x1 = p1.leftTop.x;
-      this.y1 = p1.leftTop.y;
-      this.x2 = p1.rightBottom.x;
-      this.y2 = p1.rightBottom.y;
+      this.nw = new DOMPoint();
+      this.ne = new DOMPoint();
+      this.sw = new DOMPoint();
+      this.se = new DOMPoint();
     }
+
+    this.rotatePoint = new DOMPoint(this.sw.x - padding, this.sw.y + padding);
   }
 
   get centerPoint(): Vec2 {
     return {
-      x: this.x1 + (this.x2 - this.x1) / 2,
-      y: this.y1 + (this.y2 - this.y1) / 2,
+      x: (this.nw.x + this.se.x) / 2,
+      y: (this.nw.y + this.se.y) / 2,
     };
-  }
-
-  /** @returns [width, height] */
-  get size(): [number, number] {
-    return [this.x2 - this.x1, this.y2 - this.y1];
   }
 
   get rectPoint(): MinRectVec {
+    const x = [this.nw.x, this.sw.x, this.ne.x, this.se.x],
+      y = [this.nw.y, this.sw.y, this.ne.y, this.se.y];
+
     return {
-      leftTop: { x: this.x1, y: this.y1 },
-      rightBottom: { x: this.x2, y: this.y2 },
+      leftTop: { x: Math.min(...x), y: Math.min(...y) },
+      rightBottom: { x: Math.max(...x), y: Math.max(...y) },
     };
   }
 
-  set rectPoint(mrv: MinRectVec) {
-    this.x1 = mrv.leftTop.x;
-    this.y1 = mrv.leftTop.y;
-    this.x2 = mrv.rightBottom.x;
-    this.y2 = mrv.rightBottom.y;
+  get nwPoint(): Vec2 {
+    return this.nw;
   }
 
-  get leftTopPoint(): Vec2 {
-    return { x: this.x1, y: this.y1 };
+  get nePoint(): Vec2 {
+    return this.ne;
   }
 
-  get rightBottomPoint(): Vec2 {
-    return { x: this.x2, y: this.y2 };
+  get swPoint(): Vec2 {
+    return this.sw;
   }
 
-  get leftBottomPoint(): Vec2 {
-    return { x: this.x1, y: this.y2 };
+  get sePoint(): Vec2 {
+    return this.se;
   }
 
-  get rightTopPoint(): Vec2 {
-    return { x: this.x2, y: this.y1 };
+  get fourCorner(): [DOMPoint, DOMPoint, DOMPoint, DOMPoint] {
+    return [this.nw, this.ne, this.sw, this.se];
   }
 
   clone(): Rect {
-    return new Rect(this.leftTopPoint, this.rightBottomPoint);
-  }
-
-  translate(matrix: DOMMatrix): Rect {
-    console.log(matrix);
-    return new Rect(this.leftTopPoint, this.rightBottomPoint);
-  }
-  scale(matrix: DOMMatrix): Rect {
-    console.log(matrix);
-    return new Rect(this.leftTopPoint, this.rightBottomPoint);
-  }
-  rotate(matrix: DOMMatrix): Rect {
-    console.log(matrix);
-    return new Rect(this.leftTopPoint, this.rightBottomPoint);
+    return new Rect(this.nw, this.ne, this.sw, this.se);
   }
 
   translateSelf(matrix: DOMMatrix): Rect {
-    const p1 = matrix.transformPoint(new DOMPoint(this.x1, this.y1));
-    const p2 = matrix.transformPoint(new DOMPoint(this.x2, this.y2));
-    this.x1 = p1.x;
-    this.y1 = p1.y;
-    this.x2 = p2.x;
-    this.y2 = p2.y;
+    this.nw = this.nw.matrixTransform(matrix);
+    this.ne = this.ne.matrixTransform(matrix);
+    this.sw = this.sw.matrixTransform(matrix);
+    this.se = this.se.matrixTransform(matrix);
+    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
   scaleSelf(matrix: DOMMatrix): Rect {
-    const p1 = matrix.transformPoint(new DOMPoint(this.x1, this.y1));
-    const p2 = matrix.transformPoint(new DOMPoint(this.x2, this.y2));
-    this.rectPoint = { leftTop: p1, rightBottom: p2 };
-
+    this.nw = this.nw.matrixTransform(matrix);
+    this.ne = this.ne.matrixTransform(matrix);
+    this.sw = this.sw.matrixTransform(matrix);
+    this.se = this.se.matrixTransform(matrix);
+    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
   rotateSelf(matrix: DOMMatrix): Rect {
-    const p1 = matrix.transformPoint(new DOMPoint(this.x1, this.y1));
-    const p2 = matrix.transformPoint(new DOMPoint(this.x2, this.y2));
-    this.x1 = Math.min(p1.x, p2.x);
-    this.x2 = Math.max(p1.x, p2.x);
-    this.y1 = Math.min(p1.y, p2.y);
-    this.y2 = Math.max(p1.y, p2.y);
+    this.nw = this.nw.matrixTransform(matrix);
+    this.ne = this.ne.matrixTransform(matrix);
+    this.sw = this.sw.matrixTransform(matrix);
+    this.se = this.se.matrixTransform(matrix);
+    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
 
   getReferPointOpposite(type: ShapeActionType): Vec2 {
     switch (type) {
       case "nw-scale":
-        return this.rightBottomPoint;
+        return this.sePoint;
       case "ne-scale":
-        return this.leftBottomPoint;
+        return this.swPoint;
       case "sw-scale":
-        return this.rightTopPoint;
+        return this.nePoint;
       case "se-scale":
-        return this.leftTopPoint;
+        return this.nwPoint;
       case "rotate":
       case "translate":
       default:
@@ -362,13 +397,13 @@ export class Rect {
   getReferPointSameSide(type: ShapeActionType): Vec2 {
     switch (type) {
       case "nw-scale":
-        return this.leftTopPoint;
+        return this.nwPoint;
       case "ne-scale":
-        return this.rightTopPoint;
+        return this.nePoint;
       case "sw-scale":
-        return this.leftBottomPoint;
+        return this.swPoint;
       case "se-scale":
-        return this.rightBottomPoint;
+        return this.sePoint;
       case "rotate":
       case "translate":
       default:

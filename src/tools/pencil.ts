@@ -1,5 +1,5 @@
 import { BaseTools } from ".";
-import { Board, defaultStyle, UtilTools } from "..";
+import { Board, defaultStyle, Rect, UtilTools } from "..";
 
 /** 鉛筆 */
 export class PencilTools implements BaseTools {
@@ -16,9 +16,13 @@ export class PencilTools implements BaseTools {
   constructor(board: Board, drawStyle = defaultStyle) {
     this.board = board;
     this.drawStyle = drawStyle;
+    board.changeCursor("earser");
+    board.changeCursor("pencil");
   }
 
-  onDestroy(): void {}
+  onDestroy(): void {
+    this.board.changeCursor("default");
+  }
 
   changeStyle(s: Styles): void {
     this.drawStyle = s;
@@ -57,7 +61,7 @@ export class PencilTools implements BaseTools {
   }
   private addToBoard(v: Vec2) {
     // 新增畫好的圖形
-    this.board.addShape(this.path, this.drawStyle, this.minRect);
+    this.board.addShape(this.path, this.drawStyle, new Rect(this.minRect));
   }
   private drawOver() {
     // 畫完後刪除事件層級的圖

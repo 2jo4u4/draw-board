@@ -5,6 +5,7 @@ import {
   UtilTools,
   BaseTools,
   defaultFlexboxStyle,
+  Rect,
 } from "..";
 
 type SelectFlag = "none" | "selected"; // 是否有選到圖形
@@ -93,7 +94,7 @@ export class SelectTools implements BaseTools {
   }
 
   private selectEnd(v: Vec2) {
-    let minRectVec!: MinRectVec, // 紀錄最小矩形
+    let minRectVec!: Rect, // 紀錄最小矩形
       shape: [string, BaseShape][] = [];
     if (v.x === this.startPosition.x && v.y === this.startPosition.y) {
       // 單點選擇圖形
@@ -102,7 +103,7 @@ export class SelectTools implements BaseTools {
         .find((item) => !item[1].isDelete && this.isSelected(v, item[1]));
       if (single) {
         shape = [single];
-        minRectVec = single[1].coveredRect.rectPoint;
+        minRectVec = single[1].coveredRect;
       }
     } else {
       // 移動結束
@@ -124,6 +125,7 @@ export class SelectTools implements BaseTools {
         item[1].isSelect = true;
       });
       this.board.rerender();
+
       this.selectSolidRect.settingAndOpen(minRectVec);
     } else {
       this.board.clearCanvas("event");
@@ -146,7 +148,7 @@ export class SelectTools implements BaseTools {
   }
 
   /** 是否選中 */
-  private isSelected(v: Vec2 | MinRectVec, bs: BaseShape): Boolean {
+  private isSelected(v: Vec2 | Rect, bs: BaseShape): Boolean {
     if (UtilTools.isVec2(v)) {
       return this.board.ctx.isPointInPath(bs.bindingBox, v.x, v.y);
     } else {
@@ -155,10 +157,10 @@ export class SelectTools implements BaseTools {
   }
 
   /** 範圍內是否選中 */
-  private isInRectBlock(r: MinRectVec, bs: BaseShape): boolean {
+  private isInRectBlock(r: Rect, bs: BaseShape): boolean {
     const {
-      leftTop: { x: selectx1, y: selecty1 },
-      rightBottom: { x: selectx2, y: selecty2 },
+      nw: { x: selectx1, y: selecty1 },
+      se: { x: selectx2, y: selecty2 },
     } = r;
     const {
       leftTop: { x: x1, y: y1 },

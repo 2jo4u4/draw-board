@@ -1,7 +1,6 @@
-import { BaseShape } from ".";
 import { Board, defaultSolidboxStyle, padding, UtilTools, Rect } from "..";
+import { BaseShape } from "./";
 import trash from "../assets/trash-bin-svgrepo-com.svg";
-import rotate from "../assets/redo-svgrepo-com.svg";
 
 type ScalePoint = [Path2D, Path2D, Path2D, Path2D];
 const defauletScalePoint: Styles = {
@@ -20,48 +19,46 @@ export class SelectSolidRect extends BaseShape {
   readonly actionBar: ActionBar;
   startPosition!: Vec2;
   shapes: BaseShape[] = [];
-  scalePoint: ScalePoint;
-  rotatePoint: Path2D;
+  scalePath: ScalePoint;
+  rotatePath: Path2D;
   flag: ShapeActionType | null;
   initDegree: number;
 
   constructor(board: Board) {
-    super("selectRect_onlyOne", board, new Path2D(), defaultSolidboxStyle, {
-      rightBottom: { x: 0, y: 0 },
-      leftTop: { x: 0, y: 0 },
-    });
+    super(
+      "selectRect_onlyOne",
+      board,
+      new Path2D(),
+      defaultSolidboxStyle,
+      new Rect()
+    );
     this.$type = "selectSolid-shape";
     this.actionBar = new ActionBar(board, this, ["delete"]);
 
-    this.rotatePoint = new Path2D();
-    this.scalePoint = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    this.rotatePath = new Path2D();
+    this.scalePath = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
     this.flag = null;
     this.initDegree = 0;
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
-  settingAndOpen(mrv: MinRectVec) {
-    this.setting(mrv);
-    this.actionBar.openBar(mrv);
-  }
+  settingAndOpen(mrv: Rect) {
+    const clone = mrv.clone();
 
-  /** 設定路徑 / 矩形 / 紀錄被選取的圖形 */
-  setting(mrv: MinRectVec) {
-    this.coveredRect = new Rect(mrv);
-    this.settingBindingBox(UtilTools.minRectToPath(mrv, padding));
-    const s = this.style,
-      p = this.path;
-    this.board.rerenderToEvent({ bs: { s, p } });
-    this.settingRotateAndScale(mrv);
+    this.coveredRect = clone;
+    this.assignPathAndDraw();
+
     this.shapes = Array.from(this.board.shapes)
       .filter((bs) => !bs[1].isDelete && bs[1].isSelect)
       .map((bs) => bs[1]);
+
+    this.actionBar.openBar(clone);
   }
 
   /** 清除最小矩形 並 關閉控制欄位 */
   closeSolidRect() {
     this.actionBar.closeBar();
-    this.settingBindingBox();
+    this.clearAllPath();
     this.shapes = [];
     this.flag = null;
     this.board.changeCursor("default");
@@ -69,19 +66,19 @@ export class SelectSolidRect extends BaseShape {
 
   isCovered(v: Vec2): boolean {
     let ans = true;
-    if (this.board.checkPointInPath(this.rotatePoint, v)) {
+    if (this.board.checkPointInPath(this.rotatePath, v)) {
       this.flag = "rotate";
       this.board.changeCursor("grab");
-    } else if (this.board.checkPointInPath(this.scalePoint[0], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[0], v)) {
       this.flag = "nw-scale";
       this.board.changeCursor("nw-resize");
-    } else if (this.board.checkPointInPath(this.scalePoint[1], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[1], v)) {
       this.flag = "ne-scale";
       this.board.changeCursor("ne-resize");
-    } else if (this.board.checkPointInPath(this.scalePoint[2], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[2], v)) {
       this.flag = "sw-scale";
       this.board.changeCursor("sw-resize");
-    } else if (this.board.checkPointInPath(this.scalePoint[3], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[3], v)) {
       this.flag = "se-scale";
       this.board.changeCursor("se-resize");
     } else if (this.board.checkPointInPath(this.path, v)) {
@@ -105,8 +102,6 @@ export class SelectSolidRect extends BaseShape {
       case "rotate":
         this.board.changeCursor("grabbing");
         break;
-      default:
-        break;
     }
   }
   handleActive(v: Vec2) {
@@ -115,7 +110,6 @@ export class SelectSolidRect extends BaseShape {
         {
           const matrix = UtilTools.translate(this.startPosition, v);
           this.transfer(v, matrix);
-          this.updateRotateAndScale(matrix);
         }
         break;
       case "rotate":
@@ -181,7 +175,6 @@ export class SelectSolidRect extends BaseShape {
         {
           const matrix = UtilTools.translate(this.startPosition, v);
           this.transferEnd(v, matrix);
-          this.updateRotateAndScale(matrix, true);
         }
         break;
       case "rotate":
@@ -194,7 +187,6 @@ export class SelectSolidRect extends BaseShape {
           this.board.changeCursor("grab");
           this.transferEnd(v, matrix);
         }
-
         break;
       case "nw-scale":
         {
@@ -238,6 +230,7 @@ export class SelectSolidRect extends BaseShape {
         break;
     }
     this.flag = null;
+    this.actionBar.openBar(this.coveredRect);
   }
 
   override transfer(v: Vec2, matrix: DOMMatrix): void {
@@ -258,67 +251,59 @@ export class SelectSolidRect extends BaseShape {
         bs.transferEnd(v, matrix, this.flag as ShapeActionType);
       });
       super.transferEnd(v, matrix, this.flag);
-      this.actionBar.openBar(this.coveredRect.rectPoint);
+
+      this.rerenderScale(matrix, true);
+      this.rerenderRotate(matrix, true);
     }
   }
 
-  /** 設定 path (bindingBox 於 特此類中 等價 path) */
-  private settingBindingBox(p?: Path2D) {
-    if (p) {
-      this.path = p;
-    } else {
-      const path = new Path2D();
-      this.path = path;
-    }
+  private assignPathAndDraw() {
+    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
+    this.path = this.bindingBox;
+    this.board.rerenderToEvent({
+      bs: { p: this.bindingBox, s: defaultSolidboxStyle },
+    });
+
+    this.rerenderScale(new DOMMatrix(), true);
+    this.rerenderRotate(new DOMMatrix(), true);
   }
 
-  /** 設定 縮放四點 / 旋轉點 */
-  private settingRotateAndScale(mrv: MinRectVec) {
-    const {
-      leftTop: { x: x1, y: y1 },
-      rightBottom: { x: x2, y: y2 },
-    } = mrv;
-    const fourCorner: Vec2[] = [
-      { x: x1 - padding, y: y1 - padding }, // nw
-      { x: x2 + padding, y: y1 - padding }, // sw
-      { x: x1 - padding, y: y2 + padding }, // ne
-      { x: x2 + padding, y: y2 + padding }, // sw
-    ];
-
-    fourCorner.forEach(({ x, y }, index) => {
+  private rerenderScale(matrix: DOMMatrix, updata = false) {
+    this.coveredRect.fourCorner.forEach(({ x, y }, i) => {
       const p = new Path2D();
       p.arc(x, y, 8, 0, 2 * Math.PI);
       this.board.rerenderToEvent({
         bs: { p, s: defauletScalePoint },
       });
-      this.scalePoint[index] = p;
+      if (updata) {
+        this.scalePath[i] = p;
+      }
     });
-
-    const p = new Path2D();
-    p.arc(x1 - 3 * padding, y2 + 3 * padding, 10, 0, 2 * Math.PI);
-    this.board.rerenderToEvent({
-      bs: { p, s: defauletRotatePoint },
-    });
-    this.rotatePoint = p;
   }
-
-  private updateRotateAndScale(matrix: DOMMatrix, updata = false) {
-    const newScalePoint = this.scalePoint.map((path) => {
-      const newPath = new Path2D();
-      newPath.addPath(path, matrix);
-      this.board.rerenderToEvent({ bs: { p: newPath, s: defauletScalePoint } });
-      return newPath;
-    }) as ScalePoint;
-    const rotatePoint = new Path2D();
-    rotatePoint.addPath(this.rotatePoint, matrix);
+  private rerenderRotate(matrix: DOMMatrix, updata = false) {
+    const path = new Path2D();
+    path.arc(
+      this.coveredRect.rotatePoint.x,
+      this.coveredRect.rotatePoint.y,
+      8,
+      0,
+      2 * Math.PI
+    );
     this.board.rerenderToEvent({
-      bs: { p: rotatePoint, s: defauletRotatePoint },
+      bs: { p: path, s: defauletRotatePoint },
     });
 
     if (updata) {
-      this.rotatePoint = rotatePoint;
-      this.scalePoint = newScalePoint;
+      this.rotatePath = path;
     }
+  }
+
+  private clearAllPath() {
+    const once = new Path2D();
+    this.bindingBox = once;
+    this.path = once;
+    this.rotatePath = once;
+    this.scalePath = [once, once, once, once];
   }
 }
 
@@ -359,13 +344,13 @@ class ActionBar {
     }px`;
   }
 
-  openBar(mrv: MinRectVec) {
+  openBar(mrv: Rect) {
     if (!this.openFlag) {
       this.openFlag = true;
       const {
         leftTop: { x: x1, y: y1 },
-        rightBottom: { x: x2, y: y2 },
-      } = mrv;
+      } = mrv.rectPoint;
+
       this.block.style.top = `${y1 / this.board.devicePixelRatio - interval}px`;
       this.block.style.left = `${
         (x1 - padding - defaultSolidboxStyle.lineWidth) /
