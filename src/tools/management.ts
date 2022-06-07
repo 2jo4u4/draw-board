@@ -2,6 +2,7 @@ import { Board } from "..";
 import { BaseTools } from "./base";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";
+import { EarserTools } from "./earser";
 
 export enum ToolsEnum {
   "選擇器" = "select",
@@ -35,22 +36,18 @@ export class ToolsManagement {
   }
   /** 觸摸/滑鼠下壓 */
   onEventStart(v: Vec2): void {
-    console.log("onEventStart");
     this.usingTools.onEventStart(v);
   }
   /** 手指/滑鼠 移動過程(下壓時的移動過程) */
   onEventMoveActive(v: Vec2): void {
-    console.log("onEventMoveActive");
     this.usingTools.onEventMoveActive(v);
   }
   /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
   onEventMoveInActive(v: Vec2): void {
-    console.log("onEventMoveInActive");
     this.usingTools.onEventMoveInActive(v);
   }
   /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
   onEventEnd(v: Vec2): void {
-    console.log("onEventEnd");
     this.usingTools.onEventEnd(v);
   }
 
@@ -72,7 +69,7 @@ export class ToolsManagement {
           this.usingTools = new PencilTools(this.board);
           break;
         case ToolsEnum.擦子:
-          this.usingTools = new SelectTools(this.board);
+          this.usingTools = new EarserTools(this.board);
           break;
         case ToolsEnum.文字框:
           this.usingTools = new SelectTools(this.board);
