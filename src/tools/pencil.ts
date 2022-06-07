@@ -57,7 +57,10 @@ export class PencilTools implements BaseTools {
   // ----有使用到 board --------------------------
   private draw() {
     // 畫在事件層級
-    this.board.rerenderToEvent({ bs: { p: this.path, s: this.drawStyle } });
+    this.board.rerenderToEvent({
+      needClear: true,
+      bs: { p: this.path, s: this.drawStyle },
+    });
   }
   private addToBoard(v: Vec2) {
     // 新增畫好的圖形

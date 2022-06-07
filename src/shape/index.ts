@@ -1,8 +1,5 @@
-import { Board, defaultStyle, padding, UtilTools, Rect } from "..";
-interface ShapeAction {
-  type: ShapeActionType;
-  matrix: DOMMatrix;
-}
+import { Board, defaultStyle, UtilTools, Rect } from "..";
+
 /**
  * 圖形基本類
  */
@@ -11,7 +8,13 @@ export class BaseShape {
   readonly id: string;
   readonly board: Board;
   /** 圖形路徑 */
-  path: Path2D;
+  __path: Path2D;
+  get path(): Path2D {
+    return this.__path;
+  }
+  set path(p: Path2D) {
+    this.__path = p;
+  }
   /** 樣式 */
   style: Styles;
   /**
@@ -22,9 +25,25 @@ export class BaseShape {
   minRect: MinRectVec;
 
   /** 紀錄一個路徑的最小包覆矩形 */
-  coveredRect: Rect;
+  private __coveredRect: Rect;
+
+  get coveredRect(): Rect {
+    return this.__coveredRect;
+  }
+
+  set coveredRect(r: Rect) {
+    this.__coveredRect = r;
+  }
+
   /** 判斷是否被選取的路徑 */
-  bindingBox: Path2D;
+  private __bindingBox: Path2D;
+  get bindingBox(): Path2D {
+    return this.__bindingBox;
+  }
+  set bindingBox(p: Path2D) {
+    this.__bindingBox = p;
+  }
+
   /** 是否被選取 */
   private __isSelect = false;
   get isSelect() {
@@ -43,6 +62,15 @@ export class BaseShape {
     this.__isDelete = b;
   }
 
+  private __matrix: DOMMatrix;
+  get matrix() {
+    return this.__matrix;
+  }
+
+  set matrix(m: DOMMatrix) {
+    this.__matrix = m;
+  }
+
   /** 紀錄 */
   shapeActionLog: ShapeAction[] = [];
   shapeActionLimit: number;
@@ -52,20 +80,22 @@ export class BaseShape {
     board: Board,
     path: Path2D,
     style: Styles,
-    minRect: MinRectVec | Rect
+    minRect: MinRectVec | Rect,
+    matrix?: DOMMatrix
   ) {
     this.$type = "base-shape";
     this.id = id;
     this.board = board;
-    this.path = new Path2D(path);
+    this.__path = new Path2D(path);
+    this.__matrix = DOMMatrix.fromMatrix(matrix);
     this.style = Object.assign(UtilTools.deepClone(defaultStyle), style);
     this.shapeActionLimit = board.actionStoreLimit;
     if (minRect instanceof Rect) {
-      this.coveredRect = minRect;
+      this.__coveredRect = minRect;
     } else {
-      this.coveredRect = new Rect(minRect);
+      this.__coveredRect = new Rect(minRect);
     }
-    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
+    this.__bindingBox = UtilTools.minRectToPath(this.coveredRect);
     // delete
     this.minRect = this.coveredRect.rectPoint;
   }
@@ -90,40 +120,49 @@ export class BaseShape {
    */
   moveEnd(v: Vec2) {}
 
-  transfer(v: Vec2, matrix: DOMMatrix): void {
+  transferStart(
+    v: Vec2,
+    matrix: DOMMatrix | MultiMatrix,
+    type: ShapeActionType | null
+  ): void {}
+
+  transfer(
+    v: Vec2,
+    matrix: DOMMatrix | MultiMatrix,
+    type: ShapeActionType
+  ): void {
     // updata shape path  & rerender event layer
     const s = this.style,
       newPath = new Path2D();
-    newPath.addPath(this.path, matrix);
+    if (matrix instanceof DOMMatrix) {
+      newPath.addPath(this.path, matrix);
+    } else {
+      newPath.addPath(this.path, matrix.m1);
+    }
     this.board.rerenderToEvent({ bs: { p: newPath, s } });
   }
 
-  transferEnd(v: Vec2, matrix: DOMMatrix, type: ShapeActionType): void {
+  transferEnd(
+    v: Vec2,
+    matrix: DOMMatrix | MultiMatrix,
+    type: ShapeActionType
+  ): void {
     // updata shape path  & rerender event layer
+    const _m = (() => {
+      if (matrix instanceof DOMMatrix) {
+        return DOMMatrix.fromMatrix(matrix);
+      } else {
+        return DOMMatrix.fromMatrix(matrix.m1);
+      }
+    })();
     const s = this.style,
       newPath = new Path2D();
-    newPath.addPath(this.path, matrix);
+    newPath.addPath(this.path, _m);
     this.path = newPath;
-    this.board.rerenderToEvent({ bs: { p: this.path, s } });
-    switch (type) {
-      case "translate":
-        this.coveredRect.translateSelf(matrix);
-        break;
-      case "rotate":
-        this.coveredRect.rotateSelf(matrix);
-        break;
-      case "ne-scale":
-      case "nw-scale":
-      case "se-scale":
-      case "sw-scale":
-        this.coveredRect.scaleSelf(matrix);
-        break;
-    }
-
-    const newBindingBox = new Path2D();
-    newBindingBox.addPath(this.bindingBox, matrix);
-    this.bindingBox = newBindingBox;
-    this.logAction(type, matrix.inverse());
+    this.coveredRect.transferSelf(_m);
+    this.board.rerenderToEvent({ bs: this });
+    this.updataBindingBox(_m);
+    this.logAction(type, _m.inverse());
   }
 
   undo() {}
@@ -136,5 +175,21 @@ export class BaseShape {
       const [remove, ...keep] = this.shapeActionLog;
       this.shapeActionLog = keep;
     }
+  }
+
+  reInit(path: Path2D, minRect: MinRectVec | Rect) {
+    this.__path = new Path2D(path);
+    if (minRect instanceof Rect) {
+      this.coveredRect = minRect.clone();
+    } else {
+      this.coveredRect = new Rect(minRect);
+    }
+    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
+  }
+
+  updataBindingBox(matrix: DOMMatrix) {
+    const newBindingBox = new Path2D();
+    newBindingBox.addPath(this.bindingBox, matrix);
+    this.bindingBox = newBindingBox;
   }
 }

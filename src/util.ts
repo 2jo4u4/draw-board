@@ -177,11 +177,11 @@ export class UtilTools {
 
   /** 樣式注入 */
   static injectStyle(ctx: CanvasRenderingContext2D, s: Styles) {
-    const { lineColor, lineWidth, lineDash, fillColor } = s;
+    const { lineColor, lineWidth, lineDash = [], fillColor = "" } = s;
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = lineWidth;
-    ctx.setLineDash(lineDash || []);
-    ctx.fillStyle = fillColor || "";
+    ctx.setLineDash(lineDash);
+    ctx.fillStyle = fillColor;
   }
 
   /**
@@ -301,14 +301,14 @@ export class Rect {
         this.sw = sw ? new DOMPoint(sw.x, sw.y) : new DOMPoint(nw.x, nw.y);
         this.se = se ? new DOMPoint(se.x, se.y) : new DOMPoint(nw.x, nw.y);
       }
+      this.rotatePoint = new DOMPoint(this.sw.x - padding, this.sw.y + padding);
     } else {
       this.nw = new DOMPoint();
       this.ne = new DOMPoint();
       this.sw = new DOMPoint();
       this.se = new DOMPoint();
+      this.rotatePoint = new DOMPoint();
     }
-
-    this.rotatePoint = new DOMPoint(this.sw.x - padding, this.sw.y + padding);
   }
 
   get centerPoint(): Vec2 {
@@ -348,10 +348,39 @@ export class Rect {
     return [this.nw, this.ne, this.sw, this.se];
   }
 
+  get size(): [number, number] {
+    const { x: ox, y: oy } = this.nw;
+    const { x: wx, y: wy } = this.ne;
+    const { x: hx, y: hy } = this.sw;
+    const width = Math.sqrt(Math.pow(wx - ox, 2) + Math.pow(wy - oy, 2));
+    const height = Math.sqrt(Math.pow(hx - ox, 2) + Math.pow(hy - oy, 2));
+    return [width, height];
+  }
+
   clone(): Rect {
     return new Rect(this.nw, this.ne, this.sw, this.se);
   }
 
+  transferSelf(matrix: DOMMatrix): Rect {
+    this.nw = this.nw.matrixTransform(matrix);
+    this.ne = this.ne.matrixTransform(matrix);
+    this.sw = this.sw.matrixTransform(matrix);
+    this.se = this.se.matrixTransform(matrix);
+    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
+    return this;
+  }
+
+  transfer(matrix: DOMMatrix): Rect {
+    const nw = this.nw.matrixTransform(matrix);
+    const ne = this.ne.matrixTransform(matrix);
+    const sw = this.sw.matrixTransform(matrix);
+    const se = this.se.matrixTransform(matrix);
+    return new Rect(nw, ne, sw, se);
+  }
+
+  /**
+   * @deprecated 統一使用 `transferSelf`
+   */
   translateSelf(matrix: DOMMatrix): Rect {
     this.nw = this.nw.matrixTransform(matrix);
     this.ne = this.ne.matrixTransform(matrix);
@@ -360,6 +389,9 @@ export class Rect {
     this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
+  /**
+   * @deprecated 統一使用 `transferSelf`
+   */
   scaleSelf(matrix: DOMMatrix): Rect {
     this.nw = this.nw.matrixTransform(matrix);
     this.ne = this.ne.matrixTransform(matrix);
@@ -368,6 +400,9 @@ export class Rect {
     this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
+  /**
+   * @deprecated 統一使用 `transferSelf`
+   */
   rotateSelf(matrix: DOMMatrix): Rect {
     this.nw = this.nw.matrixTransform(matrix);
     this.ne = this.ne.matrixTransform(matrix);

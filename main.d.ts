@@ -33,3 +33,11 @@ type ShapeActionType =
   | "ne-scale" // 縮放右上
   | "sw-scale" // 縮放左下
   | "se-scale"; // 縮放右下
+
+interface ShapeAction {
+  type: ShapeActionType;
+  matrix: DOMMatrix;
+}
+
+/** 基準點位不同(m1: 一開始的位置, m2: 上一個位置) */
+type MultiMatrix = { m1: DOMMatrix; m2: DOMMatrix };

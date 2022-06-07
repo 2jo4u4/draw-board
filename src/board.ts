@@ -1,6 +1,7 @@
 import { BaseShape, Rect, SocketMiddle, ToolsManagement, UtilTools } from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
+import { ImageShape } from "./shape/image";
 
 type MouseFlag = "active" | "inactive"; // 滑鼠左鍵 活躍 / 非活躍
 type Action = "draw" | "delete" | "translate" | "rotate" | "scale" | "putImage"; // 可被紀錄的行為
@@ -120,13 +121,17 @@ export class Board {
   addShape(p: Path2D, s: Styles, m: Rect) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys())),
       bs = new BaseShape(id, this, p, s, m);
-    this.shapes.set(id, bs);
-    this.logAction("draw", id);
-    this.rerenderToPaint({ bs });
-    this.previewCtrl.rerender();
+    this.addShapeByBs(bs);
   }
 
-  addShapeWithFile() {}
+  /** 添加圖形到圖層級 & 紀錄 */
+  addShapeByBs(bs: BaseShape) {
+    this.rerenderToPaint({ bs });
+    this.shapes.set(bs.id, bs);
+    this.previewCtrl.rerender();
+    this.logAction("draw", bs.id);
+  }
+
   /** 刪除已選圖形 */
   deleteShape() {
     const id: string[] = [];
@@ -144,53 +149,74 @@ export class Board {
     needClear?: boolean;
     bs?: { p: Path2D; s: Styles } | BaseShape;
   }) {
+    const needClear = v.needClear ? "event" : undefined;
+    this.rerenderTo(this.ctx, { needClear, bs: v.bs });
+  }
+  /** 重新繪製圖層 */
+  rerenderToPaint(v: {
+    needClear?: boolean;
+    bs?: { p: Path2D; s: Styles } | BaseShape;
+  }) {
+    const needClear = v.needClear ? "static" : undefined;
+    this.rerenderTo(this.ctxStatic, { needClear, bs: v.bs });
+  }
+
+  rerenderTo(
+    useCtx: CanvasRenderingContext2D,
+    v: {
+      needClear?: "static" | "event";
+      bs?: { p: Path2D; s: Styles } | BaseShape;
+    }
+  ) {
     const { needClear, bs } = v;
-    Boolean(needClear) && this.clearCanvas("event");
+    Boolean(needClear) && this.clearCanvas(needClear);
     if (bs) {
       if (UtilTools.isBaseShape(bs)) {
-        UtilTools.injectStyle(this.ctx, bs.style);
-        if (bs.style.fillColor) {
-          this.ctx.fill(bs.path);
+        // useCtx.setTransform(bs.matrix);
+        if (bs instanceof ImageShape && bs.isLoad) {
+          this.rerenderToWithFileShape(useCtx, bs);
         } else {
-          this.ctx.stroke(bs.path);
+          UtilTools.injectStyle(useCtx, bs.style);
+          if (bs.style.fillColor) {
+            useCtx.fill(bs.path);
+          } else {
+            useCtx.stroke(bs.path);
+          }
         }
-        this.ctx.stroke(bs.path);
+        // useCtx.setTransform(1, 0, 0, 1, 0, 0);
       } else {
-        UtilTools.injectStyle(this.ctx, bs.s);
+        UtilTools.injectStyle(useCtx, bs.s);
         if (bs.s.fillColor) {
-          this.ctx.fill(bs.p);
+          useCtx.fill(bs.p);
         } else {
-          this.ctx.stroke(bs.p);
+          useCtx.stroke(bs.p);
         }
       }
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && _bs.isSelect) {
-          UtilTools.injectStyle(this.ctx, _bs.style);
-          this.ctx.stroke(_bs.path);
+          UtilTools.injectStyle(useCtx, _bs.style);
+          useCtx.stroke(_bs.path);
         }
       });
     }
   }
-  /** 重新繪製圖層 */
-  rerenderToPaint(v: { needClear?: boolean; bs?: BaseShape }) {
-    const { needClear, bs } = v;
-    Boolean(needClear) && this.clearCanvas("static");
-    if (bs) {
-      UtilTools.injectStyle(this.ctxStatic, bs.style);
-      if (bs.style.fillColor) {
-        this.ctxStatic.fill(bs.path);
-      } else {
-        this.ctxStatic.stroke(bs.path);
-      }
-    } else {
-      this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && !_bs.isSelect) {
-          UtilTools.injectStyle(this.ctxStatic, _bs.style);
-          this.ctxStatic.stroke(_bs.path);
-        }
-      });
-    }
+
+  rerenderToPaintWithFileShape(bs: ImageShape) {
+    this.rerenderToWithFileShape(this.ctxStatic, bs);
+  }
+
+  rerenderToEventWithFileShape(bs: ImageShape) {
+    this.rerenderToWithFileShape(this.ctx, bs);
+  }
+
+  rerenderToWithFileShape(useCtx: CanvasRenderingContext2D, bs: ImageShape) {
+    const { x, y } = bs.coveredRect.nw;
+    const [width, height] = bs.coveredRect.size;
+    useCtx.setTransform(bs.matrix);
+    // useCtx.drawImage(bs.image, x, y);
+    useCtx.drawImage(bs.image, x, y, width, height);
+    useCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
   /** 重新繪製所有層 */
   rerender() {
