@@ -27,55 +27,58 @@ export class ToolsManagement {
     return this.__toolsType;
   }
   /** 板子實例 */
-  private board: Board;
+  readonly board: Board;
   /** 儲存當前選擇的工具 */
-  private usingTools!: BaseTools;
+  private __usingTools!: BaseTools;
+  get tools() {
+    return this.__usingTools;
+  }
   constructor(board: Board) {
     this.board = board;
     this.switchTypeToSelect(); // 設定初始工具
   }
   /** 觸摸/滑鼠下壓 */
   onEventStart(v: Vec2): void {
-    this.usingTools.onEventStart(v);
+    this.__usingTools.onEventStart(v);
   }
   /** 手指/滑鼠 移動過程(下壓時的移動過程) */
   onEventMoveActive(v: Vec2): void {
-    this.usingTools.onEventMoveActive(v);
+    this.__usingTools.onEventMoveActive(v);
   }
   /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
   onEventMoveInActive(v: Vec2): void {
-    this.usingTools.onEventMoveInActive(v);
+    this.__usingTools.onEventMoveInActive(v);
   }
   /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
   onEventEnd(v: Vec2): void {
-    this.usingTools.onEventEnd(v);
+    this.__usingTools.onEventEnd(v);
   }
 
   changePencilStyle(s: Styles) {
-    if (this.usingTools instanceof PencilTools) {
-      this.usingTools.changeStyle(s);
+    if (this.__usingTools instanceof PencilTools) {
+      this.__usingTools.changeStyle(s);
     }
   }
 
   switchTypeTo(v: ToolsEnum): void {
     if (this.__toolsType !== v) {
-      this.usingTools?.onDestroy();
+      this.__usingTools?.onDestroy();
       this.__toolsType = v;
       switch (v) {
         case ToolsEnum.選擇器:
-          this.usingTools = new SelectTools(this.board);
+          this.__usingTools = new SelectTools(this.board);
           break;
         case ToolsEnum.鉛筆:
-          this.usingTools = new PencilTools(this.board);
+          this.__usingTools = new PencilTools(this.board);
           break;
         case ToolsEnum.擦子:
-          this.usingTools = new EarserTools(this.board);
+          this.__usingTools = new EarserTools(this.board);
           break;
         case ToolsEnum.文字框:
-          this.usingTools = new SelectTools(this.board);
+          this.__usingTools = new SelectTools(this.board);
           break;
         case ToolsEnum.圖形生成:
-          this.usingTools = new SelectTools(this.board);
+          this.__usingTools = new SelectTools(this.board);
           break;
         default:
           break;

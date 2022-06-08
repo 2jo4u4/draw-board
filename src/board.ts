@@ -80,6 +80,14 @@ export class Board {
     return this.__socket;
   }
 
+  private __canEdit = true;
+  get canEdit() {
+    return this.__canEdit;
+  }
+  set canEdit(b: boolean) {
+    this.__canEdit = b;
+  }
+
   constructor(
     canvas: HTMLCanvasElement | string,
     config?: {
@@ -149,29 +157,28 @@ export class Board {
     needClear?: boolean;
     bs?: { p: Path2D; s: Styles } | BaseShape;
   }) {
-    const needClear = v.needClear ? "event" : undefined;
-    this.rerenderTo(this.ctx, { needClear, bs: v.bs });
+    this.rerenderTo(this.ctx, { type: "event", ...v });
   }
   /** 重新繪製圖層 */
   rerenderToPaint(v: {
     needClear?: boolean;
     bs?: { p: Path2D; s: Styles } | BaseShape;
   }) {
-    const needClear = v.needClear ? "static" : undefined;
-    this.rerenderTo(this.ctxStatic, { needClear, bs: v.bs });
+    this.rerenderTo(this.ctxStatic, { type: "static", ...v });
   }
 
   rerenderTo(
     useCtx: CanvasRenderingContext2D,
     v: {
-      needClear?: "static" | "event";
+      needClear?: boolean;
+      type: "event" | "static";
       bs?: { p: Path2D; s: Styles } | BaseShape;
     }
   ) {
-    const { needClear, bs } = v;
-    Boolean(needClear) && this.clearCanvas(needClear);
+    const { needClear, bs, type } = v;
     if (bs) {
-      if (UtilTools.isBaseShape(bs)) {
+      Boolean(needClear) && this.clearCanvas(type);
+      if (bs instanceof BaseShape) {
         // useCtx.setTransform(bs.matrix);
         if (bs instanceof ImageShape && bs.isLoad) {
           this.rerenderToWithFileShape(useCtx, bs);
@@ -193,10 +200,20 @@ export class Board {
         }
       }
     } else {
+      this.clearCanvas(type);
+      const isSelect = type === "event";
       this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && _bs.isSelect) {
-          UtilTools.injectStyle(useCtx, _bs.style);
-          useCtx.stroke(_bs.path);
+        if (!_bs.isDelete && _bs.isSelect === isSelect) {
+          if (_bs instanceof ImageShape && _bs.isLoad) {
+            this.rerenderToWithFileShape(useCtx, _bs);
+          } else {
+            UtilTools.injectStyle(useCtx, _bs.style);
+            if (_bs.style.fillColor) {
+              useCtx.fill(_bs.path);
+            } else {
+              useCtx.stroke(_bs.path);
+            }
+          }
         }
       });
     }
@@ -357,9 +374,6 @@ export class Board {
     } else {
       this.toolsCtrl.onEventMoveInActive(position);
     }
-    // if (this.socketCtrl) {
-    //   this.socketCtrl.postData();
-    // }
   }
 
   private onEventEnd(event: TouchEvent | MouseEvent) {

@@ -39,6 +39,18 @@ export const defaultFlexboxStyle: Styles = {
   lineDash: dashedLine,
 };
 
+export enum UserAction {
+  "下筆",
+  "筆移動",
+  "提筆",
+  "選取圖形",
+  "變形開始",
+  "變形",
+  "變形結束",
+  "純移動",
+  "刪除圖形",
+}
+
 /** 計算函式 / 工具函式 */
 export class UtilTools {
   static getCnavasElement(c?: string | HTMLElement): HTMLCanvasElement {
@@ -216,6 +228,7 @@ export class UtilTools {
     return mp;
   }
 
+  /** @deprecated 讓此檔案不在相依其他檔案，故不再提供此方法 */
   static isBaseShape(bs: unknown): bs is BaseShape {
     return bs instanceof BaseShape;
   }
