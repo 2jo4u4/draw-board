@@ -20,6 +20,8 @@ export class PreviewTools implements BaseTools {
     this.board = board;
     this.flexRectStyle = viewportFlexboxStyle;
     this.viewportRect = new ViewportRect(board);
+    this.viewportRect.settingAndOpen();
+    this.viewportRect.isSelect = true;
     // this.viewportRect.moveStart(this.startPosition);
   }
 
@@ -40,6 +42,7 @@ export class PreviewTools implements BaseTools {
 
   onEventMoveInActive(v: Vec2): void {
     this.board.rootBlock.style.cursor = "move";
+    this.viewportRect.handleInactive(v);
   }
 
   onEventEnd(v: Vec2): void {
@@ -48,14 +51,14 @@ export class PreviewTools implements BaseTools {
   }
 
   private moveStart(v: Vec2) {
-    this.viewportRect.moveStart(v);
+    this.viewportRect.handleStart(v);
   }
 
   private move(v: Vec2) {
-    this.viewportRect.move(v);
+    this.viewportRect.handleActive(v);
   }
 
   private moveEnd(v: Vec2) {
-    this.viewportRect.moveEnd(v);
+    this.viewportRect.handleEnd(v);
   }
 }

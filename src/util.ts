@@ -1,3 +1,4 @@
+import * as math from "mathjs";
 import { BaseShape } from ".";
 
 const dashedLine = [10, 10];
@@ -39,6 +40,15 @@ export const defaultFlexboxStyle: Styles = {
   lineDash: dashedLine,
 };
 
+export const defaultTransform: Transform = {
+  a: 1.0,
+  b: 0.0,
+  c: 0.0,
+  d: 1.0,
+  e: 0.0,
+  f: 0.0,
+};
+
 /** 計算函式 / 工具函式 */
 export class UtilTools {
   static getCnavasElement(c?: string | HTMLElement): HTMLCanvasElement {
@@ -78,6 +88,69 @@ export class UtilTools {
       Object.prototype.hasOwnProperty.call(v, "x") &&
       Object.prototype.hasOwnProperty.call(v, "y")
     );
+  }
+
+  static cos(theta: number) {
+    return math.cos(theta);
+  }
+  static sin(theta: number) {
+    return math.sin(theta);
+  }
+  static atan2(y: number, x: number) {
+    return math.atan2(y, x);
+  }
+  static matrixMultiply(a: math.Matrix, b: math.Matrix) {
+    return math.multiply(a, b);
+  }
+
+  static transformToMatrix(transform: Transform) {
+    const { a = 1, b = 0, c = 0, d = 1, e = 0, f = 0 } = transform;
+    return math.matrix([
+      [a, c, e],
+      [b, d, f],
+      [0, 0, 1],
+    ]);
+  }
+
+  static getTransformFromMatrix(matrix: math.Matrix) {
+    return {
+      a: matrix.subset(math.index(0, 0)),
+      b: matrix.subset(math.index(1, 0)),
+      c: matrix.subset(math.index(0, 1)),
+      d: matrix.subset(math.index(1, 1)),
+      e: matrix.subset(math.index(0, 2)),
+      f: matrix.subset(math.index(1, 2)),
+    };
+  }
+
+  static nextTransform(
+    prevTransform: Transform,
+    { dx = 0, dy = 0, rScale = 1, dTheta = 0, cx = 0, cy = 0 }
+  ) {
+    const transformMatrix = this.transformToMatrix(prevTransform);
+    const translateToOriginMatrix = this.transformToMatrix({
+      e: dx - cx,
+      f: dy - cy,
+    });
+    const scaleMatrix = this.transformToMatrix({ a: rScale, d: rScale });
+    const rotationMatrix = this.transformToMatrix({
+      a: this.cos(dTheta),
+      b: this.sin(dTheta),
+      c: -this.sin(dTheta),
+      d: this.cos(dTheta),
+    });
+    const translateBackMatrix = this.transformToMatrix({
+      e: cx,
+      f: cy,
+    });
+    const applyTranslateToOrigin = this.matrixMultiply(
+      translateToOriginMatrix,
+      transformMatrix
+    );
+    const applyScale = this.matrixMultiply(scaleMatrix, applyTranslateToOrigin);
+    const applyRotation = this.matrixMultiply(rotationMatrix, applyScale);
+    const result = this.matrixMultiply(translateBackMatrix, applyRotation);
+    return this.getTransformFromMatrix(result);
   }
 
   /** 是否為 MinRectVec */

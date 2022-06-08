@@ -1,4 +1,12 @@
-import { Board, defaultStyle, padding, UtilTools, Rect } from "..";
+import {
+  Board,
+  defaultStyle,
+  padding,
+  UtilTools,
+  Rect,
+  defaultTransform,
+} from "..";
+
 interface ShapeAction {
   type: ShapeActionType;
   matrix: DOMMatrix;
@@ -25,6 +33,7 @@ export class BaseShape {
   coveredRect: Rect;
   /** 判斷是否被選取的路徑 */
   bindingBox: Path2D;
+  transform: Transform;
   /** 是否被選取 */
   private __isSelect = false;
   get isSelect() {
@@ -52,13 +61,15 @@ export class BaseShape {
     board: Board,
     path: Path2D,
     style: Styles,
-    minRect: MinRectVec | Rect
+    minRect: MinRectVec | Rect,
+    transform?: Transform
   ) {
     this.$type = "base-shape";
     this.id = id;
     this.board = board;
     this.path = new Path2D(path);
     this.style = Object.assign(UtilTools.deepClone(defaultStyle), style);
+    this.transform = transform || defaultTransform;
     this.shapeActionLimit = board.actionStoreLimit;
     if (minRect instanceof Rect) {
       this.coveredRect = minRect;
@@ -100,11 +111,14 @@ export class BaseShape {
 
   transferEnd(v: Vec2, matrix: DOMMatrix, type: ShapeActionType): void {
     // updata shape path  & rerender event layer
-    const s = this.style,
+    const // s = this.style,
       newPath = new Path2D();
     newPath.addPath(this.path, matrix);
     this.path = newPath;
-    this.board.rerenderToEvent({ bs: { p: this.path, s } });
+    //   /* TODO partial rerender if possiable
+    //   this.board.rerenderToEvent({ bs: { p: newPath, s } });
+    //   */
+    this.board.rerender();
     switch (type) {
       case "translate":
         this.coveredRect.translateSelf(matrix);

@@ -6,6 +6,9 @@ interface Zoom {
   y: number;
   k: number;
 }
+
+type ActiveFlag = true | false;
+
 /**
  * 控制插件
  */
@@ -30,12 +33,16 @@ export class PreviewWindow {
   get ctxStatic(): CanvasRenderingContext2D {
     return this.__ctxStatic;
   }
+  private activeFlag: ActiveFlag;
   /** 板子實例 */
   private board: Board;
   private zoom: Zoom;
   private windowRatio: number;
   /** 儲存當前選擇的工具 */
-  private previewTools: PreviewTools;
+  private __tools: PreviewTools;
+  get toolsCtrl() {
+    return this.__tools;
+  }
   /** 像素密度 */
   readonly decivePixelPatio!: number;
   /** 所有被繪製的圖形 */
@@ -49,10 +56,11 @@ export class PreviewWindow {
     this.setStaticCanvas();
     this.board = board;
     this.__shapes = board.shapes;
+    this.__tools = new PreviewTools(board);
+    this.activeFlag = false;
     this.decivePixelPatio = window.devicePixelRatio;
     this.zoom = { x: 0, y: 0, k: 1 };
     this.windowRatio = 1 / 3;
-    this.previewTools = new PreviewTools(board);
 
     this.initial();
     this.addListener();
@@ -72,10 +80,19 @@ export class PreviewWindow {
     if (bs) {
       if (UtilTools.isBaseShape(bs)) {
         UtilTools.injectStyle(this.ctx, bs.style);
+        if (bs.style.fillColor) {
+          this.ctx.fill(bs.path);
+        } else {
+          this.ctx.stroke(bs.path);
+        }
         this.ctx.stroke(bs.path);
       } else {
         UtilTools.injectStyle(this.ctx, bs.s);
-        this.ctx.stroke(bs.p);
+        if (bs.s.fillColor) {
+          this.ctx.fill(bs.p);
+        } else {
+          this.ctx.stroke(bs.p);
+        }
       }
     } else {
       this.shapes.forEach((_bs) => {
@@ -92,7 +109,11 @@ export class PreviewWindow {
     Boolean(needClear) && this.clearCanvas("static");
     if (bs) {
       UtilTools.injectStyle(this.ctxStatic, bs.style);
-      this.ctxStatic.stroke(bs.path);
+      if (bs.style.fillColor) {
+        this.ctxStatic.fill(bs.path);
+      } else {
+        this.ctxStatic.stroke(bs.path);
+      }
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && !_bs.isSelect) {
@@ -105,11 +126,11 @@ export class PreviewWindow {
   rerender() {
     this.clearCanvas();
     this.shapes.forEach((bs) => {
-      if (bs.isSelect) {
-        this.rerenderToEvent({ bs });
-      } else {
-        this.rerenderToPaint({ bs });
-      }
+      this.rerenderToEvent({ bs });
+      // if (bs.isSelect) {
+      // } else {
+      //   this.rerenderToPaint({ bs });
+      // }
     });
   }
 
@@ -157,6 +178,32 @@ export class PreviewWindow {
     window.removeEventListener("resize", this.resizeCanvas.bind(this));
   }
 
+  /** 觸摸/滑鼠下壓 */
+  private onEventStart(event: TouchEvent | MouseEvent): void {
+    const position = this.eventToPosition(event);
+    this.activeFlag = true;
+    this.toolsCtrl.onEventStart(position);
+  }
+  private onEventMove(event: TouchEvent | MouseEvent) {
+    const position = this.eventToPosition(event);
+    // TODO move viewport or wheel
+    // console.log("onEventMove", position);
+    if (this.activeFlag) {
+      this.toolsCtrl.onEventMoveActive(position);
+    } else {
+      this.toolsCtrl.onEventMoveInActive(position);
+    }
+  }
+
+  /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
+  private onEventEnd(event: TouchEvent | MouseEvent): void {
+    const position = this.eventToPosition(event);
+    if (this.activeFlag) {
+      this.toolsCtrl.onEventEnd(position);
+      this.activeFlag = false;
+    }
+  }
+
   // same as Board.eventToPosition
   private eventToPosition(event: TouchEvent | MouseEvent): Vec2 {
     let x = 0,
@@ -180,31 +227,6 @@ export class PreviewWindow {
     };
 
     return back;
-  }
-
-  /** 觸摸/滑鼠下壓 */
-  private onEventStart(event: TouchEvent | MouseEvent): void {
-    const position = this.eventToPosition(event);
-    this.previewTools.onEventStart(position);
-  }
-  private onEventMove(event: TouchEvent | MouseEvent) {
-    const position = this.eventToPosition(event);
-    // TODO move viewport or wheel
-    this.onEventMoveActive(position);
-    // this.onEventMoveInActive(position);
-  }
-  /** 手指/滑鼠 移動過程(下壓時的移動過程) */
-  private onEventMoveActive(v: Vec2): void {
-    this.previewTools.onEventMoveActive(v);
-  }
-  /** 手指/滑鼠 移動過程(非下壓時的移動過程) */
-  private onEventMoveInActive(v: Vec2): void {
-    this.previewTools.onEventMoveInActive(v);
-  }
-  /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
-  private onEventEnd(event: TouchEvent | MouseEvent): void {
-    const position = this.eventToPosition(event);
-    this.previewTools.onEventEnd(position);
   }
 
   private resizeCanvas() {

@@ -1,4 +1,4 @@
-import { Board, padding, UtilTools } from "..";
+import { Board, padding, UtilTools, Rect } from "..";
 import { BaseShape } from "../shape";
 
 const defaultSolidboxStyle: Styles = {
@@ -12,68 +12,117 @@ const defaultSolidboxStyle: Styles = {
 export class ViewportRect extends BaseShape {
   readonly $type;
   /** 紀錄被選取的圖形 */
+  startPosition!: Vec2;
   shapes: BaseShape[] = [];
+  path!: Path2D;
+  flag: ShapeActionType | null;
 
   constructor(board: Board) {
-    super("viewportRect_onlyOne", board, new Path2D(), defaultSolidboxStyle, {
-      rightBottom: { x: 0, y: 0 },
-      leftTop: { x: 0, y: 0 },
-    });
+    super(
+      "viewportRect_onlyOne",
+      board,
+      new Path2D(),
+      defaultSolidboxStyle,
+      new Rect()
+    );
     this.$type = "viewport-shape";
-    super.moveStart({ x: 0, y: 0 }); // need init regPosition
+    // super.moveStart({ x: 0, y: 0 }); // need init regPosition
+    this.flag = "translate";
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
-  settingAndOpen(mrv: MinRectVec) {
-    this.setting(mrv);
-    this.board.rerender();
-  }
-
-  /** 設定路徑 及 矩形 */
-  setting(mrv: MinRectVec) {
-    this.minRect = mrv;
-    this.settingPath(UtilTools.minRectToPath(mrv, padding));
-    this.shapes = Array.from(this.board.shapes)
-      .filter((bs) => !bs[1].isDelete && bs[1].isSelect)
-      .map((bs) => bs[1]);
+  settingAndOpen(mrv: Rect = this.coveredRect) {
+    const clone = mrv.clone();
+    console.log(mrv);
+    this.coveredRect = clone;
+    this.assignPathAndDraw();
+    // this.board.rerender();
+    // this.board.previewCtrl.rerender();
   }
 
   /** 清除最小矩形 並 關閉控制欄位 */
   closeSolidRect() {
-    this.settingPath();
+    // this.settingBindingBox();
+    this.clearAllPath();
+    this.shapes = [];
+    this.board.changeCursor("default");
   }
 
-  override moveStart(v: Vec2): void {
-    this.shapes.forEach((bs) => {
-      bs.moveStart(v);
-    });
-    super.moveStart(v);
-  }
-
-  override move(v: Vec2): void {
-    // 在事件層移動圖形
-    this.board.clearCanvas("event");
-    this.shapes.forEach((bs) => {
-      bs.move(v);
-    });
-    super.move(v);
-  }
-
-  override moveEnd(v: Vec2): void {
-    // 將圖形放回圖層級
-    this.board.clearCanvas();
-    this.shapes.forEach((bs) => {
-      bs.moveEnd(v);
-    });
-    super.moveEnd(v);
-  }
-
-  private settingPath(p?: Path2D) {
-    if (p) {
-      this.bindingBox = p;
-    } else {
-      const path = new Path2D();
-      this.bindingBox = path;
+  handleStart(v: Vec2) {
+    this.startPosition = v;
+    // TODO flag: zoom, move
+    switch (this.flag) {
+      case "translate":
+        this.board.changeCursor("grabbing");
+        break;
+      case "nw-scale":
+        break;
+      default:
     }
+  }
+  handleActive(v: Vec2) {
+    switch (this.flag) {
+      case "translate":
+        this.transfer(v, UtilTools.translate(this.startPosition, v));
+        break;
+      case "nw-scale":
+        break;
+      default:
+    }
+  }
+  handleInactive(v: Vec2) {
+    if (this.shapes.length > 0) {
+      if (this.board.checkPointInPath(this.path, v)) {
+        this.board.changeCursor("move");
+      } else {
+        this.board.changeCursor("default");
+      }
+    }
+  }
+  handleEnd(v: Vec2) {
+    switch (this.flag) {
+      case "translate":
+        this.transferEnd(v, UtilTools.translate(this.startPosition, v));
+        break;
+      case "nw-scale":
+        break;
+      default:
+    }
+  }
+
+  override transfer(v: Vec2, matrix: DOMMatrix): void {
+    if (this.flag !== null) {
+      console.log("transfer", v, matrix);
+      this.board.clearCanvas("event");
+      this.shapes.forEach((bs) => {
+        bs.transfer(v, matrix);
+      });
+      super.transfer(v, matrix);
+    }
+  }
+
+  override transferEnd(v: Vec2, matrix: DOMMatrix): void {
+    if (this.flag !== null) {
+      this.board.clearCanvas("event");
+      this.shapes.forEach((bs) => {
+        bs.transferEnd(v, matrix, this.flag as ShapeActionType);
+      });
+      super.transferEnd(v, matrix, this.flag);
+    }
+  }
+
+  private assignPathAndDraw() {
+    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
+    this.path = this.bindingBox;
+    console.log(this.board);
+    this.board.previewCtrl?.rerenderToEvent({
+      bs: { p: this.bindingBox, s: defaultSolidboxStyle },
+    });
+  }
+
+  private clearAllPath() {
+    const once = new Path2D();
+    this.bindingBox = once;
+    this.path = once;
   }
 }
