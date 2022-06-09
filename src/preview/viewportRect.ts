@@ -2,8 +2,8 @@ import { Board, padding, UtilTools, Rect } from "..";
 import { BaseShape } from "../shape";
 
 const defaultSolidboxStyle: Styles = {
-  lineWidth: 2,
-  lineColor: "#00000080",
+  lineWidth: 4,
+  lineColor: "red",
   lineDash: [10, 10],
   fillColor: undefined,
 };
@@ -23,7 +23,7 @@ export class ViewportRect extends BaseShape {
       board,
       new Path2D(),
       defaultSolidboxStyle,
-      new Rect()
+      UtilTools.generateMinRect({ x: 0, y: 0 }, { x: 300, y: 300 })
     );
     this.$type = "viewport-shape";
     // super.moveStart({ x: 0, y: 0 }); // need init regPosition
@@ -36,8 +36,6 @@ export class ViewportRect extends BaseShape {
     console.log(mrv);
     this.coveredRect = clone;
     this.assignPathAndDraw();
-    // this.board.rerender();
-    // this.board.previewCtrl.rerender();
   }
 
   /** 清除最小矩形 並 關閉控制欄位 */
@@ -92,31 +90,31 @@ export class ViewportRect extends BaseShape {
 
   override transfer(v: Vec2, matrix: DOMMatrix): void {
     if (this.flag !== null) {
-      console.log("transfer", v, matrix);
-      this.board.clearCanvas("event");
+      const newPath = new Path2D();
+      newPath.addPath(this.path, matrix);
+      this.assignPathAndDraw(newPath);
       this.shapes.forEach((bs) => {
         bs.transfer(v, matrix);
       });
-      super.transfer(v, matrix);
     }
   }
 
   override transferEnd(v: Vec2, matrix: DOMMatrix): void {
     if (this.flag !== null) {
-      this.board.clearCanvas("event");
+      this.coveredRect.translateSelf(matrix);
+      this.assignPathAndDraw();
       this.shapes.forEach((bs) => {
         bs.transferEnd(v, matrix, this.flag as ShapeActionType);
       });
-      super.transferEnd(v, matrix, this.flag);
     }
   }
 
-  private assignPathAndDraw() {
+  private assignPathAndDraw(path: Path2D | undefined = undefined) {
     this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
     this.path = this.bindingBox;
-    console.log(this.board);
     this.board.previewCtrl?.rerenderToEvent({
-      bs: { p: this.bindingBox, s: defaultSolidboxStyle },
+      needClear: true,
+      bs: { p: path || this.bindingBox, s: defaultSolidboxStyle },
     });
   }
 

@@ -20,9 +20,13 @@ export class PreviewTools implements BaseTools {
     this.board = board;
     this.flexRectStyle = viewportFlexboxStyle;
     this.viewportRect = new ViewportRect(board);
-    this.viewportRect.settingAndOpen();
-    this.viewportRect.isSelect = true;
     // this.viewportRect.moveStart(this.startPosition);
+  }
+
+  renderViewport(): void {
+    this.viewportRect.isSelect = true;
+    this.viewportRect.settingAndOpen();
+    console.log(this.viewportRect, this.board);
   }
 
   onDestroy(): void {

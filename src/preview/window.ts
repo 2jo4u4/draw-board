@@ -126,12 +126,9 @@ export class PreviewWindow {
   rerender() {
     this.clearCanvas();
     this.shapes.forEach((bs) => {
-      this.rerenderToEvent({ bs });
-      // if (bs.isSelect) {
-      // } else {
-      //   this.rerenderToPaint({ bs });
-      // }
+      this.rerenderToPaint({ bs });
     });
+    this.toolsCtrl.renderViewport();
   }
 
   private initial() {
