@@ -1,5 +1,6 @@
 import { Board, padding, UtilTools } from "..";
 import { BaseShape } from "../shape";
+import { Rect } from "../util";
 
 const defaultSolidboxStyle: Styles = {
   lineWidth: 2,
@@ -15,10 +16,13 @@ export class ViewportRect extends BaseShape {
   shapes: BaseShape[] = [];
 
   constructor(board: Board) {
-    super("viewportRect_onlyOne", board, new Path2D(), defaultSolidboxStyle, {
-      rightBottom: { x: 0, y: 0 },
-      leftTop: { x: 0, y: 0 },
-    });
+    super(
+      "viewportRect_onlyOne",
+      board,
+      new Path2D(),
+      defaultSolidboxStyle,
+      new Rect()
+    );
     this.$type = "viewport-shape";
     super.moveStart({ x: 0, y: 0 }); // need init regPosition
   }

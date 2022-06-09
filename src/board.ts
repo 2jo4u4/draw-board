@@ -88,6 +88,8 @@ export class Board {
     this.__canEdit = b;
   }
 
+  private cancelLoopId: number;
+
   constructor(
     canvas: HTMLCanvasElement | string,
     config?: {
@@ -113,6 +115,23 @@ export class Board {
 
     this.initial();
     this.addListener();
+
+    this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
+  }
+
+  loopClear() {
+    const { width, height } = this.canvasStatic;
+    this.ctx.clearRect(0, 0, width, height);
+    this.ctxStatic.clearRect(0, 0, width, height);
+  }
+
+  loop(t: number) {
+    this.loopClear();
+    this.shapes.forEach((bs) => {
+      bs.updata(t);
+    });
+
+    this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
   /** 清除指定畫布(若無指定則清除兩畫布) */
@@ -121,6 +140,11 @@ export class Board {
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
   }
+
+  absoluteDelete(id: string) {
+    this.shapes.delete(id);
+  }
+
   /** 取得圖形物件 */
   getShapeById(id: string): BaseShape | undefined {
     return this.shapes.get(id);
@@ -136,7 +160,7 @@ export class Board {
   addShapeByBs(bs: BaseShape) {
     this.rerenderToPaint({ bs });
     this.shapes.set(bs.id, bs);
-    this.previewCtrl.rerender();
+    // this.previewCtrl.rerender();
     this.logAction("draw", bs.id);
   }
 
@@ -152,14 +176,22 @@ export class Board {
     this.logAction("delete", ...id);
     this.rerender();
   }
-  /** 重新繪製事件層 */
+  /**
+   * 重新繪製事件層
+   *
+   * @deprecated
+   */
   rerenderToEvent(v: {
     needClear?: boolean;
     bs?: { p: Path2D; s: Styles } | BaseShape;
   }) {
     this.rerenderTo(this.ctx, { type: "event", ...v });
   }
-  /** 重新繪製圖層 */
+  /**
+   * 重新繪製圖層
+   *
+   * @deprecated
+   */
   rerenderToPaint(v: {
     needClear?: boolean;
     bs?: { p: Path2D; s: Styles } | BaseShape;
@@ -167,6 +199,9 @@ export class Board {
     this.rerenderTo(this.ctxStatic, { type: "static", ...v });
   }
 
+  /**
+   * @deprecated
+   */
   rerenderTo(
     useCtx: CanvasRenderingContext2D,
     v: {
@@ -179,18 +214,18 @@ export class Board {
     if (bs) {
       Boolean(needClear) && this.clearCanvas(type);
       if (bs instanceof BaseShape) {
-        // useCtx.setTransform(bs.matrix);
         if (bs instanceof ImageShape && bs.isLoad) {
           this.rerenderToWithFileShape(useCtx, bs);
         } else {
+          useCtx.setTransform(bs.matrix);
           UtilTools.injectStyle(useCtx, bs.style);
           if (bs.style.fillColor) {
             useCtx.fill(bs.path);
           } else {
             useCtx.stroke(bs.path);
           }
+          useCtx.setTransform(1, 0, 0, 1, 0, 0);
         }
-        // useCtx.setTransform(1, 0, 0, 1, 0, 0);
       } else {
         UtilTools.injectStyle(useCtx, bs.s);
         if (bs.s.fillColor) {
@@ -219,6 +254,44 @@ export class Board {
     }
   }
 
+  renderBaseShape(bs: BaseShape) {
+    let ctx: CanvasRenderingContext2D;
+    if (bs.isSelect) {
+      ctx = this.ctx;
+    } else {
+      ctx = this.ctxStatic;
+    }
+    this.render(ctx, bs);
+  }
+
+  render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
+    UtilTools.injectStyle(useCtx, bs.style);
+    useCtx.setTransform(bs.matrix);
+    if (bs instanceof ImageShape && bs.isLoad) {
+      const { x, y } = bs.coveredRect.nw;
+      const [width, height] = bs.coveredRect.size;
+      useCtx.drawImage(bs.image, x, y, width, height);
+    } else {
+      if (bs.style.fillColor) {
+        useCtx.fill(bs.path);
+      } else {
+        useCtx.stroke(bs.path);
+      }
+    }
+    useCtx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
+    this.ctx.setTransform(DOMMatrix.fromMatrix(m));
+    UtilTools.injectStyle(this.ctx, s);
+    if (s.fillColor) {
+      this.ctx.fill(p);
+    } else {
+      this.ctx.stroke(p);
+    }
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
   rerenderToPaintWithFileShape(bs: ImageShape) {
     this.rerenderToWithFileShape(this.ctxStatic, bs);
   }
@@ -231,13 +304,11 @@ export class Board {
     const { x, y } = bs.coveredRect.nw;
     const [width, height] = bs.coveredRect.size;
     useCtx.setTransform(bs.matrix);
-    // useCtx.drawImage(bs.image, x, y);
     useCtx.drawImage(bs.image, x, y, width, height);
     useCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
   /** 重新繪製所有層 */
   rerender() {
-    this.clearCanvas();
     this.shapes.forEach((bs) => {
       if (!bs.isDelete) {
         if (bs.isSelect) {
@@ -247,7 +318,7 @@ export class Board {
         }
       }
     });
-    this.previewCtrl.rerender();
+    // this.previewCtrl.rerender();
   }
   /** 紀錄行為 */
   logAction(type: Action, ...id: string[]) {
@@ -322,6 +393,7 @@ export class Board {
 
   destroy() {
     this.removeListener();
+    cancelAnimationFrame(this.cancelLoopId);
   }
 
   private setStaticCanvas() {

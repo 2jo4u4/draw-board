@@ -1,5 +1,5 @@
 import { BaseTools } from ".";
-import { Board, defaultStyle, Rect, UtilTools } from "..";
+import { BaseShape, Board, defaultStyle, Rect, UtilTools } from "..";
 
 /** 鉛筆 */
 export class PencilTools implements BaseTools {
@@ -11,8 +11,8 @@ export class PencilTools implements BaseTools {
     leftTop: { x: 0, y: 0 },
     rightBottom: { x: 0, y: 0 },
   };
+  shape!: BaseShape;
   /** 圖形路徑 */
-  private path!: Path2D;
   constructor(board: Board, drawStyle = defaultStyle) {
     this.board = board;
     this.drawStyle = drawStyle;
@@ -30,16 +30,24 @@ export class PencilTools implements BaseTools {
 
   onEventStart(v: Vec2): void {
     this.minRect = { leftTop: v, rightBottom: v };
-    this.path = new Path2D();
-    this.path.moveTo(v.x - 1, v.y - 1);
-    this.path.lineTo(v.x, v.y);
-    this.draw();
+    const path = new Path2D();
+    path.arc(v.x, v.y, 1, 0, 2 * Math.PI);
+    this.shape = new BaseShape(
+      UtilTools.RandomID(),
+      this.board,
+      path,
+      this.drawStyle,
+      new Rect(),
+      new DOMMatrix()
+    );
+    this.board.addShapeByBs(this.shape);
   }
 
   onEventMoveActive(v: Vec2): void {
-    this.path.lineTo(v.x, v.y);
-    this.draw();
+    const p = new Path2D(this.shape.path);
+    p.lineTo(v.x, v.y);
     this.minRect = UtilTools.newMinRect(v, this.minRect);
+    this.shape.reInit(p, new Rect(this.minRect));
   }
 
   onEventMoveInActive(v: Vec2): void {
@@ -47,27 +55,9 @@ export class PencilTools implements BaseTools {
   }
 
   onEventEnd(v: Vec2): void {
-    this.path.lineTo(v.x, v.y);
-    this.draw();
+    const p = new Path2D(this.shape.path);
+    p.lineTo(v.x, v.y);
     this.minRect = UtilTools.newMinRect(v, this.minRect);
-    this.addToBoard(v);
-    this.drawOver();
-  }
-
-  // ----有使用到 board --------------------------
-  private draw() {
-    // 畫在事件層級
-    this.board.rerenderToEvent({
-      needClear: true,
-      bs: { p: this.path, s: this.drawStyle },
-    });
-  }
-  private addToBoard(v: Vec2) {
-    // 新增畫好的圖形
-    this.board.addShape(this.path, this.drawStyle, new Rect(this.minRect));
-  }
-  private drawOver() {
-    // 畫完後刪除事件層級的圖
-    this.board.clearCanvas("event");
+    this.shape.reInit(p, new Rect(this.minRect));
   }
 }

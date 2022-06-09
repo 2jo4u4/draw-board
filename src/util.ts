@@ -5,7 +5,7 @@ export const padding = 8; // px
 // 畫筆預設樣式
 export const defaultStyle: Styles = {
   lineColor: "#000",
-  lineWidth: 4,
+  lineWidth: 8,
   fillColor: undefined,
   lineDash: [],
 };

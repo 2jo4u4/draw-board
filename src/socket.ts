@@ -1,5 +1,6 @@
 import { BaseShape, Board, BoardShapeLog, UtilTools, UserAction } from ".";
 import { ImageShape } from "./shape/image";
+import { Rect } from "./util";
 type PageData = Map<string, BoardShapeLog>;
 
 interface ReceviceData {
@@ -171,7 +172,14 @@ export class DemoSocket implements SocketMiddle {
       minRect = UtilTools.newMinRect({ x, y }, minRect);
     });
 
-    const bs = new BaseShape(data.objectid, board, p, s, minRect, matrix);
+    const bs = new BaseShape(
+      data.objectid,
+      board,
+      p,
+      s,
+      new Rect(minRect),
+      matrix
+    );
     return bs;
   }
 
