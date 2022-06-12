@@ -90,6 +90,11 @@ export class Board {
 
   private cancelLoopId: number;
 
+  get size(): [number, number] {
+    const { width, height } = this.__canvasStatic;
+    return [width, height];
+  }
+
   constructor(
     canvas: HTMLCanvasElement | string,
     config?: {
@@ -120,7 +125,7 @@ export class Board {
   }
 
   loopClear() {
-    const { width, height } = this.canvasStatic;
+    const [width, height] = this.size;
     this.ctx.clearRect(0, 0, width, height);
     this.ctxStatic.clearRect(0, 0, width, height);
   }
@@ -136,7 +141,7 @@ export class Board {
 
   /** 清除指定畫布(若無指定則清除兩畫布) */
   clearCanvas(type?: "static" | "event") {
-    const { width, height } = this.canvasStatic;
+    const [width, height] = this.size;
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
   }
@@ -158,7 +163,6 @@ export class Board {
 
   /** 添加圖形到圖層級 & 紀錄 */
   addShapeByBs(bs: BaseShape) {
-    this.rerenderToPaint({ bs });
     this.shapes.set(bs.id, bs);
     // this.previewCtrl.rerender();
     this.logAction("draw", bs.id);
@@ -266,19 +270,19 @@ export class Board {
 
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
-    useCtx.setTransform(bs.matrix);
     if (bs instanceof ImageShape && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
+      useCtx.setTransform(bs.matrix);
       useCtx.drawImage(bs.image, x, y, width, height);
+      useCtx.setTransform(1, 0, 0, 1, 0, 0);
     } else {
       if (bs.style.fillColor) {
-        useCtx.fill(bs.path);
+        useCtx.fill(bs.pathWithMatrix);
       } else {
-        useCtx.stroke(bs.path);
+        useCtx.stroke(bs.pathWithMatrix);
       }
     }
-    useCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {

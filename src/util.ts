@@ -198,10 +198,8 @@ export class UtilTools {
 
   /**
    * 利用最小矩形產生路徑
-   *
-   * @deprecated parameter(padding) will delete
    */
-  static minRectToPath(mrv: Rect | MinRectVec, padding = 0): Path2D {
+  static minRectToPath(mrv: Rect | MinRectVec): Path2D {
     const scaleX = 1.2,
       scaleY = 1.2,
       path = new Path2D(),
@@ -263,13 +261,20 @@ export class UtilTools {
   /** 縮放 */
   static scale(prev: Vec2, next: Vec2, c?: Rect | Vec2): DOMMatrix {
     let center: Vec2 | undefined = undefined;
-    const scaleX = next.x / prev.x,
-      scaleY = next.y / prev.y;
+    let scaleX = 1,
+      scaleY = 1;
     if (c) {
       if (c instanceof Rect) {
-        center = c.centerPoint;
+        center = c.nw;
+        const [w, h] = c.size;
+        const nw = next.x - prev.x + w;
+        const nh = next.y - prev.y + h;
+        scaleX = nw / w;
+        scaleY = nh / h;
       } else {
         center = c;
+        scaleX = next.x / prev.x;
+        scaleY = next.y / prev.y;
       }
     }
     return center

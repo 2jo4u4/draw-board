@@ -36,7 +36,7 @@ export class ViewportRect extends BaseShape {
   /** 設定路徑 及 矩形 */
   setting(mrv: MinRectVec) {
     this.minRect = mrv;
-    this.settingPath(UtilTools.minRectToPath(mrv, padding));
+    this.settingPath(UtilTools.minRectToPath(mrv));
     this.shapes = Array.from(this.board.shapes)
       .filter((bs) => !bs[1].isDelete && bs[1].isSelect)
       .map((bs) => bs[1]);
