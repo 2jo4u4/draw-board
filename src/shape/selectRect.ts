@@ -118,7 +118,8 @@ export class SelectSolidRect extends BaseShape {
     }
   }
   handleActive(v: Vec2) {
-    const m = this.conputerMatrix(v, this.flag);
+    // const m = this.conputerMatrix(v, this.flag);
+    const m = new DOMMatrix();
     this.transfer(v, m, this.flag);
   }
   handleInactive(v: Vec2) {
@@ -127,7 +128,8 @@ export class SelectSolidRect extends BaseShape {
     }
   }
   handleEnd(v: Vec2) {
-    const m = this.conputerMatrix(v, this.flag);
+    // const m = this.conputerMatrix(v, this.flag);
+    const m = new DOMMatrix();
     this.transferEnd(v, m, this.flag);
     this.flag = null;
   }

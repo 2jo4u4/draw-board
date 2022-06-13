@@ -1,7 +1,14 @@
 import * as math from "mathjs";
 import * as pdfjsLib from "pdfjs-dist";
-import { Board, Rect, ToolsEnum, UtilTools, BaseShape } from ".";
-import { ImageShape, PDFShape } from "./shape/image";
+import {
+  Board,
+  Rect,
+  ToolsEnum,
+  UtilTools,
+  BaseShape,
+  ImageShape,
+  PDFShape,
+} from ".";
 
 const canvas = document.createElement("canvas");
 const grid = document.createElement("canvas");
@@ -219,7 +226,7 @@ function pdfTest() {
 }
 
 drawGrid();
-// develop();
+develop();
 // myTest();
 // myTest2();
 // pdfTest();
@@ -232,68 +239,70 @@ function getMathMatrix(rect: Rect) {
   ]);
 }
 
-const ctx = testbase();
+// (() => {
+//   const ctx = testbase();
 
-const input = document.createElement("input");
-const fileReader = new FileReader();
-fileReader.onload = function () {
-  const typedArray = this.result;
-  if (typeof typedArray === "string") {
-    const ctx = testbase();
+//   const input = document.createElement("input");
+//   const fileReader = new FileReader();
+//   fileReader.onload = function () {
+//     const typedArray = this.result;
+//     if (typeof typedArray === "string") {
+//       const ctx = testbase();
 
-    const task = pdfjsLib.getDocument(typedArray);
-    task.promise.then(
-      function (pdf) {
-        console.log("PDF loaded");
+//       const task = pdfjsLib.getDocument(typedArray);
+//       task.promise.then(
+//         function (pdf) {
+//           console.log("PDF loaded");
 
-        // Fetch the first page
-        var pageNumber = 2;
-        pdf
-          .getPage(pageNumber)
-          .then(function (page) {
-            console.log("Page loaded");
+//           // Fetch the first page
+//           var pageNumber = 1;
+//           pdf
+//             .getPage(pageNumber)
+//             .then(function (page) {
+//               console.log("Page loaded");
 
-            var scale = 1;
-            var viewport = page.getViewport({ scale: scale });
+//               var scale = 1;
+//               var viewport = page.getViewport({ scale: scale });
 
-            // Prepare canvas using PDF page dimensions
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+//               // Prepare canvas using PDF page dimensions
+//               canvas.height = viewport.height;
+//               canvas.width = viewport.width;
 
-            // Render PDF page into canvas ctx
-            var renderContext = {
-              canvasContext: ctx,
-              viewport: viewport,
-            };
-            var renderTask = page.render(renderContext);
-            renderTask.promise.then(function () {
-              console.log("Page rendered");
-            });
-          })
-          .catch((e) => {
-            console.log("first", e);
-          });
-      },
-      function (reason) {
-        // PDF loading error
-        console.error("reason", reason);
-      }
-    );
-  }
-};
+//               // Render PDF page into canvas ctx
+//               var renderContext = {
+//                 canvasContext: ctx,
+//                 viewport: viewport,
+//               };
+//               var renderTask = page.render(renderContext);
+//               renderTask.promise.then(function () {
+//                 console.log("Page rendered");
+//               });
+//             })
+//             .catch((e) => {
+//               console.log("first", e);
+//             });
+//         },
+//         function (reason) {
+//           // PDF loading error
+//           console.error("reason", reason);
+//         }
+//       );
+//     }
+//   };
 
-input.type = "file";
-input.width = 100;
-input.height = 30;
-input.addEventListener("change", function (event) {
-  if (this.files) {
-    const file = this.files[0];
-    if (file.type != "application/pdf") {
-      throw new Error(`${file.name}, is not a pdf file.`);
-    }
+//   input.type = "file";
+//   input.width = 100;
+//   input.height = 30;
+//   input.addEventListener("change", function (event) {
+//     if (this.files) {
+//       const file = this.files[0];
+//       if (file.type != "application/pdf") {
+//         throw new Error(`${file.name}, is not a pdf file.`);
+//       }
 
-    fileReader.readAsDataURL(file);
-  }
-});
+//       fileReader.readAsDataURL(file);
+//     }
+//   });
 
-document.body.append(input);
+//   document.body.append(input);
+// })();

@@ -1,7 +1,13 @@
-import { BaseShape, Rect, SocketMiddle, ToolsManagement, UtilTools } from ".";
+import {
+  BaseShape,
+  Rect,
+  SocketMiddle,
+  ToolsManagement,
+  UtilTools,
+  ImageShape,
+} from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
-import { ImageShape } from "./shape/image";
 
 type MouseFlag = "active" | "inactive"; // 滑鼠左鍵 活躍 / 非活躍
 type Action = "draw" | "delete" | "translate" | "rotate" | "scale" | "putImage"; // 可被紀錄的行為

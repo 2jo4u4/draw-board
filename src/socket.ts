@@ -1,5 +1,11 @@
-import { BaseShape, Board, BoardShapeLog, UtilTools, UserAction } from ".";
-import { ImageShape } from "./shape/image";
+import {
+  BaseShape,
+  Board,
+  BoardShapeLog,
+  UtilTools,
+  UserAction,
+  ImageShape,
+} from ".";
 import { Rect } from "./util";
 type PageData = Map<string, BoardShapeLog>;
 
@@ -123,6 +129,8 @@ export class DemoSocket implements SocketMiddle {
         break;
     }
   }
+
+  destroy() {}
 
   protected deleteShape(bss: BaseShape[]) {
     const ids = bss.map((bs) => bs.id);

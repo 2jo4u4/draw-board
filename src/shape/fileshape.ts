@@ -1,5 +1,5 @@
 import * as pdfjsLib from "pdfjs-dist";
-import { BaseShape } from "./";
+import { BaseShape } from ".";
 import { Board, defaultImageShapeStyle, Rect, UtilTools } from "..";
 
 type URLString = string;
@@ -70,7 +70,7 @@ export class PDFShape extends BaseShape {
     return this.__currentPage;
   }
 
-  constructor(id: string, board: Board, source: string, m?: DOMMatrix) {
+  constructor(id: string, board: Board, source: string | File, m?: DOMMatrix) {
     const rect = new Rect();
     super(
       id,
@@ -80,23 +80,8 @@ export class PDFShape extends BaseShape {
       rect,
       m
     );
-
     this.fileReader = new FileReader();
-
-    pdfjsLib.getDocument(source);
-  }
-
-  initialFileReader() {
-    this.fileReader.onload = (event) => {
-      if (event.target === null) {
-        throw new Error("not found target");
-      }
-      const typedArray = event.target.result;
-      if (typeof typedArray === "string") {
-        this.pdftask = pdfjsLib.getDocument(typedArray);
-        this.isLoad = true;
-      }
-    };
+    this.initial(source);
   }
 
   prevPage() {
@@ -105,12 +90,44 @@ export class PDFShape extends BaseShape {
       this.renderPdf(page);
     }
   }
+
   nextPage() {
     const page = this.currentPage + 1;
     this.renderPdf(page);
   }
 
-  renderPdf(page = this.__currentPage) {
+  initial(file: File | string) {
+    if (typeof file === "string") {
+      this.pdfReadUri(file);
+    } else {
+      if (file.type !== "application/pdf") {
+        alert(`${file.name}, is not a pdf file.`);
+      } else {
+        this.initialFileReader();
+        this.fileReader.readAsDataURL(file);
+      }
+    }
+  }
+
+  private initialFileReader() {
+    this.fileReader.onload = (event) => {
+      if (event.target === null) {
+        throw new Error("not found target");
+      }
+      const typedArray = event.target.result;
+      if (typeof typedArray === "string") {
+        this.pdfReadUri(typedArray);
+      }
+    };
+  }
+
+  private pdfReadUri(uri: string) {
+    this.pdftask = pdfjsLib.getDocument(uri);
+    this.isLoad = true;
+    this.renderPdf();
+  }
+
+  private renderPdf(page = this.__currentPage) {
     if (this.isLoad) {
       const [width, height] = this.board.size;
       const ctx = this.board.ctxStatic;

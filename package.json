@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "webpack-dev-server --mode development",
+    "build:webpack": "webpack --mode production --config prod.config.js",
     "build": "tsc && cp -r ./src/assets ./dist"
   },
   "keywords": [
