@@ -46,6 +46,7 @@ export class Board {
 
   /** 滑鼠旗標（是否點擊） */
   private mouseFlag: MouseFlag = "inactive";
+  zoom: Zoom;
   /** 像素密度 */
   readonly devicePixelRatio!: number;
   /** 所有被繪製的圖形 */
@@ -92,6 +93,15 @@ export class Board {
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__tools = new Tools(this);
 
+    this.__socket = Socket || null;
+    this.zoom = {
+      x: 200,
+      y: 100,
+      k: 4,
+    }; // pageZoom, default { x: 0, y: 0, k: 1 }
+    this.devicePixelRatio = window.devicePixelRatio;
+
+    this.initial();
     const {
       preview,
       canvas: previewCanvas,
@@ -99,15 +109,11 @@ export class Board {
     } = this.initialPreview();
     this.__previewCanvas = previewCanvas;
     this.__preview = new PreviewWindow(previewCanvas, this);
-    this.__socket = Socket || null;
-    this.devicePixelRatio = window.devicePixelRatio;
-
-    this.initial();
-    this.addListener();
   }
 
   /** 清除指定畫布(若無指定則清除兩畫布) */
   clearCanvas(type?: "static" | "event") {
+    console.log("board clearCanvas");
     const { width, height } = this.canvasStatic;
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
@@ -122,8 +128,9 @@ export class Board {
       bs = new BaseShape(id, this, p, s, m);
     this.shapes.set(id, bs);
     this.logAction("draw", id);
-    this.rerenderToPaint({ bs });
+    this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
     this.previewCtrl.rerender();
+    console.log("who");
   }
 
   addShapeWithFile() {}
@@ -147,25 +154,34 @@ export class Board {
     const { needClear, bs } = v;
     Boolean(needClear) && this.clearCanvas("event");
     if (bs) {
+      const path = new Path2D(),
+        m = new DOMMatrix(),
+        scaleX = this.zoom.k,
+        scaleY = this.zoom.k,
+        originX = this.zoom.x,
+        originY = this.zoom.y;
       if (UtilTools.isBaseShape(bs)) {
+        const path = UtilTools.getZoomedPath(bs.path, this.zoom);
         UtilTools.injectStyle(this.ctx, bs.style);
         if (bs.style.fillColor) {
-          this.ctx.fill(bs.path);
+          this.ctx.fill(path);
         } else {
-          this.ctx.stroke(bs.path);
+          this.ctx.stroke(path);
         }
-        this.ctx.stroke(bs.path);
+        this.ctx.stroke(path);
       } else {
+        const path = UtilTools.getZoomedPath(bs.p, this.zoom);
         UtilTools.injectStyle(this.ctx, bs.s);
         if (bs.s.fillColor) {
-          this.ctx.fill(bs.p);
+          this.ctx.fill(path);
         } else {
-          this.ctx.stroke(bs.p);
+          this.ctx.stroke(path);
         }
       }
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && _bs.isSelect) {
+          const newPath = UtilTools.getZoomedPath(_bs.path, this.zoom);
           UtilTools.injectStyle(this.ctx, _bs.style);
           this.ctx.stroke(_bs.path);
         }
@@ -177,15 +193,17 @@ export class Board {
     const { needClear, bs } = v;
     Boolean(needClear) && this.clearCanvas("static");
     if (bs) {
+      const newPath = UtilTools.getZoomedPath(bs.path, this.zoom);
       UtilTools.injectStyle(this.ctxStatic, bs.style);
       if (bs.style.fillColor) {
-        this.ctxStatic.fill(bs.path);
+        this.ctxStatic.fill(newPath);
       } else {
-        this.ctxStatic.stroke(bs.path);
+        this.ctxStatic.stroke(newPath);
       }
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && !_bs.isSelect) {
+          const newPath = UtilTools.getZoomedPath(_bs.path, this.zoom);
           UtilTools.injectStyle(this.ctxStatic, _bs.style);
           this.ctxStatic.stroke(_bs.path);
         }
@@ -275,6 +293,7 @@ export class Board {
   /** 初始化 canvas */
   private initial() {
     this.settingChild();
+    this.addListener();
   }
 
   destroy() {
@@ -404,6 +423,11 @@ export class Board {
 
     this.rootBlock.append(this.canvasStatic);
     this.rootBlock.appendChild(this.canvas);
+  }
+
+  updateZoom(zoom: Zoom) {
+    this.zoom = zoom;
+    this.rerender();
   }
 }
 

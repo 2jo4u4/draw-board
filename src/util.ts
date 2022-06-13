@@ -112,14 +112,14 @@ export class UtilTools {
     ]);
   }
 
-  static getTransformFromMatrix(matrix: math.Matrix) {
+  static getTransformFromMatrix(matrix: math.Matrix): Transform {
     return {
-      a: matrix.subset(math.index(0, 0)),
-      b: matrix.subset(math.index(1, 0)),
-      c: matrix.subset(math.index(0, 1)),
-      d: matrix.subset(math.index(1, 1)),
-      e: matrix.subset(math.index(0, 2)),
-      f: matrix.subset(math.index(1, 2)),
+      a: Number(matrix.subset(math.index(0, 0))),
+      b: Number(matrix.subset(math.index(1, 0))),
+      c: Number(matrix.subset(math.index(0, 1))),
+      d: Number(matrix.subset(math.index(1, 1))),
+      e: Number(matrix.subset(math.index(0, 2))),
+      f: Number(matrix.subset(math.index(1, 2))),
     };
   }
 
@@ -151,6 +151,51 @@ export class UtilTools {
     const applyRotation = this.matrixMultiply(rotationMatrix, applyScale);
     const result = this.matrixMultiply(translateBackMatrix, applyRotation);
     return this.getTransformFromMatrix(result);
+  }
+
+  static getPointsBox(points: Vec2[]) {
+    if (!points.length) return { top: 0, right: 0, bottom: 0, left: 0 };
+
+    const xs = points.map(({ x }) => x);
+    const ys = points.map(({ y }) => y);
+
+    return {
+      top: Math.min(...ys),
+      right: Math.max(...xs),
+      bottom: Math.max(...ys),
+      left: Math.min(...xs),
+    };
+  }
+
+  static applyTransform(position: Vec2, transform: Transform) {
+    const { x, y } = position;
+    const { a = 1, b = 0, c = 0, d = 1, e = 0, f = 0 } = transform;
+
+    return {
+      x: a * x + c * y + e,
+      y: b * x + d * y + f,
+    };
+  }
+
+  static unZoomPosition(pageZoom: Zoom, { x, y }: Vec2) {
+    const unZoomedTransform = this.nextTransform(defaultTransform, {
+      rScale: 1 / pageZoom.k,
+      cx: pageZoom.x,
+      cy: pageZoom.y,
+      dx: pageZoom.x,
+      dy: pageZoom.y,
+    });
+    return this.applyTransform({ x, y }, unZoomedTransform);
+  }
+
+  static getZoomedPath(path: Path2D, zoom: Zoom, windowRatio: number = 1) {
+    const newPath = new Path2D(),
+      m = new DOMMatrix();
+    newPath.addPath(
+      path,
+      m.scale(zoom.k * windowRatio).translate(-zoom.x, -zoom.y)
+    );
+    return newPath;
   }
 
   /** 是否為 MinRectVec */
@@ -309,9 +354,10 @@ export class UtilTools {
   }
 
   /** 移動 */
-  static translate(prev: Vec2, next: Vec2): DOMMatrix {
+  static translate(prev: Vec2, next: Vec2, k: number = 1): DOMMatrix {
+    
     const [dx, dy] = UtilTools.getOffset(prev, next);
-    return new DOMMatrix().translate(dx, dy);
+    return new DOMMatrix().translate(dx * k, dy * k);
   }
   /** 旋轉 */
   static rotate(center: Vec2, next: Vec2, initDegree?: number): DOMMatrix {

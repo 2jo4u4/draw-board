@@ -33,3 +33,18 @@ type ShapeActionType =
   | "ne-scale" // 縮放右上
   | "sw-scale" // 縮放左下
   | "se-scale"; // 縮放右下
+
+interface Transform {
+  a?: number;
+  b?: number;
+  c?: number;
+  d?: number;
+  e?: number;
+  f?: number;
+}
+
+interface Zoom {
+  x: number;
+  y: number;
+  k: number;
+}

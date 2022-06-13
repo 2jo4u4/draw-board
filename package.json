@@ -17,6 +17,7 @@
   "devDependencies": {
     "@types/fabric": "^4.5.7",
     "html-webpack-plugin": "^5.5.0",
+    "mathjs": "^10.6.1",
     "ts-loader": "^9.2.8",
     "typescript": "^4.6.3",
     "webpack": "^5.70.0",

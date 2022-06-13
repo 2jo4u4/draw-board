@@ -85,10 +85,13 @@ export class SelectTools implements BaseTools {
   }
 
   private select(v: Vec2) {
-    const { x, y } = this.startPosition,
-      { x: nX, y: nY } = v,
-      p = new Path2D(),
+    const p = new Path2D(),
       s = this.flexRectStyle;
+    const { x, y } = UtilTools.unZoomPosition(
+      this.board.zoom,
+      this.startPosition
+    );
+    const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
     p.rect(x, y, nX - x, nY - y);
     this.board.rerenderToEvent({ needClear: true, bs: { p, s } });
   }
@@ -96,7 +99,12 @@ export class SelectTools implements BaseTools {
   private selectEnd(v: Vec2) {
     let minRectVec!: Rect, // 紀錄最小矩形
       shape: [string, BaseShape][] = [];
-    if (v.x === this.startPosition.x && v.y === this.startPosition.y) {
+    const { x, y } = UtilTools.unZoomPosition(
+      this.board.zoom,
+      this.startPosition
+    );
+    const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
+    if (x === nX && y === nY) {
       // 單點選擇圖形
       const single = Array.from(this.board.shapes)
         .reverse()
@@ -107,7 +115,7 @@ export class SelectTools implements BaseTools {
       }
     } else {
       // 移動結束
-      const minRect = UtilTools.generateMinRect(v, this.startPosition); // 伸縮框的範圍
+      const minRect = UtilTools.generateMinRect({ x: nX, y: nY }, { x, y }); // 伸縮框的範圍
       // 判定是否有圖形在此路徑內
       const regBS = Array.from(this.board.shapes).filter(
         (item) => !item[1].isDelete && this.isSelected(minRect, item[1])

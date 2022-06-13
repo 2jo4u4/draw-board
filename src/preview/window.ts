@@ -1,11 +1,12 @@
-import { Board, BaseShape, BoardShapeLog, BaseTools, UtilTools } from "..";
+import {
+  Board,
+  BaseShape,
+  BoardShapeLog,
+  BaseTools,
+  defaultTransform,
+  UtilTools,
+} from "..";
 import { PreviewTools } from "./previewTool";
-
-interface Zoom {
-  x: number;
-  y: number;
-  k: number;
-}
 
 type ActiveFlag = true | false;
 
@@ -36,15 +37,18 @@ export class PreviewWindow {
   private activeFlag: ActiveFlag;
   /** 板子實例 */
   private board: Board;
-  private zoom: Zoom;
-  private windowRatio: number;
+  private zoom: Zoom; // previewZoom
+  readonly windowRatio: number;
+  get previewRatio() {
+    return `${this.zoom.k * 100}`;
+  }
   /** 儲存當前選擇的工具 */
   private __tools: PreviewTools;
   get toolsCtrl() {
     return this.__tools;
   }
   /** 像素密度 */
-  readonly decivePixelPatio!: number;
+  readonly devicePixelRatio!: number;
   /** 所有被繪製的圖形 */
   private __shapes: BoardShapeLog = new Map<string, BaseShape>();
   get shapes(): BoardShapeLog {
@@ -56,14 +60,13 @@ export class PreviewWindow {
     this.setStaticCanvas();
     this.board = board;
     this.__shapes = board.shapes;
-    this.__tools = new PreviewTools(board);
-    this.activeFlag = false;
-    this.decivePixelPatio = window.devicePixelRatio;
-    this.zoom = { x: 0, y: 0, k: 1 };
     this.windowRatio = 1 / 3;
+    this.__tools = new PreviewTools(board, this.windowRatio);
+    this.activeFlag = false;
+    this.devicePixelRatio = window.devicePixelRatio;
+    this.zoom = this.getPreviewZoom(board.zoom, this.windowRatio);
 
     this.initial();
-    this.addListener();
   }
 
   clearCanvas(type?: "static" | "event") {
@@ -76,29 +79,47 @@ export class PreviewWindow {
     bs?: { p: Path2D; s: Styles } | BaseShape;
   }) {
     const { needClear, bs } = v;
+    console.log("rerenderToEvent", bs, UtilTools.isBaseShape(bs));
     Boolean(needClear) && this.clearCanvas("event");
     if (bs) {
+      const path = new Path2D(),
+        m = new DOMMatrix(),
+        scaleX = this.board.zoom.k / this.windowRatio,
+        scaleY = this.board.zoom.k / this.windowRatio,
+        originX = this.board.zoom.x,
+        originY = this.board.zoom.y;
       if (UtilTools.isBaseShape(bs)) {
+        const path = UtilTools.getZoomedPath(
+          bs.path,
+          this.zoom,
+          this.windowRatio
+        );
         UtilTools.injectStyle(this.ctx, bs.style);
         if (bs.style.fillColor) {
-          this.ctx.fill(bs.path);
+          this.ctx.fill(path);
         } else {
-          this.ctx.stroke(bs.path);
+          this.ctx.stroke(path);
         }
-        this.ctx.stroke(bs.path);
+        this.ctx.stroke(path);
       } else {
+        const path = UtilTools.getZoomedPath(bs.p, this.zoom, this.windowRatio);
         UtilTools.injectStyle(this.ctx, bs.s);
         if (bs.s.fillColor) {
-          this.ctx.fill(bs.p);
+          this.ctx.fill(path);
         } else {
-          this.ctx.stroke(bs.p);
+          this.ctx.stroke(path);
         }
       }
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && _bs.isSelect) {
+          const path = UtilTools.getZoomedPath(
+            _bs.path,
+            this.zoom,
+            this.windowRatio
+          );
           UtilTools.injectStyle(this.ctx, _bs.style);
-          this.ctx.stroke(_bs.path);
+          this.ctx.stroke(path);
         }
       });
     }
@@ -108,17 +129,27 @@ export class PreviewWindow {
     const { needClear, bs } = v;
     Boolean(needClear) && this.clearCanvas("static");
     if (bs) {
+      const path = UtilTools.getZoomedPath(
+        bs.path,
+        this.board.zoom,
+        this.windowRatio
+      );
       UtilTools.injectStyle(this.ctxStatic, bs.style);
       if (bs.style.fillColor) {
-        this.ctxStatic.fill(bs.path);
+        this.ctxStatic.fill(path);
       } else {
-        this.ctxStatic.stroke(bs.path);
+        this.ctxStatic.stroke(path);
       }
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && !_bs.isSelect) {
+          const path = UtilTools.getZoomedPath(
+            _bs.path,
+            this.board.zoom,
+            this.windowRatio
+          );
           UtilTools.injectStyle(this.ctxStatic, _bs.style);
-          this.ctxStatic.stroke(_bs.path);
+          this.ctxStatic.stroke(path);
         }
       });
     }
@@ -133,6 +164,8 @@ export class PreviewWindow {
 
   private initial() {
     this.settingChild();
+    this.addListener();
+    this.toolsCtrl.initial();
   }
 
   destroy() {
@@ -216,11 +249,11 @@ export class PreviewWindow {
 
     const back = {
       x:
-        ((x - left) / (this.canvas.width / this.decivePixelPatio / width)) *
-        this.decivePixelPatio,
+        ((x - left) / (this.canvas.width / this.devicePixelRatio / width)) *
+        this.devicePixelRatio,
       y:
-        ((y - top) / (this.canvas.height / this.decivePixelPatio / height)) *
-        this.decivePixelPatio,
+        ((y - top) / (this.canvas.height / this.devicePixelRatio / height)) *
+        this.devicePixelRatio,
     };
 
     return back;
@@ -238,8 +271,8 @@ export class PreviewWindow {
   private setCanvasStyle(el: HTMLCanvasElement) {
     const clientWidth = window.innerWidth * this.windowRatio;
     const clientHeight = window.innerHeight * this.windowRatio;
-    el.setAttribute("width", `${clientWidth * this.decivePixelPatio}px`);
-    el.setAttribute("height", `${clientHeight * this.decivePixelPatio}px`);
+    el.setAttribute("width", `${clientWidth * this.devicePixelRatio}px`);
+    el.setAttribute("height", `${clientHeight * this.devicePixelRatio}px`);
     el.style.width = `${clientWidth}px`;
     el.style.height = `${clientHeight}px`;
   }
@@ -259,5 +292,63 @@ export class PreviewWindow {
 
     this.rootBlock.append(this.canvasStatic);
     this.rootBlock.appendChild(this.canvas);
+  }
+
+  getPreviewZoom(currentPageZoom: Zoom, ratio: number = this.windowRatio) {
+    const canvas = this.canvas;
+    const viewportArea = UtilTools.getPointsBox([
+      { x: 0, y: 0 },
+      { x: canvas.width, y: canvas.height },
+    ]);
+    const transform = UtilTools.nextTransform(
+      UtilTools.nextTransform(
+        UtilTools.nextTransform(defaultTransform, {
+          rScale: 1 / currentPageZoom.k,
+        }),
+        { rScale: 1 / ratio }
+      ),
+      {
+        dx: currentPageZoom.x,
+        dy: currentPageZoom.y,
+      }
+    );
+    const { x: vRight, y: vTop } = UtilTools.applyTransform(
+      { x: viewportArea.right, y: viewportArea.top },
+      transform
+    );
+    const { x: vLeft, y: vBottom } = UtilTools.applyTransform(
+      {
+        x: viewportArea.left,
+        y: viewportArea.bottom,
+      },
+      transform
+    );
+
+    const topLefts = Array.from(this.shapes).map(([_id, shape]) => {
+      console.log(shape);
+      const { ne, nw, se } = shape.coveredRect;
+      return { y: ne.y || nw.y, x: ne.x || se.x };
+    });
+    const bottomRights = Array.from(this.shapes).map(([_id, shape]) => {
+      const { ne, se, sw } = shape.coveredRect;
+
+      return { y: se.y || sw.y, x: ne.x || se.x };
+    });
+    const { top, right, bottom, left } = UtilTools.getPointsBox([
+      ...topLefts,
+      ...bottomRights,
+      { x: vRight, y: vTop },
+      { x: vLeft, y: vBottom },
+    ]);
+    const width = right - left;
+    const height = bottom - top;
+    const x = left;
+    const y = top;
+    const k =
+      canvas.width / width < canvas.height / height
+        ? canvas.width / width
+        : canvas.height / height;
+    this.zoom = { x, y, k };
+    return { x, y, k };
   }
 }

@@ -74,7 +74,11 @@ export class BaseShape {
     if (minRect instanceof Rect) {
       this.coveredRect = minRect;
     } else {
-      this.coveredRect = new Rect(minRect);
+      this.coveredRect = new Rect(minRect).translateSelf(
+        new DOMMatrix()
+          .scaleSelf(1 / board.zoom.k)
+          .translate(-board.zoom.x, -board.zoom.y)
+      );
     }
     this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
     // delete
@@ -115,9 +119,9 @@ export class BaseShape {
       newPath = new Path2D();
     newPath.addPath(this.path, matrix);
     this.path = newPath;
-    //   /* TODO partial rerender if possiable
-    //   this.board.rerenderToEvent({ bs: { p: newPath, s } });
-    //   */
+    /* TODO partial rerender if possiable
+      this.board.rerenderToEvent({ bs: { p: newPath, s } });
+      */
     this.board.rerender();
     switch (type) {
       case "translate":

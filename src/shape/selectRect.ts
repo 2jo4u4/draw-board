@@ -65,23 +65,24 @@ export class SelectSolidRect extends BaseShape {
   }
 
   isCovered(v: Vec2): boolean {
+    const nV = UtilTools.unZoomPosition(this.board.zoom, v);
     let ans = true;
-    if (this.board.checkPointInPath(this.rotatePath, v)) {
+    if (this.board.checkPointInPath(this.rotatePath, nV)) {
       this.flag = "rotate";
       this.board.changeCursor("grab");
-    } else if (this.board.checkPointInPath(this.scalePath[0], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[0], nV)) {
       this.flag = "nw-scale";
       this.board.changeCursor("nw-resize");
-    } else if (this.board.checkPointInPath(this.scalePath[1], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[1], nV)) {
       this.flag = "ne-scale";
       this.board.changeCursor("ne-resize");
-    } else if (this.board.checkPointInPath(this.scalePath[2], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[2], nV)) {
       this.flag = "sw-scale";
       this.board.changeCursor("sw-resize");
-    } else if (this.board.checkPointInPath(this.scalePath[3], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[3], nV)) {
       this.flag = "se-scale";
       this.board.changeCursor("se-resize");
-    } else if (this.board.checkPointInPath(this.path, v)) {
+    } else if (this.board.checkPointInPath(this.path, nV)) {
       this.flag = "translate";
       this.board.changeCursor("move");
     } else {
@@ -108,15 +109,22 @@ export class SelectSolidRect extends BaseShape {
     switch (this.flag) {
       case "translate":
         {
+          const { x, y } = UtilTools.unZoomPosition(
+            this.board.zoom,
+            this.startPosition
+          );
+          const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
           const matrix = UtilTools.translate(this.startPosition, v);
+          const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
           this.transfer(v, matrix);
         }
         break;
       case "rotate":
         {
+          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
           const matrix = UtilTools.rotate(
             this.coveredRect.centerPoint,
-            v,
+            { x, y }, //v,
             this.initDegree
           );
           this.transfer(v, matrix);
@@ -124,12 +132,17 @@ export class SelectSolidRect extends BaseShape {
         break;
       case "nw-scale":
         {
+          const { x: nX, y: nY } = UtilTools.unZoomPosition(
+            this.board.zoom,
+            this.startPosition
+          );
+          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
           const matrix = UtilTools.scale(
             v,
             this.startPosition,
             this.coveredRect.getReferPointOpposite(this.flag)
           );
-          this.transfer(v, matrix);
+          this.transfer({ x, y }, matrix);
         }
         break;
       case "ne-scale":
@@ -173,15 +186,21 @@ export class SelectSolidRect extends BaseShape {
     switch (this.flag) {
       case "translate":
         {
-          const matrix = UtilTools.translate(this.startPosition, v);
+          const { x, y } = UtilTools.unZoomPosition(
+            this.board.zoom,
+            this.startPosition
+          );
+          const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
+          const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
           this.transferEnd(v, matrix);
         }
         break;
       case "rotate":
         {
+          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
           const matrix = UtilTools.rotate(
             this.coveredRect.centerPoint,
-            v,
+            { x, y }, //v,
             this.initDegree
           );
           this.board.changeCursor("grab");
@@ -233,6 +252,7 @@ export class SelectSolidRect extends BaseShape {
     this.actionBar.openBar(this.coveredRect);
   }
 
+  // TODO update nw-scale, ne-scale, sw-scale, se-scale with zoom
   override transfer(v: Vec2, matrix: DOMMatrix): void {
     if (this.flag !== null) {
       this.board.clearCanvas("event");
@@ -244,6 +264,7 @@ export class SelectSolidRect extends BaseShape {
     }
   }
 
+  // TODO update nw-scale, ne-scale, sw-scale, se-scale with zoom
   override transferEnd(v: Vec2, matrix: DOMMatrix): void {
     if (this.flag !== null) {
       this.board.clearCanvas("event");

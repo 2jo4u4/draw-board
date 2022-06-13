@@ -14,19 +14,22 @@ export class PreviewTools implements BaseTools {
   /** 紀錄滑鼠起點 */
   private startPosition: Vec2 = { x: 0, y: 0 };
   /** 固定框 */
-  private viewportRect: ViewportRect;
+  private viewportRect!: ViewportRect;
+  readonly windowRatio: number;
 
-  constructor(board: Board) {
+  constructor(board: Board, windowRatio: number = 1) {
     this.board = board;
     this.flexRectStyle = viewportFlexboxStyle;
-    this.viewportRect = new ViewportRect(board);
-    // this.viewportRect.moveStart(this.startPosition);
+    this.windowRatio = windowRatio;
+  }
+
+  initial(): void {
+    this.viewportRect = new ViewportRect(this.board, this.windowRatio);
+    this.viewportRect.isSelect = true;
   }
 
   renderViewport(): void {
-    this.viewportRect.isSelect = true;
     this.viewportRect.settingAndOpen();
-    console.log(this.viewportRect, this.board);
   }
 
   onDestroy(): void {
