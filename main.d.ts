@@ -35,3 +35,17 @@ interface ShapeAction {
 
 /** 基準點位不同(m1: 一開始的位置, m2: 上一個位置) */
 type MultiMatrix = { m1: DOMMatrix; m2: DOMMatrix };
+interface Transform {
+  a?: number;
+  b?: number;
+  c?: number;
+  d?: number;
+  e?: number;
+  f?: number;
+}
+
+interface Zoom {
+  x: number;
+  y: number;
+  k: number;
+}

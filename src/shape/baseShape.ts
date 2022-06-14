@@ -102,7 +102,8 @@ export class BaseShape {
   /** 紀錄 */
   private shapeActionLog: ShapeAction[] = [];
   private shapeActionLimit: number;
-  private regPosition!: Vec2;
+  startPosition!: Vec2;
+  regPosition!: Vec2;
 
   /** 一次選取後的所有動作紀錄 */
   private SRTMatrix: DOMMatrix[] = [];
@@ -148,6 +149,7 @@ export class BaseShape {
 
   transferStart(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
     this.regPosition = v;
+    this.startPosition = v;
   }
 
   transfer(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {

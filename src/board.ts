@@ -53,6 +53,7 @@ export class Board {
 
   /** 滑鼠旗標（是否點擊） */
   private mouseFlag: MouseFlag = "inactive";
+  zoom: Zoom;
   /** 像素密度 */
   readonly devicePixelRatio!: number;
   /** 所有被繪製的圖形 */
@@ -113,7 +114,6 @@ export class Board {
     this.setStaticCanvas();
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__tools = new Tools(this);
-
     const {
       preview,
       canvas: previewCanvas,
@@ -122,6 +122,11 @@ export class Board {
     this.__previewCanvas = previewCanvas;
     this.__preview = new PreviewWindow(previewCanvas, this);
     this.__socket = Socket || null;
+    this.zoom = {
+      x: 200,
+      y: 100,
+      k: 4,
+    }; // pageZoom, default { x: 0, y: 0, k: 1 }
     this.devicePixelRatio = window.devicePixelRatio;
 
     this.initial();
@@ -170,8 +175,10 @@ export class Board {
   /** 添加圖形到圖層級 & 紀錄 */
   addShapeByBs(bs: BaseShape) {
     this.shapes.set(bs.id, bs);
-    // this.previewCtrl.rerender();
     this.logAction("draw", bs.id);
+    this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
+    this.previewCtrl.rerender();
+    console.log("who");
   }
 
   /** 刪除已選圖形 */
@@ -222,43 +229,38 @@ export class Board {
   ) {
     const { needClear, bs, type } = v;
     if (bs) {
-      Boolean(needClear) && this.clearCanvas(type);
-      if (bs instanceof BaseShape) {
-        if (bs instanceof ImageShape && bs.isLoad) {
-          this.rerenderToWithFileShape(useCtx, bs);
+      const path = new Path2D(),
+        m = new DOMMatrix(),
+        scaleX = this.zoom.k,
+        scaleY = this.zoom.k,
+        originX = this.zoom.x,
+        originY = this.zoom.y;
+      if (UtilTools.isBaseShape(bs)) {
+        const path = UtilTools.getZoomedPath(bs.path, this.zoom);
+        UtilTools.injectStyle(this.ctx, bs.style);
+        if (bs.style.fillColor) {
+          this.ctx.fill(path);
         } else {
-          useCtx.setTransform(bs.matrix);
-          UtilTools.injectStyle(useCtx, bs.style);
-          if (bs.style.fillColor) {
-            useCtx.fill(bs.path);
-          } else {
-            useCtx.stroke(bs.path);
-          }
-          useCtx.setTransform(1, 0, 0, 1, 0, 0);
+          this.ctx.stroke(path);
         }
+        this.ctx.stroke(path);
       } else {
-        UtilTools.injectStyle(useCtx, bs.s);
+        const path = UtilTools.getZoomedPath(bs.p, this.zoom);
+        UtilTools.injectStyle(this.ctx, bs.s);
         if (bs.s.fillColor) {
-          useCtx.fill(bs.p);
+          this.ctx.fill(path);
         } else {
-          useCtx.stroke(bs.p);
+          this.ctx.stroke(path);
         }
       }
     } else {
       this.clearCanvas(type);
       const isSelect = type === "event";
       this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && _bs.isSelect === isSelect) {
-          if (_bs instanceof ImageShape && _bs.isLoad) {
-            this.rerenderToWithFileShape(useCtx, _bs);
-          } else {
-            UtilTools.injectStyle(useCtx, _bs.style);
-            if (_bs.style.fillColor) {
-              useCtx.fill(_bs.path);
-            } else {
-              useCtx.stroke(_bs.path);
-            }
-          }
+        if (!_bs.isDelete && _bs.isSelect) {
+          const newPath = UtilTools.getZoomedPath(_bs.path, this.zoom);
+          UtilTools.injectStyle(this.ctx, _bs.style);
+          this.ctx.stroke(_bs.path);
         }
       });
     }
@@ -399,6 +401,7 @@ export class Board {
   /** 初始化 canvas */
   private initial() {
     this.settingChild();
+    this.addListener();
   }
 
   destroy() {
@@ -526,6 +529,13 @@ export class Board {
 
     this.rootBlock.append(this.canvasStatic);
     this.rootBlock.appendChild(this.canvas);
+  }
+
+  updateZoom(zoom: Zoom) {
+    console.log("first", zoom);
+
+    this.zoom = zoom;
+    this.rerender();
   }
 }
 

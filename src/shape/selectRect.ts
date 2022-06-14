@@ -77,20 +77,21 @@ export class SelectSolidRect extends BaseShape {
   }
 
   isCovered(v: Vec2): boolean {
+    const nV = UtilTools.unZoomPosition(this.board.zoom, v);
     let ans = true;
-    if (this.board.checkPointInPath(this.rotatePath, v)) {
+    if (this.board.checkPointInPath(this.rotatePath, nV)) {
       this.flag = "rotate";
       this.board.changeCursor("grab");
-    } else if (this.board.checkPointInPath(this.scalePath[0], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[0], nV)) {
       this.flag = "nw-scale";
       this.board.changeCursor("nw-resize");
-    } else if (this.board.checkPointInPath(this.scalePath[1], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[1], nV)) {
       this.flag = "ne-scale";
       this.board.changeCursor("ne-resize");
-    } else if (this.board.checkPointInPath(this.scalePath[2], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[2], nV)) {
       this.flag = "sw-scale";
       this.board.changeCursor("sw-resize");
-    } else if (this.board.checkPointInPath(this.scalePath[3], v)) {
+    } else if (this.board.checkPointInPath(this.scalePath[3], nV)) {
       this.flag = "se-scale";
       this.board.changeCursor("se-resize");
     } else if (this.board.checkPointInPath(this.pathWithMatrix, v)) {
@@ -121,6 +122,77 @@ export class SelectSolidRect extends BaseShape {
     // const m = this.conputerMatrix(v, this.flag);
     const m = new DOMMatrix();
     this.transfer(v, m, this.flag);
+    switch (this.flag) {
+      case "translate":
+        {
+          const { x, y } = UtilTools.unZoomPosition(
+            this.board.zoom,
+            this.startPosition
+          );
+          const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
+          // const matrix = UtilTools.translate(this.startPosition, v);
+          const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
+          this.transfer(v, matrix, this.flag);
+        }
+        break;
+      case "rotate":
+        {
+          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+          const matrix = UtilTools.rotate(
+            this.coveredRect.centerPoint,
+            { x, y }, //v,
+            // this.initDegree
+            0
+          );
+          this.transfer(v, matrix, this.flag);
+        }
+        break;
+      case "nw-scale":
+        {
+          const { x: nX, y: nY } = UtilTools.unZoomPosition(
+            this.board.zoom,
+            this.startPosition
+          );
+          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+          const matrix = UtilTools.scale(
+            v,
+            this.startPosition,
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer({ x, y }, matrix, this.flag);
+        }
+        break;
+      case "ne-scale":
+        {
+          const matrix = UtilTools.scale(
+            { x: this.startPosition.x, y: v.y },
+            { x: v.x, y: this.startPosition.y },
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer(v, matrix, this.flag);
+        }
+        break;
+      case "sw-scale":
+        {
+          const matrix = UtilTools.scale(
+            { x: v.x, y: this.startPosition.y },
+            { x: this.startPosition.x, y: v.y },
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer(v, matrix, this.flag);
+        }
+        break;
+      case "se-scale":
+        {
+          const matrix = UtilTools.scale(
+            this.startPosition,
+            v,
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transfer(v, matrix, this.flag);
+        }
+        break;
+    }
   }
   handleInactive(v: Vec2) {
     if (this.shapes.length > 0) {
@@ -128,19 +200,91 @@ export class SelectSolidRect extends BaseShape {
     }
   }
   handleEnd(v: Vec2) {
-    // const m = this.conputerMatrix(v, this.flag);
-    const m = new DOMMatrix();
-    this.transferEnd(v, m, this.flag);
+    // // const m = this.conputerMatrix(v, this.flag);
+    // const m = new DOMMatrix();
+    // this.transferEnd(v, m, this.flag);
+    switch (this.flag) {
+      case "translate":
+        {
+          const { x, y } = UtilTools.unZoomPosition(
+            this.board.zoom,
+            this.startPosition
+          );
+          const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
+          const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
+          this.transferEnd(v, matrix, this.flag);
+        }
+        break;
+      case "rotate":
+        {
+          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+          const matrix = UtilTools.rotate(
+            this.coveredRect.centerPoint,
+            { x, y }, //v,
+            // this.initDegree
+            0
+          );
+          this.board.changeCursor("grab");
+          this.transferEnd(v, matrix, this.flag);
+        }
+        break;
+      case "nw-scale":
+        {
+          const matrix = UtilTools.scale(
+            v,
+            this.startPosition,
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix, this.flag);
+        }
+        break;
+      case "ne-scale":
+        {
+          const matrix = UtilTools.scale(
+            { x: this.startPosition.x, y: v.y },
+            { x: v.x, y: this.startPosition.y },
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix, this.flag);
+        }
+        break;
+      case "sw-scale":
+        {
+          const matrix = UtilTools.scale(
+            { x: v.x, y: this.startPosition.y },
+            { x: this.startPosition.x, y: v.y },
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix, this.flag);
+        }
+        break;
+      case "se-scale":
+        {
+          const matrix = UtilTools.scale(
+            this.startPosition,
+            v,
+            this.coveredRect.getReferPointOpposite(this.flag)
+          );
+          this.transferEnd(v, matrix, this.flag);
+        }
+        break;
+    }
     this.flag = null;
   }
 
-  override transfer(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
-    if (type !== null) {
+  // TODO update nw-scale, ne-scale, sw-scale, se-scale with zoom
+  override transfer(
+    v: Vec2,
+    matrix: DOMMatrix,
+    type: ShapeActionType | null
+  ): void {
+    if (this.flag !== null) {
+      this.board.clearCanvas("event");
       this.actionBar.closeBar();
       this.shapes.forEach((bs) => {
-        bs.transfer(v, m, type);
+        bs.transfer(v, matrix, type);
       });
-      super.transfer(v, m, type);
+      super.transfer(v, matrix, type);
       this.assignScale();
       this.assignRotate();
     }
