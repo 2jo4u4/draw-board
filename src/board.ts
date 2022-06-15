@@ -1,4 +1,11 @@
-import { BaseShape, Rect, SocketMiddle, ToolsManagement, UtilTools } from ".";
+import {
+  BaseShape,
+  Rect,
+  SocketMiddle,
+  ToolsManagement,
+  UtilTools,
+  defaultZoom,
+} from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
 
@@ -94,11 +101,7 @@ export class Board {
     this.__tools = new Tools(this);
 
     this.__socket = Socket || null;
-    this.zoom = {
-      x: 200,
-      y: 100,
-      k: 4,
-    }; // pageZoom, default { x: 0, y: 0, k: 1 }
+    this.zoom = defaultZoom; // pageZoom, default { x: 0, y: 0, k: 1 }
     this.devicePixelRatio = window.devicePixelRatio;
 
     this.initial();
