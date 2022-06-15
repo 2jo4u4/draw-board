@@ -78,9 +78,6 @@ export class SelectTools implements BaseTools {
 
   private selectStart(v: Vec2) {
     this.selectSolidRect.closeSolidRect();
-    this.board.shapes.forEach((bs) => {
-      bs.isSelect = false;
-    });
   }
 
   private select(v: Vec2) {

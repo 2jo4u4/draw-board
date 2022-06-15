@@ -33,7 +33,7 @@ export class PreviewTools implements BaseTools {
   }
 
   onDestroy(): void {
-    this.board.rerender();
+    // this.board.rerender();
     // this.closeWindow();
   }
 

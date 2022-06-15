@@ -90,7 +90,7 @@ function develop() {
   function initialTools() {
     tools.style.cursor = "pointer";
     board.toolsCtrl.switchTypeToSelect();
-    p.innerText = `目前工具：選擇器`;
+    p.innerText = `目前工具： 選擇器`;
     AddTools(ToolsEnum.鉛筆);
     AddTools(ToolsEnum.選擇器);
     AddTools(ToolsEnum.擦子);

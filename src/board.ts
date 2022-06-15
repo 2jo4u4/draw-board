@@ -112,8 +112,13 @@ export class Board {
     this.__canvas = getCnavasElement(canvas);
     this.__ctx = checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
-    const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
-    this.__tools = new Tools(this);
+    this.devicePixelRatio = window.devicePixelRatio;
+    this.zoom = {
+      x: 0,
+      y: 0,
+      k: 1,
+    }; // pageZoom, default { x: 0, y: 0, k: 1 }
+    this.initial();
     const {
       preview,
       canvas: previewCanvas,
@@ -121,17 +126,11 @@ export class Board {
     } = this.initialPreview();
     this.__previewCanvas = previewCanvas;
     this.__preview = new PreviewWindow(previewCanvas, this);
+    const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__socket = Socket || null;
-    this.zoom = {
-      x: 200,
-      y: 100,
-      k: 4,
-    }; // pageZoom, default { x: 0, y: 0, k: 1 }
-    this.devicePixelRatio = window.devicePixelRatio;
+    this.__tools = new Tools(this);
 
-    this.initial();
     this.addListener();
-
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
@@ -176,7 +175,7 @@ export class Board {
   addShapeByBs(bs: BaseShape) {
     this.shapes.set(bs.id, bs);
     this.logAction("draw", bs.id);
-    this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
+    // this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
     this.previewCtrl.rerender();
     console.log("who");
   }
@@ -191,79 +190,6 @@ export class Board {
       }
     });
     this.logAction("delete", ...id);
-    this.rerender();
-  }
-  /**
-   * 重新繪製事件層
-   *
-   * @deprecated
-   */
-  rerenderToEvent(v: {
-    needClear?: boolean;
-    bs?: { p: Path2D; s: Styles } | BaseShape;
-  }) {
-    this.rerenderTo(this.ctx, { type: "event", ...v });
-  }
-  /**
-   * 重新繪製圖層
-   *
-   * @deprecated
-   */
-  rerenderToPaint(v: {
-    needClear?: boolean;
-    bs?: { p: Path2D; s: Styles } | BaseShape;
-  }) {
-    this.rerenderTo(this.ctxStatic, { type: "static", ...v });
-  }
-
-  /**
-   * @deprecated
-   */
-  rerenderTo(
-    useCtx: CanvasRenderingContext2D,
-    v: {
-      needClear?: boolean;
-      type: "event" | "static";
-      bs?: { p: Path2D; s: Styles } | BaseShape;
-    }
-  ) {
-    const { needClear, bs, type } = v;
-    if (bs) {
-      const path = new Path2D(),
-        m = new DOMMatrix(),
-        scaleX = this.zoom.k,
-        scaleY = this.zoom.k,
-        originX = this.zoom.x,
-        originY = this.zoom.y;
-      if (UtilTools.isBaseShape(bs)) {
-        const path = UtilTools.getZoomedPath(bs.path, this.zoom);
-        UtilTools.injectStyle(this.ctx, bs.style);
-        if (bs.style.fillColor) {
-          this.ctx.fill(path);
-        } else {
-          this.ctx.stroke(path);
-        }
-        this.ctx.stroke(path);
-      } else {
-        const path = UtilTools.getZoomedPath(bs.p, this.zoom);
-        UtilTools.injectStyle(this.ctx, bs.s);
-        if (bs.s.fillColor) {
-          this.ctx.fill(path);
-        } else {
-          this.ctx.stroke(path);
-        }
-      }
-    } else {
-      this.clearCanvas(type);
-      const isSelect = type === "event";
-      this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && _bs.isSelect) {
-          const newPath = UtilTools.getZoomedPath(_bs.path, this.zoom);
-          UtilTools.injectStyle(this.ctx, _bs.style);
-          this.ctx.stroke(_bs.path);
-        }
-      });
-    }
   }
 
   renderBaseShape(bs: BaseShape) {
@@ -319,19 +245,7 @@ export class Board {
     useCtx.drawImage(bs.image, x, y, width, height);
     useCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
-  /** 重新繪製所有層 */
-  rerender() {
-    this.shapes.forEach((bs) => {
-      if (!bs.isDelete) {
-        if (bs.isSelect) {
-          this.rerenderToEvent({ bs });
-        } else {
-          this.rerenderToPaint({ bs });
-        }
-      }
-    });
-    // this.previewCtrl.rerender();
-  }
+
   /** 紀錄行為 */
   logAction(type: Action, ...id: string[]) {
     const actionNumber = this.actionStoreCount++;
@@ -352,7 +266,6 @@ export class Board {
   /** 變更Page */
   changePage(shapes: BoardShapeLog) {
     this.__shapes = shapes;
-    this.rerender();
   }
   /** 變更鼠標樣式 */
   changeCursor(
@@ -500,7 +413,6 @@ export class Board {
     // 設定大小
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);
-    this.rerender();
   }
 
   private setCanvasStyle(el: HTMLCanvasElement) {
@@ -535,7 +447,7 @@ export class Board {
     console.log("first", zoom);
 
     this.zoom = zoom;
-    this.rerender();
+    // this.rerender();
   }
 }
 

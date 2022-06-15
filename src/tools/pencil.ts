@@ -39,6 +39,7 @@ export class PencilTools implements BaseTools {
       this.drawStyle,
       new Rect(this.minRect)
     );
+    this.board.addShapeByBs(this.shape);
   }
 
   onEventMoveActive(v: Vec2): void {

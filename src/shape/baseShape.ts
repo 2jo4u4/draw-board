@@ -16,14 +16,11 @@ export class BaseShape {
   }
 
   get pathWithMatrix(): Path2D {
-    let p = new Path2D();
-    p.addPath(this.__path, this.matrix);
-    this.SRTMatrix.forEach((m) => {
-      const np = new Path2D();
-      np.addPath(p, m);
-      p = np;
-    });
-    return p;
+    const p1 = new Path2D();
+    p1.addPath(this.__path, this.matrix);
+    const p2 = new Path2D();
+    p2.addPath(p1, this.stagingMatrix);
+    return p2;
   }
   set path(p: Path2D) {
     this.__path = p;
@@ -34,7 +31,11 @@ export class BaseShape {
     return this.__coveredRect.clone();
   }
   get coveredRectWithmatrix(): Rect {
-    return this.__coveredRect.clone().transferSelf(this.matrix);
+    return this.__coveredRect
+      .clone()
+      .transferSelf(this.matrix)
+      .clone()
+      .transferSelf(this.stagingMatrix);
   }
   set coveredRect(r: Rect) {
     this.__coveredRect = r;
@@ -49,14 +50,11 @@ export class BaseShape {
     return this.__bindingBox;
   }
   get bindingBoxWithMatrix(): Path2D {
-    let p = new Path2D();
-    p.addPath(this.__bindingBox, this.matrix);
-    this.SRTMatrix.forEach((m) => {
-      const np = new Path2D();
-      np.addPath(p, m);
-      p = np;
-    });
-    return p;
+    const p1 = new Path2D();
+    p1.addPath(this.__bindingBox, this.matrix);
+    const p2 = new Path2D();
+    p2.addPath(p1, this.stagingMatrix);
+    return p2;
   }
   set bindingBox(p: Path2D) {
     this.__bindingBox = p;
@@ -69,17 +67,11 @@ export class BaseShape {
   }
   set isSelect(b: boolean) {
     this.__isSelect = this.__isDelete ? false : b;
-    if (!this.__isSelect) {
-      const m = new DOMMatrix();
-      this.SRTMatrix.forEach((m) => {
-        m.multiplySelf(m);
-      });
-
-      this.__matrix = DOMMatrix.fromMatrix(this.__matrix)
-        .inverse()
-        .multiplySelf(m);
+    if (this.__isSelect) {
+      this.stagingMatrix = new DOMMatrix();
+    } else {
+      // meger matrix & stagingMatrix
     }
-    this.resetSRTMatrix();
   }
   /** 是否被刪除 */
   private __isDelete = false;
@@ -98,15 +90,12 @@ export class BaseShape {
   set matrix(m: DOMMatrix) {
     this.__matrix = m;
   }
-
+  private stagingMatrix!: DOMMatrix;
   /** 紀錄 */
   private shapeActionLog: ShapeAction[] = [];
   private shapeActionLimit: number;
   startPosition!: Vec2;
   regPosition!: Vec2;
-
-  /** 一次選取後的所有動作紀錄 */
-  private SRTMatrix: DOMMatrix[] = [];
 
   constructor(
     id: string,
@@ -127,25 +116,6 @@ export class BaseShape {
     this.__coveredRect = coveredRect.clone();
     this.__bindingBox = UtilTools.minRectToPath(coveredRect);
   }
-  /**
-   * @deprecated
-   *
-   * 移除function
-   */
-  moveStart(v: Vec2) {}
-  /**
-   * @deprecated
-   *
-   * 使用 transfer 替代
-   */
-  move(v: Vec2) {}
-  /**
-   * @deprecated
-   *
-   * 使用 transferEnd 替代
-   *
-   */
-  moveEnd(v: Vec2) {}
 
   transferStart(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
     this.regPosition = v;
@@ -153,80 +123,18 @@ export class BaseShape {
   }
 
   transfer(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
-    // this.conputerMatrix(v, type);
-    // this.regPosition = v;
+    this.regPosition = v;
+    this.stagingMatrix = m;
   }
 
-  transferEnd(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {}
-
-  conputerMatrix(v: Vec2, flag: ShapeActionType | null): DOMMatrix {
-    const [s, r, t] = this.SRTMatrix;
-    switch (flag) {
-      case "translate":
-        t.multiplySelf(UtilTools.translate(this.regPosition, v));
-        break;
-      case "rotate":
-        r.multiplySelf(
-          UtilTools.rotate(
-            this.coveredRectWithmatrix.centerPoint,
-            v,
-            UtilTools.getDegree(
-              UtilTools.getAngle(
-                this.coveredRectWithmatrix.centerPoint,
-                this.regPosition
-              )
-            )
-          )
-        );
-        break;
-      case "nw-scale":
-        s.multiplySelf(
-          UtilTools.scale(
-            v,
-            this.regPosition,
-            this.coveredRectWithmatrix.getReferPointOpposite(flag)
-          )
-        );
-        break;
-      case "ne-scale":
-        s.multiplySelf(
-          UtilTools.scale(
-            { x: this.regPosition.x, y: v.y },
-            { x: v.x, y: this.regPosition.y },
-            this.coveredRectWithmatrix.getReferPointOpposite(flag)
-          )
-        );
-        break;
-      case "sw-scale":
-        s.multiplySelf(
-          UtilTools.scale(
-            { x: v.x, y: this.regPosition.y },
-            { x: this.regPosition.x, y: v.y },
-            this.coveredRectWithmatrix.getReferPointOpposite(flag)
-          )
-        );
-        break;
-      case "se-scale":
-        s.multiplySelf(
-          UtilTools.scale(
-            this.regPosition,
-            v,
-            this.coveredRectWithmatrix.getReferPointOpposite(flag)
-          )
-        );
-        break;
-    }
-    return DOMMatrix.fromMatrix(s).multiplySelf(r).multiplySelf(t);
+  transferEnd(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
+    this.stagingMatrix = m;
   }
 
   updata(t: number) {
     if (!this.isDelete) {
       this.board.renderBaseShape(this);
     }
-  }
-
-  resetSRTMatrix() {
-    this.SRTMatrix = [new DOMMatrix(), new DOMMatrix(), new DOMMatrix()];
   }
 
   undo() {}
