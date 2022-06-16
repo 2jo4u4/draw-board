@@ -66,12 +66,10 @@ export class PreviewWindow {
     this.devicePixelRatio = window.devicePixelRatio;
     this.zoom = this.getPreviewZoom(board.zoom, this.windowRatio);
 
-    console.log("Window", board.zoom, this.zoom);
     this.initial();
   }
 
   clearCanvas(type?: "static" | "event") {
-    console.log("preview clearCanvas");
     const { width, height } = this.canvasStatic;
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
@@ -81,16 +79,8 @@ export class PreviewWindow {
     bs?: { p: Path2D; s: Styles } | BaseShape;
   }) {
     const { needClear, bs } = v;
-    console.log("rerenderToEvent", bs, UtilTools.isBaseShape(bs));
     Boolean(needClear) && this.clearCanvas("event");
     if (bs) {
-      console.log(this.board.zoom);
-      const path = new Path2D(),
-        m = new DOMMatrix(),
-        scaleX = this.board.zoom.k / this.windowRatio,
-        scaleY = this.board.zoom.k / this.windowRatio,
-        originX = this.board.zoom.x,
-        originY = this.board.zoom.y;
       if (UtilTools.isBaseShape(bs)) {
         const path = UtilTools.getZoomedPreviewPath(
           bs.path,
@@ -148,7 +138,6 @@ export class PreviewWindow {
         this.ctxStatic.stroke(path);
       }
     } else {
-      console.log("=== rerenderToPaint not BS ===");
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && !_bs.isSelect) {
           const path = UtilTools.getZoomedPreviewPath(
@@ -165,7 +154,6 @@ export class PreviewWindow {
   rerender() {
     this.clearCanvas();
     this.shapes.forEach((bs) => {
-      console.log(bs);
       this.rerenderToPaint({ bs });
     });
     this.toolsCtrl.renderViewport();
@@ -220,16 +208,12 @@ export class PreviewWindow {
   /** 觸摸/滑鼠下壓 */
   private onEventStart(event: TouchEvent | MouseEvent): void {
     const position = this.eventToPosition(event);
-    console.log("onEventStart", position);
     this.activeFlag = true;
     this.toolsCtrl.onEventStart(position);
   }
   private onEventMove(event: TouchEvent | MouseEvent) {
     const position = this.eventToPosition(event);
     // TODO move viewport or wheel
-    // console.log("onEventMove", position);
-    // console.log(this.activeFlag);
-    // this.activeFlag = true;
     if (this.activeFlag) {
       this.toolsCtrl.onEventMoveActive(position);
     } else {
@@ -240,7 +224,6 @@ export class PreviewWindow {
   /** 結束觸摸/滑鼠上提 抑或任何取消方式 */
   private onEventEnd(event: TouchEvent | MouseEvent): void {
     const position = this.eventToPosition(event);
-    console.log("onEventEnd", position, this.activeFlag);
     if (this.activeFlag) {
       this.toolsCtrl.onEventEnd(position);
       this.activeFlag = false;
@@ -268,7 +251,6 @@ export class PreviewWindow {
         ((y - top) / (this.canvas.height / this.devicePixelRatio / height)) *
         this.devicePixelRatio,
     };
-    // console.log("pos", back);
     return back;
   }
 
@@ -279,7 +261,6 @@ export class PreviewWindow {
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);
     this.rerender();
-    console.log("who");
   }
 
   private setCanvasStyle(el: HTMLCanvasElement) {
@@ -341,16 +322,15 @@ export class PreviewWindow {
       transform
     );
 
-    const topLefts = Array.from(this.shapes).map(([_id, shape]) => {
-      console.log(shape);
-      const { ne, nw, se } = shape.coveredRect;
-      return { y: ne.y || nw.y, x: ne.x || se.x };
-    });
-    const bottomRights = Array.from(this.shapes).map(([_id, shape]) => {
-      const { ne, se, sw } = shape.coveredRect;
+    // const topLefts = Array.from(this.shapes).map(([_id, shape]) => {
+    //   const { ne, nw, se } = shape.coveredRect;
+    //   return { y: ne.y || nw.y, x: ne.x || se.x };
+    // });
+    // const bottomRights = Array.from(this.shapes).map(([_id, shape]) => {
+    //   const { ne, se, sw } = shape.coveredRect;
 
-      return { y: se.y || sw.y, x: ne.x || se.x };
-    });
+    //   return { y: se.y || sw.y, x: ne.x || se.x };
+    // });
     const { top, right, bottom, left } = UtilTools.getPointsBox([
       // ...topLefts,
       // ...bottomRights,
@@ -365,8 +345,6 @@ export class PreviewWindow {
       canvas.width / width < canvas.height / height
         ? canvas.width / width
         : canvas.height / height;
-    console.log(this.shapes, { x, y, k });
-    // this.zoom = { x, y, k };
     return { x, y, k };
   }
 }

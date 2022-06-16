@@ -116,7 +116,6 @@ export class Board {
 
   /** 清除指定畫布(若無指定則清除兩畫布) */
   clearCanvas(type?: "static" | "event") {
-    console.log("board clearCanvas");
     const { width, height } = this.canvasStatic;
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
@@ -133,7 +132,6 @@ export class Board {
     this.logAction("draw", id);
     this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
     this.previewCtrl.rerender();
-    console.log("who");
   }
 
   addShapeWithFile() {}

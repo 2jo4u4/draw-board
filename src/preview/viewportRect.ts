@@ -44,8 +44,6 @@ export class ViewportRect extends BaseShape {
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
   settingAndOpen(mrv: Rect = this.coveredRect) {
-    const clone = mrv.clone();
-    console.log(mrv);
     const { x, y, k } = this.board.previewCtrl.getPreviewZoom(
       this.board.zoom,
       this.windowRatio
@@ -56,12 +54,9 @@ export class ViewportRect extends BaseShape {
         x: this.board.canvas.width,
         y: this.board.canvas.height,
       }
-    )
-    this.coveredRect = clone;
-      .translateSelf(
-        new DOMMatrix()
-          .translate(x, y)
-          .scale(1 / this.board.zoom.k)
+    ).translateSelf(
+      new DOMMatrix().translate(x, y).scale(1 / this.board.zoom.k)
+    );
     this.assignPathAndDraw();
   }
   drawViewport(previewZoom: Zoom) {
@@ -91,17 +86,6 @@ export class ViewportRect extends BaseShape {
       }
     );
     return transform;
-    const { x: vLeft, y: vTop } = UtilTools.applyTransform(
-      { x: left, y: top },
-      transform
-    );
-    const { x: vRight, y: vBottom } = UtilTools.applyTransform(
-      {
-        x: right,
-        y: bottom,
-      },
-      transform
-    );
   }
 
   /** 清除最小矩形 並 關閉控制欄位 */
@@ -160,11 +144,6 @@ export class ViewportRect extends BaseShape {
         y: ny < prevPreviewZoom.y ? prevPreviewZoom.y : ny > py ? py : ny,
         k,
       });
-      console.log("lol", {
-        x: nx < prevPreviewZoom.x ? prevPreviewZoom.x : nx > px ? px : nx,
-        y: ny < prevPreviewZoom.y ? prevPreviewZoom.y : ny > py ? py : ny,
-        k,
-      });
     } else {
       this.board.updateZoom({
         x: nx,
@@ -181,17 +160,6 @@ export class ViewportRect extends BaseShape {
     this.prevPreviewZoom = prevPreviewZoom;
     switch (this.flag) {
       case "translate": {
-        const path = new Path2D(),
-          m = new DOMMatrix(),
-          scaleX = this.board.zoom.k * this.devicePixelRatio,
-          scaleY = this.board.zoom.k * this.devicePixelRatio,
-          originX = this.board.zoom.x,
-          originY = this.board.zoom.y;
-        const translateMatrix = UtilTools.translate(
-          this.startPosition,
-          v,
-          this.zoom.k // * this.windowRatio
-        );
         const nextPreviewZoom = this.getNextPreviewZoom({
           x: (v.x - this.startPosition.x) * this.zoom.k, // * Math.sqrt(this.zoom.k),
           y: (v.y - this.startPosition.y) * this.zoom.k, // * Math.sqrt(this.zoom.k),
@@ -218,14 +186,6 @@ export class ViewportRect extends BaseShape {
   handleEnd(v: Vec2) {
     switch (this.flag) {
       case "translate": {
-        // this.transferEnd(
-        //   v,
-        //   UtilTools.translate(
-        //     this.startPosition,
-        //     v,
-        //     this.zoom.k * this.devicePixelRatio
-        //   )
-        // );
         break;
       }
       case "nw-scale":

@@ -114,7 +114,6 @@ export class SelectSolidRect extends BaseShape {
             this.startPosition
           );
           const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
-          const matrix = UtilTools.translate(this.startPosition, v);
           const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
           this.transfer(v, matrix);
         }

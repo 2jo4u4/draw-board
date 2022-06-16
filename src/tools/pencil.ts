@@ -52,8 +52,6 @@ export class PencilTools implements BaseTools {
     const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
     this.path.lineTo(x, y);
     this.draw();
-    this.minRect = UtilTools.newMinRect(v, this.minRect);
-    this.addToBoard(v);
     this.minRect = UtilTools.newMinRect({ x, y }, this.minRect);
     this.addToBoard({ x, y });
     this.drawOver();
