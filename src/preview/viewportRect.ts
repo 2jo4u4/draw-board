@@ -193,8 +193,8 @@ export class ViewportRect extends BaseShape {
           this.zoom.k // * this.windowRatio
         );
         const nextPreviewZoom = this.getNextPreviewZoom({
-          x: (v.x - this.startPosition.x) / 1, // * Math.sqrt(this.zoom.k),
-          y: (v.y - this.startPosition.y) / 1, // * Math.sqrt(this.zoom.k),
+          x: (v.x - this.startPosition.x) * this.zoom.k, // * Math.sqrt(this.zoom.k),
+          y: (v.y - this.startPosition.y) * this.zoom.k, // * Math.sqrt(this.zoom.k),
         });
 
         this.updatePageZoom(nextPreviewZoom, prevPreviewZoom);

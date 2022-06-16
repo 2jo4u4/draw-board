@@ -92,12 +92,11 @@ export class PreviewWindow {
         originX = this.board.zoom.x,
         originY = this.board.zoom.y;
       if (UtilTools.isBaseShape(bs)) {
-        // path.addPath(
-        //   bs.path,
-        //   m.scale(1 / scaleX, 1 / scaleY, 1, originX, originY)
-        // );
-
-        const path = UtilTools.getZoomedPreviewPath(bs.path, this.zoom);
+        const path = UtilTools.getZoomedPreviewPath(
+          bs.path,
+          this.board.zoom,
+          this.zoom
+        );
         UtilTools.injectStyle(this.ctx, bs.style);
         if (bs.style.fillColor) {
           this.ctx.fill(path);
@@ -106,11 +105,11 @@ export class PreviewWindow {
         }
         this.ctx.stroke(path);
       } else {
-        // path.addPath(
-        //   bs.p,
-        //   m.scale(1 / scaleX, 1 / scaleY, 1, originX, originY)
-        // );
-        const path = UtilTools.getZoomedPreviewPath(bs.p, this.zoom);
+        const path = UtilTools.getZoomedPreviewPath(
+          bs.p,
+          this.board.zoom,
+          this.zoom
+        );
         UtilTools.injectStyle(this.ctx, bs.s);
         if (bs.s.fillColor) {
           this.ctx.fill(path);
@@ -121,7 +120,11 @@ export class PreviewWindow {
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && _bs.isSelect) {
-          const path = UtilTools.getZoomedPreviewPath(_bs.path, this.zoom);
+          const path = UtilTools.getZoomedPreviewPath(
+            _bs.path,
+            this.board.zoom,
+            this.zoom
+          );
           UtilTools.injectStyle(this.ctx, _bs.style);
           this.ctx.stroke(path);
         }
@@ -133,12 +136,11 @@ export class PreviewWindow {
     const { needClear, bs } = v;
     Boolean(needClear) && this.clearCanvas("static");
     if (bs) {
-      // const path = new Path2D(),
-      //   m = new DOMMatrix(),
-      //   scaleX = this.windowRatio / this.board.zoom.k,
-      //   scaleY = this.windowRatio / this.board.zoom.k;
-      // path.addPath(bs.path, m.scale(scaleX, scaleY));
-      const path = UtilTools.getZoomedPreviewPath(bs.path, this.zoom);
+      const path = UtilTools.getZoomedPreviewPath(
+        bs.path,
+        this.board.zoom,
+        this.zoom
+      );
       UtilTools.injectStyle(this.ctxStatic, bs.style);
       if (bs.style.fillColor) {
         this.ctxStatic.fill(path);
@@ -149,7 +151,11 @@ export class PreviewWindow {
       console.log("=== rerenderToPaint not BS ===");
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && !_bs.isSelect) {
-          const path = UtilTools.getZoomedPreviewPath(_bs.path, this.zoom);
+          const path = UtilTools.getZoomedPreviewPath(
+            _bs.path,
+            this.board.zoom,
+            this.zoom
+          );
           UtilTools.injectStyle(this.ctxStatic, _bs.style);
           this.ctxStatic.stroke(path);
         }

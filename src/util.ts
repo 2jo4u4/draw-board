@@ -204,12 +204,12 @@ export class UtilTools {
     return newPath;
   }
 
-  static getZoomedPreviewPath(path: Path2D, previewZoom: Zoom) {
+  static getZoomedPreviewPath(path: Path2D, zoom: Zoom, previewZoom: Zoom) {
     const newPath = new Path2D(),
       m = new DOMMatrix();
     newPath.addPath(
       path,
-      m.scale(previewZoom.k).translate(-previewZoom.x, -previewZoom.y)
+      m.scale(previewZoom.k / zoom.k).translate(-previewZoom.x, -previewZoom.y)
     );
     return newPath;
   }
