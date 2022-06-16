@@ -31,8 +31,6 @@ export class SelectSolidRect extends BaseShape {
     this.path = p;
   }
 
-  /** 一次選取後的所有動作紀錄 */
-  private SRTMatrix: DOMMatrix[] = [];
   private initDegree = 0;
 
   constructor(board: Board) {
@@ -54,7 +52,6 @@ export class SelectSolidRect extends BaseShape {
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
   settingAndOpen(mrv: Rect) {
-    this.SRTMatrix = [new DOMMatrix(), new DOMMatrix(), new DOMMatrix()];
     const clone = mrv.clone();
     this.coveredRect = clone;
     this.path = UtilTools.minRectToPath(this.coveredRect);
@@ -115,85 +112,64 @@ export class SelectSolidRect extends BaseShape {
   }
 
   conputerMatrix(v: Vec2, flag: ShapeActionType | null): DOMMatrix {
-    const [s, r, t] = this.SRTMatrix;
-    const { x, y } = UtilTools.unZoomPosition(
-      this.board.zoom,
-      this.regPosition
-    );
+    const refpoint = this.startPosition;
+    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, refpoint);
     const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
     switch (flag) {
-      case "translate":
-        {
-          const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
-          t.multiplySelf(matrix);
-        }
-        break;
-      case "rotate":
-        {
-          const matrix = UtilTools.rotate(
-            this.coveredRect.centerPoint,
-            { x: nX, y: nY },
-            UtilTools.getDegree(
-              UtilTools.getAngle(
-                this.coveredRectWithmatrix.centerPoint,
-                this.regPosition
-              )
-            )
-          );
-          r.multiplySelf(matrix);
-        }
-        break;
-      case "nw-scale":
-        {
-          const matrix = UtilTools.scale(
-            { x, y },
-            { x: nX, y: nY },
-            this.coveredRect.getReferPointOpposite(flag)
-          );
-          s.multiplySelf(matrix);
-        }
-        break;
-      case "ne-scale":
-        {
-          const matrix = UtilTools.scale(
-            { x: x, y: nY },
-            { x: nX, y: y },
-            this.coveredRect.getReferPointOpposite(flag)
-          );
-          this.transfer(v, matrix, this.flag);
-        }
-        s.multiplySelf(
-          UtilTools.scale(
-            { x, y: nY },
-            { x: nX, y },
-            this.coveredRectWithmatrix.getReferPointOpposite(flag)
+      case "translate": {
+        const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
+        return matrix;
+      }
+      case "rotate": {
+        const matrix = UtilTools.rotate(
+          this.coveredRect.centerPoint,
+          { x: nX, y: nY },
+          UtilTools.getDegree(
+            UtilTools.getAngle(this.coveredRectWithmatrix.centerPoint, refpoint)
           )
         );
-        break;
-      case "sw-scale":
-        s.multiplySelf(
-          UtilTools.scale(
-            { x: nX, y },
-            { x, y: nY },
-            this.coveredRectWithmatrix.getReferPointOpposite(flag)
-          )
+        return matrix;
+      }
+      case "nw-scale": {
+        const matrix = UtilTools.scale(
+          { x: nX, y: nY },
+          { x, y },
+          this.coveredRect.getReferPointOpposite(flag)
         );
-        break;
-      case "se-scale":
-        s.multiplySelf(
-          UtilTools.scale(
-            { x: nX, y: nY },
-            { x, y },
-            this.coveredRectWithmatrix.getReferPointOpposite(flag)
-          )
+        return matrix;
+      }
+      case "ne-scale": {
+        const matrix = UtilTools.scale(
+          { x, y: nY },
+          { x: nX, y },
+          this.coveredRectWithmatrix.getReferPointOpposite(flag)
         );
-        break;
+        return matrix;
+      }
+      case "sw-scale": {
+        const matrix = UtilTools.scale(
+          { x: nX, y },
+          { x, y: nY },
+          this.coveredRectWithmatrix.getReferPointOpposite(flag)
+        );
+        return matrix;
+      }
+      case "se-scale": {
+        const matrix = UtilTools.scale(
+          { x, y },
+          { x: nX, y: nY },
+          this.coveredRectWithmatrix.getReferPointOpposite(flag)
+        );
+        return matrix;
+      }
+      default:
+        return new DOMMatrix();
     }
-    return DOMMatrix.fromMatrix(s).multiplySelf(r).multiplySelf(t);
   }
 
   handleStart(v: Vec2) {
     const m = new DOMMatrix();
+    this.actionBar.closeBar();
     this.shapes.forEach((bs) => {
       bs.transferStart(v, m, this.flag);
     });
@@ -226,8 +202,6 @@ export class SelectSolidRect extends BaseShape {
     type: ShapeActionType | null
   ): void {
     if (this.flag !== null) {
-      this.board.clearCanvas("event");
-      this.actionBar.closeBar();
       this.shapes.forEach((bs) => {
         bs.transfer(v, matrix, type);
       });
@@ -244,9 +218,10 @@ export class SelectSolidRect extends BaseShape {
   ): void {
     if (this.flag !== null) {
       this.shapes.forEach((bs) => {
-        bs.transfer(v, m, type);
+        bs.transferEnd(v, m, type);
       });
       super.transferEnd(v, m, type);
+
       this.assignScale();
       this.assignRotate();
     }

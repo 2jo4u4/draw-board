@@ -34,7 +34,6 @@ export class BaseShape {
     return this.__coveredRect
       .clone()
       .transferSelf(this.matrix)
-      .clone()
       .transferSelf(this.stagingMatrix);
   }
   set coveredRect(r: Rect) {
@@ -128,7 +127,9 @@ export class BaseShape {
   }
 
   transferEnd(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
-    this.stagingMatrix = m;
+    // merge matrix and stagingMatrix
+
+    this.stagingMatrix = new DOMMatrix();
   }
 
   updata(t: number) {

@@ -5,17 +5,23 @@ import {
   UtilTools,
   UserAction,
   ImageShape,
+  PDFShape,
 } from ".";
 import { Rect } from "./util";
-type PageData = Map<string, BoardShapeLog>;
 
-interface ReceviceData {
+export type PageData = Map<string, BoardShapeLog>;
+export type DataType =
+  | Record<string | keyof ReceviceData, unknown>
+  | Record<string | keyof ReceviceData, unknown>[];
+export type DrawData = PenData | ImageData | PdfData;
+export interface ReceviceData {
   pen: PenData;
   image: ImageData;
   pdf: PdfData;
 }
 
-interface ReceviceSyncBase {
+export interface ReceviceSyncBase
+  extends Record<string | keyof ReceviceData, unknown> {
   objectid: string;
   tools: "pen" | "pdf" | "image";
   type: "new" | "confirmobject";
@@ -29,7 +35,7 @@ interface ReceviceSyncBase {
   socketid: string;
 }
 
-interface PenData extends ReceviceSyncBase {
+export interface PenData extends ReceviceSyncBase {
   linewidth: string;
   linecolor: string;
   lineopacity: string;
@@ -42,7 +48,7 @@ interface PenData extends ReceviceSyncBase {
   }[];
 }
 
-interface FileData extends ReceviceSyncBase {
+export interface FileData extends ReceviceSyncBase {
   objecturl: string;
   x1: string;
   y1: string;
@@ -50,12 +56,12 @@ interface FileData extends ReceviceSyncBase {
   height: string;
 }
 
-interface ImageData extends FileData {}
-interface PdfData extends FileData {
+export interface ImageData extends FileData {}
+export interface PdfData extends FileData {
   pagenumber: string;
 }
 
-interface SendData {
+export interface SendData {
   type: UserAction;
   bss: BaseShape[];
   v: Vec2;
@@ -77,10 +83,12 @@ export enum SendEvent {
   "redis" = "json",
 }
 
-export enum ReceivceEnent {
+export enum ReceivceEvent {
   "通知" = "notice",
   "同步" = "sync",
   "被廣播操作" = "broadcast",
+  "伺服器" = "hub",
+  "未知" = "unknown", // 前端無法解析事件
 }
 
 /**
@@ -93,6 +101,7 @@ export abstract class SocketMiddle {
   abstract receviceData(v: unknown): void;
 }
 
+const regexp = new RegExp(/^([0-9]*)((\[")([a-zA-Z]*)(",)([\S\s]*)(]))?/);
 export class DemoSocket implements SocketMiddle {
   readonly socket: WebSocket;
   readonly board: Board;
@@ -101,7 +110,7 @@ export class DemoSocket implements SocketMiddle {
   pageId!: string;
   pageData: PageData = new Map<string, BoardShapeLog>();
 
-  constructor(url: string, canvas: HTMLCanvasElement) {
+  constructor(url: string, canvas: HTMLCanvasElement | string) {
     this.socket = new WebSocket(url);
     this.board = new Board(canvas, { Socket: this });
   }
@@ -153,9 +162,76 @@ export class DemoSocket implements SocketMiddle {
     });
   }
 
-  receviceData(v: unknown): void {}
+  receviceData(message: MessageEvent<string>): void {
+    const { number, event, data } = this.messageFormat(message.data);
+    switch (event) {
+      case "unknown":
+        if (number === 2) {
+          this.socket.send("3");
+        }
+        break;
+      case "sync":
+        {
+          this.dataToCanvas(data as DrawData[]);
+        }
+        break;
+      default:
+        break;
+    }
+  }
 
-  protected toBaseShape(board: Board, data: PenData): BaseShape {
+  protected dataToCanvas<T extends DrawData>(data: T[]) {
+    let bs!: BaseShape;
+    data.forEach((item) => {
+      switch (item.tools) {
+        case "pdf":
+          bs = this.toPdfShape(item as PdfData);
+          break;
+        case "image":
+          bs = this.toImageShape(item as ImageData);
+          break;
+        case "pen":
+          bs = this.toBaseShape(item as PenData);
+          break;
+        default:
+          break;
+      }
+
+      this.board.addShapeByBs(bs);
+    });
+  }
+
+  protected messageFormat(s: string): {
+    number: number;
+    event: ReceivceEvent;
+    data: DataType;
+  } {
+    let number = -1;
+    let event = ReceivceEvent.未知;
+    let data: DataType = {};
+    s.replace(
+      regexp,
+      (
+        os: string,
+        _number: string,
+        p2?: string,
+        p3?: string,
+        _event?: ReceivceEvent,
+        p4?: string,
+        _data?: string
+      ) => {
+        number = Number(_number);
+        _event && (event = _event);
+        _data && (data = JSON.parse(_data));
+
+        return os;
+      }
+    );
+
+    return { number, event, data };
+  }
+
+  protected toBaseShape(data: PenData): BaseShape {
     const p = new Path2D(),
       [p1, ...ps] = data.children,
       s: Styles = {
@@ -182,7 +258,7 @@ export class DemoSocket implements SocketMiddle {
 
     const bs = new BaseShape(
       data.objectid,
-      board,
+      this.board,
       p,
       s,
       new Rect(minRect),
@@ -191,10 +267,24 @@ export class DemoSocket implements SocketMiddle {
     return bs;
   }
 
-  protected toImageShape(board: Board, data: ImageData): ImageShape {
-    const matrix = this.getMatrix(data.transform);
-    const image = new ImageShape(data.objectid, board, data.objecturl, matrix);
+  protected toImageShape(data: ImageData): ImageShape {
+    const image = new ImageShape(
+      data.objectid,
+      this.board,
+      data.objecturl,
+      this.getMatrix(data.transform)
+    );
     return image;
+  }
+
+  protected toPdfShape(data: PdfData): PDFShape {
+    const pdf = new PDFShape(
+      data.objectid,
+      this.board,
+      data.objecturl,
+      this.getMatrix(data.transform)
+    );
+    return pdf;
   }
 
   protected getMatrix(t: string) {

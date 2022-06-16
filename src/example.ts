@@ -123,186 +123,44 @@ function testbase() {
 function myTest() {
   const ctx = testbase();
 
-  const rect = new Rect({
-    leftTop: { x: 99, y: 100 },
-    rightBottom: { x: 150, y: 151 },
+  const r1 = new Rect({
+    leftTop: { x: 50, y: 50 },
+    rightBottom: { x: 150, y: 150 },
   });
 
-  const moveStart = { x: 0, y: 0 };
-  const moveEnd = { x: 100, y: 100 };
-  const scaleStart = { x: 0, y: 0 };
-  const scaleEnd = { x: 100, y: 100 };
-  const rotateStart = { x: 0, y: 0 };
-  const rotateEnd = { x: 3, y: 4 };
-  const basePath = UtilTools.minRectToPath(rect);
-  draw(ctx, basePath, "red");
+  const p1 = UtilTools.minRectToPath(r1);
+  draw(ctx, p1, "red");
 
-  const s = UtilTools.scale(scaleStart, scaleEnd, rect);
-  const r = UtilTools.rotate(rect.centerPoint, rotateEnd);
-  const t = UtilTools.translate(moveStart, moveEnd);
+  const p2 = new Path2D();
 
-  const initMatrix = new DOMMatrix()
-    .multiplySelf(t)
-    .multiplySelf(r)
-    .multiplySelf(s);
+  const sm = UtilTools.scale({ x: 1, y: 1 }, { x: 100, y: 100 }, r1);
+  const rm = UtilTools.rotate(r1.centerPoint, { x: 10, y: 10 });
+  sm.multiplySelf(rm);
+  console.log("sm", sm.toString());
 
-  console.log(initMatrix.toString());
-  console.log(t.toString());
+  p2.addPath(p1, sm);
+  draw(ctx, p2, "blue");
 
-  // const rect2 = rect.clone().transferSelf(initMatrix);
-  // const m1 = getMathMatrix(rect);
-  // const m = getMathMatrix(rect2);
+  const p22 = new Path2D();
+  const sm1 = UtilTools.scale({ x: 1, y: 1 }, { x: 100, y: 100 }, r1);
+  console.log("sm1", sm1.toString());
+
+  p22.addPath(p2, sm1);
+  draw(ctx, p22, "green");
+
+  const p11 = new Path2D();
+  const m11 = DOMMatrix.fromMatrix(sm).multiplySelf(sm1);
+  p11.addPath(p1, m11);
+  console.log("m11", m11.toString());
+  draw(ctx, p11, "#000");
 }
 
-function myTest2() {
-  const ctx = testbase();
-  const m = new DOMMatrix();
-  const rect = new Rect({
-    leftTop: { x: 100, y: 100 },
-    rightBottom: { x: 200, y: 200 },
-  });
-  const p = UtilTools.minRectToPath(rect);
-  const drawBase = () => {
-    ctx.strokeStyle = "red";
-    ctx.stroke(p);
-  };
-  drawBase();
+function getTransition(prev: Rect, next: Rect): DOMMatrix {
+  const angle = UtilTools.getAngle(next.centerPoint, prev.centerPoint);
 
-  let start = { x: 0, y: 0 };
-
-  window.addEventListener("mousedown", (event) => {
-    const { clientX, clientY } = event;
-    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    start.x = clientX;
-    start.y = clientY;
-    drawBase();
-  });
-  window.addEventListener("mouseup", (event) => {
-    const { clientX: x, clientY: y } = event;
-    const end = { x, y };
-    const np = new Path2D();
-    np.addPath(p, UtilTools.scale(start, end, rect));
-    ctx.strokeStyle = "blue";
-    ctx.stroke(np);
-  });
-}
-
-function pdfTest() {
-  const ctx = testbase();
-
-  const task = pdfjsLib.getDocument(pdfsrc);
-  task.promise.then(
-    function (pdf) {
-      console.log("PDF loaded");
-
-      // Fetch the first page
-      var pageNumber = 1;
-      pdf.getPage(pageNumber).then(function (page) {
-        console.log("Page loaded");
-
-        var scale = 1;
-        var viewport = page.getViewport({ scale: scale });
-
-        // Prepare canvas using PDF page dimensions
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        // Render PDF page into canvas ctx
-        var renderContext = {
-          canvasContext: ctx,
-          viewport: viewport,
-        };
-        var renderTask = page.render(renderContext);
-        renderTask.promise.then(function () {
-          console.log("Page rendered");
-        });
-      });
-    },
-    function (reason) {
-      // PDF loading error
-      console.error(reason);
-    }
-  );
+  return new DOMMatrix();
 }
 
 drawGrid();
-develop();
-// myTest();
-// myTest2();
-// pdfTest();
-function getMathMatrix(rect: Rect) {
-  const p1 = rect.nw,
-    p2 = rect.se;
-  return math.matrix([
-    [p1.x, p2.x],
-    [p1.y, p2.y],
-  ]);
-}
-
-// (() => {
-//   const ctx = testbase();
-
-//   const input = document.createElement("input");
-//   const fileReader = new FileReader();
-//   fileReader.onload = function () {
-//     const typedArray = this.result;
-//     if (typeof typedArray === "string") {
-//       const ctx = testbase();
-
-//       const task = pdfjsLib.getDocument(typedArray);
-//       task.promise.then(
-//         function (pdf) {
-//           console.log("PDF loaded");
-
-//           // Fetch the first page
-//           var pageNumber = 1;
-//           pdf
-//             .getPage(pageNumber)
-//             .then(function (page) {
-//               console.log("Page loaded");
-
-//               var scale = 1;
-//               var viewport = page.getViewport({ scale: scale });
-
-//               // Prepare canvas using PDF page dimensions
-//               canvas.height = viewport.height;
-//               canvas.width = viewport.width;
-
-//               // Render PDF page into canvas ctx
-//               var renderContext = {
-//                 canvasContext: ctx,
-//                 viewport: viewport,
-//               };
-//               var renderTask = page.render(renderContext);
-//               renderTask.promise.then(function () {
-//                 console.log("Page rendered");
-//               });
-//             })
-//             .catch((e) => {
-//               console.log("first", e);
-//             });
-//         },
-//         function (reason) {
-//           // PDF loading error
-//           console.error("reason", reason);
-//         }
-//       );
-//     }
-//   };
-
-//   input.type = "file";
-//   input.width = 100;
-//   input.height = 30;
-//   input.addEventListener("change", function (event) {
-//     if (this.files) {
-//       const file = this.files[0];
-//       if (file.type != "application/pdf") {
-//         throw new Error(`${file.name}, is not a pdf file.`);
-//       }
-
-//       fileReader.readAsDataURL(file);
-//     }
-//   });
-
-//   document.body.append(input);
-// })();
+// develop();
+myTest();

@@ -101,6 +101,15 @@ export class UtilTools {
     );
   }
 
+  static DOMMatrixToMathMatrix(m: DOMMatrix) {
+    const { a, b, c, d, e, f } = m;
+    return math.matrix([
+      [a, c, e],
+      [b, d, f],
+      [0, 0, 1],
+    ]);
+  }
+
   static cos(theta: number) {
     return math.cos(theta);
   }
