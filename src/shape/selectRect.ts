@@ -31,7 +31,12 @@ export class SelectSolidRect extends BaseShape {
     this.path = p;
   }
 
-  private initDegree = 0;
+  private tranferRef = {
+    angle: 0,
+    centerPoint: { x: 0, y: 0 },
+    scalePoint: { x: 0, y: 0 },
+    zoomPosition: { x: 0, y: 0 },
+  };
 
   constructor(board: Board) {
     super(
@@ -112,8 +117,7 @@ export class SelectSolidRect extends BaseShape {
   }
 
   conputerMatrix(v: Vec2, flag: ShapeActionType | null): DOMMatrix {
-    const refpoint = this.startPosition;
-    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, refpoint);
+    const { x, y } = this.tranferRef.zoomPosition;
     const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
     switch (flag) {
       case "translate": {
@@ -122,11 +126,9 @@ export class SelectSolidRect extends BaseShape {
       }
       case "rotate": {
         const matrix = UtilTools.rotate(
-          this.coveredRect.centerPoint,
+          this.tranferRef.centerPoint,
           { x: nX, y: nY },
-          UtilTools.getDegree(
-            UtilTools.getAngle(this.coveredRectWithmatrix.centerPoint, refpoint)
-          )
+          this.tranferRef.angle
         );
         return matrix;
       }
@@ -134,7 +136,7 @@ export class SelectSolidRect extends BaseShape {
         const matrix = UtilTools.scale(
           { x: nX, y: nY },
           { x, y },
-          this.coveredRect.getReferPointOpposite(flag)
+          this.tranferRef.scalePoint
         );
         return matrix;
       }
@@ -142,7 +144,7 @@ export class SelectSolidRect extends BaseShape {
         const matrix = UtilTools.scale(
           { x, y: nY },
           { x: nX, y },
-          this.coveredRectWithmatrix.getReferPointOpposite(flag)
+          this.tranferRef.scalePoint
         );
         return matrix;
       }
@@ -150,7 +152,7 @@ export class SelectSolidRect extends BaseShape {
         const matrix = UtilTools.scale(
           { x: nX, y },
           { x, y: nY },
-          this.coveredRectWithmatrix.getReferPointOpposite(flag)
+          this.tranferRef.scalePoint
         );
         return matrix;
       }
@@ -158,7 +160,7 @@ export class SelectSolidRect extends BaseShape {
         const matrix = UtilTools.scale(
           { x, y },
           { x: nX, y: nY },
-          this.coveredRectWithmatrix.getReferPointOpposite(flag)
+          this.tranferRef.scalePoint
         );
         return matrix;
       }
@@ -174,6 +176,19 @@ export class SelectSolidRect extends BaseShape {
       bs.transferStart(v, m, this.flag);
     });
     super.transferStart(v, m, this.flag);
+    const centerPoint = this.coveredRectWithmatrix.centerPoint;
+    this.tranferRef = {
+      centerPoint,
+      angle: UtilTools.getDegree(
+        UtilTools.getAngle(centerPoint, this.startPosition)
+      ),
+      scalePoint: this.coveredRectWithmatrix.getReferPointOpposite(this.flag),
+      zoomPosition: UtilTools.unZoomPosition(
+        this.board.zoom,
+        this.startPosition
+      ),
+    };
+
     switch (this.flag) {
       case "rotate":
         this.board.changeCursor("grabbing");

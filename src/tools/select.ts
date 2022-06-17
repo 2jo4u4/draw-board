@@ -127,9 +127,13 @@ export class SelectTools implements BaseTools {
       );
       if (regBS.length > 0) {
         shape = regBS;
-        minRectVec = UtilTools.mergeMinRect(
-          ...regBS.map((bs) => bs[1].coveredRectWithmatrix.rectPoint)
-        );
+        if (regBS.length === 1) {
+          minRectVec = regBS[0][1].coveredRectWithmatrix;
+        } else {
+          minRectVec = UtilTools.mergeMinRect(
+            ...regBS.map((bs) => bs[1].coveredRectWithmatrix.rectPoint)
+          );
+        }
       }
     }
 

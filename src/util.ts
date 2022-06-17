@@ -556,7 +556,7 @@ export class Rect {
     return this;
   }
 
-  getReferPointOpposite(type: ShapeActionType): Vec2 {
+  getReferPointOpposite(type: ShapeActionType | null): Vec2 {
     switch (type) {
       case "nw-scale":
         return this.sePoint;

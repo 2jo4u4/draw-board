@@ -162,5 +162,5 @@ function getTransition(prev: Rect, next: Rect): DOMMatrix {
 }
 
 drawGrid();
-// develop();
-myTest();
+develop();
+// myTest();

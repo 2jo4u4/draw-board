@@ -111,7 +111,7 @@ export class BaseShape {
     this.style = style;
     this.shapeActionLimit = board.actionStoreLimit;
     this.__matrix = DOMMatrix.fromMatrix(matrix);
-    this.__path = path;
+    this.__path = new Path2D(path);
     this.__coveredRect = coveredRect.clone();
     this.__bindingBox = UtilTools.minRectToPath(coveredRect);
   }
@@ -128,8 +128,8 @@ export class BaseShape {
 
   transferEnd(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
     // merge matrix and stagingMatrix
-
     this.stagingMatrix = new DOMMatrix();
+    this.matrix = DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(m);
   }
 
   updata(t: number) {
