@@ -6,8 +6,8 @@ import {
   UserAction,
   ImageShape,
   PDFShape,
+  Rect,
 } from ".";
-import { Rect } from "./util";
 
 export type PageData = Map<string, BoardShapeLog>;
 export type DataType =
@@ -180,7 +180,7 @@ export class DemoSocket implements SocketMiddle {
     }
   }
 
-  protected dataToCanvas<T extends DrawData>(data: T[]) {
+  dataToCanvas<T extends DrawData>(data: T[]) {
     let bs!: BaseShape;
     data.forEach((item) => {
       switch (item.tools) {
@@ -201,7 +201,7 @@ export class DemoSocket implements SocketMiddle {
     });
   }
 
-  protected messageFormat(s: string): {
+  messageFormat(s: string): {
     number: number;
     event: ReceivceEvent;
     data: DataType;

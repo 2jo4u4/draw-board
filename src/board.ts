@@ -180,6 +180,8 @@ export class Board {
     console.log("who");
   }
 
+  addFileShape(file: File) {}
+
   /** 刪除已選圖形 */
   deleteShape() {
     const id: string[] = [];
