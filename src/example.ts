@@ -66,13 +66,10 @@ function develop() {
   const board = new Board(canvas);
   initialTools();
 
-  // new ImageShape("test-image", board, src);
-
-  // new PDFShape(
-  //   "asdasd",
-  //   board,
-  //   pdfsrc
-  // );
+  const pdf = new PDFShape("asdasd", board, pdfsrc);
+  board.addShapeByBs(pdf);
+  const image = new ImageShape("asdasdqwe", board, src);
+  board.addShapeByBs(image);
 
   function AddTools(v: ToolsEnum) {
     const child = document.createElement("li");

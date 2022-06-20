@@ -5,6 +5,7 @@ import {
   ToolsManagement,
   UtilTools,
   ImageShape,
+  PDFShape,
 } from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
@@ -109,8 +110,8 @@ export class Board {
       Tools?: typeof ToolsManagement;
     }
   ) {
-    this.__canvas = getCnavasElement(canvas);
-    this.__ctx = checkCanvasContext(this.__canvas);
+    this.__canvas = UtilTools.getCnavasElement(canvas);
+    this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
     this.devicePixelRatio = window.devicePixelRatio;
     this.zoom = {
@@ -206,11 +207,11 @@ export class Board {
 
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
-    if (bs instanceof ImageShape && bs.isLoad) {
+    if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
       useCtx.setTransform(bs.matrix);
-      useCtx.drawImage(bs.image, x, y, width, height);
+      useCtx.drawImage(bs.htmlEl, x, y, width, height);
       useCtx.setTransform(1, 0, 0, 1, 0, 0);
     } else {
       if (bs.style.fillColor) {
@@ -230,22 +231,6 @@ export class Board {
       this.ctx.stroke(p);
     }
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }
-
-  rerenderToPaintWithFileShape(bs: ImageShape) {
-    this.rerenderToWithFileShape(this.ctxStatic, bs);
-  }
-
-  rerenderToEventWithFileShape(bs: ImageShape) {
-    this.rerenderToWithFileShape(this.ctx, bs);
-  }
-
-  rerenderToWithFileShape(useCtx: CanvasRenderingContext2D, bs: ImageShape) {
-    const { x, y } = bs.coveredRect.nw;
-    const [width, height] = bs.coveredRect.size;
-    useCtx.setTransform(bs.matrix);
-    useCtx.drawImage(bs.image, x, y, width, height);
-    useCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   /** 紀錄行為 */
@@ -325,8 +310,8 @@ export class Board {
   }
 
   private setStaticCanvas() {
-    this.__canvasStatic = getCnavasElement();
-    this.__ctxStatic = checkCanvasContext(this.canvasStatic);
+    this.__canvasStatic = UtilTools.getCnavasElement();
+    this.__ctxStatic = UtilTools.checkCanvasContext(this.canvasStatic);
   }
 
   private addListener() {
@@ -450,26 +435,5 @@ export class Board {
 
     this.zoom = zoom;
     // this.rerender();
-  }
-}
-
-function getCnavasElement(c?: string | HTMLElement): HTMLCanvasElement {
-  if (c instanceof HTMLCanvasElement) {
-    return c;
-  } else if (typeof c === "string") {
-    const el = document.getElementById(c);
-    if (el && el instanceof HTMLCanvasElement) {
-      return el;
-    }
-  }
-  return document.createElement("canvas");
-}
-
-function checkCanvasContext(c: HTMLCanvasElement) {
-  const ctx = c.getContext("2d");
-  if (ctx) {
-    return ctx;
-  } else {
-    throw new Error("無法獲取 getContext");
   }
 }

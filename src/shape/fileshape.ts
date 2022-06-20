@@ -3,6 +3,13 @@ import { BaseShape } from ".";
 import { Board, defaultImageShapeStyle, Rect, UtilTools } from "..";
 
 type URLString = string;
+interface FileConfig {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  transform: DOMMatrix;
+}
 
 const startPosition: Vec2 = { x: 50, y: 50 };
 const defaultWidth = 100;
@@ -15,47 +22,62 @@ const beforeLoad: MinRectVec = {
 };
 export class ImageShape extends BaseShape {
   readonly $type;
-  image: HTMLImageElement;
+  htmlEl: HTMLImageElement;
   isLoad = false;
-  regPath!: Path2D;
-  regCoveredRect!: Rect;
-  regStartPosition!: DOMPoint;
 
   constructor(
     id: string,
     board: Board,
     source: URLString | Blob,
-    matrix?: DOMMatrix
+    config?: FileConfig
   ) {
-    const p = UtilTools.minRectToPath(beforeLoad);
-    super(id, board, p, defaultImageShapeStyle, new Rect(beforeLoad), matrix);
+    let rect!: Rect, matrix!: DOMMatrix;
+    if (config) {
+      rect = new Rect({
+        leftTop: { x: config.x, y: config.y },
+        rightBottom: {
+          x: config.x + config.width,
+          y: config.y + config.height,
+        },
+      });
+      matrix = DOMMatrix.fromMatrix(config.transform);
+    } else {
+      rect = new Rect(beforeLoad);
+      matrix = new DOMMatrix();
+    }
+    super(
+      id,
+      board,
+      UtilTools.minRectToPath(rect),
+      defaultImageShapeStyle,
+      rect,
+      matrix
+    );
     this.$type = "image-shape";
-    this.image = new Image();
+    this.htmlEl = new Image();
     this.board.addShapeByBs(this);
-    this.image.onload = (event) => {
-      setTimeout(() => {
-        this.changeLoadStatue();
-      }, 3000);
+    this.htmlEl.onload = (event) => {
+      this.changeLoadStatue();
     };
 
     if (typeof source === "string") {
       fetch(source)
         .then((res) => res.blob())
         .then((blob) => {
-          this.image.src = URL.createObjectURL(blob);
+          this.htmlEl.src = URL.createObjectURL(blob);
         })
         .catch((error) => {
           console.error(error);
         });
     } else {
-      this.image.src = URL.createObjectURL(source);
+      this.htmlEl.src = URL.createObjectURL(source);
     }
   }
 
   changeLoadStatue() {
     if (!this.isLoad) {
       this.isLoad = true;
-      const { width, height } = this.image;
+      const { width, height } = this.htmlEl;
       this.path = new Path2D();
       this.path.rect(startPosition.x, startPosition.y, width, height);
       this.reInit(
@@ -75,37 +97,70 @@ export class ImageShape extends BaseShape {
 export class PDFShape extends BaseShape {
   fileReader: FileReader;
   pdftask: pdfjsLib.PDFDocumentLoadingTask | null = null;
-  private isLoad = false;
+  isLoad = false;
   private __currentPage = 1;
   get currentPage(): number {
     return this.__currentPage;
   }
 
-  constructor(id: string, board: Board, source: string | File, m?: DOMMatrix) {
-    const rect = new Rect();
+  htmlEl: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+
+  constructor(
+    id: string,
+    board: Board,
+    source: URLString | Blob,
+    config?: FileConfig
+  ) {
+    let rect!: Rect, matrix!: DOMMatrix;
+    if (config) {
+      rect = new Rect({
+        leftTop: { x: config.x, y: config.y },
+        rightBottom: {
+          x: config.x + config.width,
+          y: config.y + config.height,
+        },
+      });
+      matrix = DOMMatrix.fromMatrix(config.transform);
+    } else {
+      rect = new Rect(beforeLoad);
+      matrix = new DOMMatrix();
+    }
     super(
       id,
       board,
       UtilTools.minRectToPath(rect),
       { lineColor: "#000", lineWidth: 1 },
       rect,
-      m
+      matrix
     );
     this.fileReader = new FileReader();
-    this.initial(source);
-    console.log("pdf", source);
+    this.htmlEl = document.createElement("canvas");
+    this.ctx = UtilTools.checkCanvasContext(this.htmlEl);
+    if (typeof source === "string") {
+      fetch(source)
+        .then((res) => res.blob())
+        .then((blob) => {
+          this.initial(URL.createObjectURL(blob));
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    } else {
+      this.initial(URL.createObjectURL(source));
+    }
   }
 
   prevPage() {
     const page = this.currentPage - 1;
     if (page !== 0) {
-      this.renderPdf(page);
+      this.settingProxy(page);
     }
   }
 
   nextPage() {
     const page = this.currentPage + 1;
-    this.renderPdf(page);
+    this.settingProxy(page);
   }
 
   initial(file: File | string) {
@@ -121,6 +176,18 @@ export class PDFShape extends BaseShape {
     }
   }
 
+  override transfer(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
+    super.transfer(v, m, type);
+  }
+
+  override transferEnd(
+    v: Vec2,
+    m: DOMMatrix,
+    type: ShapeActionType | null
+  ): void {
+    super.transferEnd(v, m, type);
+  }
+
   private initialFileReader() {
     this.fileReader.onload = (event) => {
       if (event.target === null) {
@@ -134,44 +201,50 @@ export class PDFShape extends BaseShape {
   }
 
   private pdfReadUri(uri: string) {
-    this.pdftask = pdfjsLib.getDocument({
-      url: uri,
-      httpHeaders: {
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
-    this.isLoad = true;
-    this.renderPdf();
+    this.pdftask = pdfjsLib.getDocument(uri);
+    this.settingProxy();
   }
 
-  private renderPdf(page = this.__currentPage) {
-    if (this.isLoad) {
-      const [width, height] = this.board.size;
-      const ctx = this.board.ctxStatic;
-      this.pdftask?.promise.then(
-        (pdf) => {
-          pdf
-            .getPage(page)
-            .then((page) => {
-              const scale = 1;
-              const viewport = page.getViewport({ scale: scale });
-              const renderContext = {
-                canvasContext: ctx,
-                viewport: viewport,
-              };
-              const renderTask = page.render(renderContext);
-              renderTask.promise.then(() => {
-                console.log("Page rendered");
-              });
-            })
-            .catch((e) => {
-              console.error(e);
+  private settingProxy(page = this.__currentPage) {
+    this.pdftask?.promise.then(
+      (pdf) => {
+        pdf
+          .getPage(page)
+          .then((page) => {
+            const canvasContext = this.ctx,
+              viewport = page.getViewport({ scale: 1 }),
+              context = { canvasContext, viewport };
+            this.setCanvasStyle(viewport.width, viewport.height);
+            const newRect = new Rect({
+              leftTop: { x: 0, y: 0 },
+              rightBottom: { x: viewport.width, y: viewport.height },
             });
-        },
-        (reason) => {
-          console.error(reason);
-        }
-      );
-    }
+            this.reInit(UtilTools.minRectToPath(newRect), newRect);
+
+            page.render(context).promise.then(() => {
+              this.isLoad = true;
+            });
+          })
+          .catch((e) => {
+            console.error(e);
+          });
+      },
+      (reason) => {
+        console.error(reason);
+      }
+    );
+  }
+
+  private setCanvasStyle(width: number, height: number) {
+    this.htmlEl.setAttribute(
+      "width",
+      `${width * this.board.devicePixelRatio}px`
+    );
+    this.htmlEl.setAttribute(
+      "height",
+      `${height * this.board.devicePixelRatio}px`
+    );
+    this.htmlEl.style.width = `${width}px`;
+    this.htmlEl.style.height = `${height}px`;
   }
 }

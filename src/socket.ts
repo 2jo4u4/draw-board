@@ -271,22 +271,24 @@ export class DemoSocket implements SocketMiddle {
   }
 
   protected toImageShape(data: ImageData): ImageShape {
-    const image = new ImageShape(
-      data.objectid,
-      this.board,
-      data.objecturl,
-      this.getMatrix(data.transform)
-    );
+    const image = new ImageShape(data.objectid, this.board, data.objecturl, {
+      x: parseInt(data.x1),
+      y: parseInt(data.y1),
+      width: parseInt(data.width),
+      height: parseInt(data.height),
+      transform: this.getMatrix(data.transform),
+    });
     return image;
   }
 
   protected toPdfShape(data: PdfData): PDFShape {
-    const pdf = new PDFShape(
-      data.objectid,
-      this.board,
-      data.objecturl,
-      this.getMatrix(data.transform)
-    );
+    const pdf = new PDFShape(data.objectid, this.board, data.objecturl, {
+      x: parseInt(data.x1),
+      y: parseInt(data.y1),
+      width: parseInt(data.width),
+      height: parseInt(data.height),
+      transform: this.getMatrix(data.transform),
+    });
     return pdf;
   }
 
