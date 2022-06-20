@@ -139,7 +139,10 @@ export class DemoSocket implements SocketMiddle {
     }
   }
 
-  destroy() {}
+  destroy() {
+    this.board.destroy();
+    this.socket.close();
+  }
 
   protected deleteShape(bss: BaseShape[]) {
     const ids = bss.map((bs) => bs.id);
@@ -180,8 +183,8 @@ export class DemoSocket implements SocketMiddle {
     }
   }
 
-  dataToCanvas<T extends DrawData>(data: T[]) {
-    let bs!: BaseShape;
+  protected dataToCanvas<T extends DrawData>(data: T[]) {
+    let bs: BaseShape | null = null;
     data.forEach((item) => {
       switch (item.tools) {
         case "pdf":
@@ -194,14 +197,14 @@ export class DemoSocket implements SocketMiddle {
           bs = this.toBaseShape(item as PenData);
           break;
         default:
+          bs = null;
           break;
       }
-
-      this.board.addShapeByBs(bs);
+      bs && this.board.addShapeByBs(bs);
     });
   }
 
-  messageFormat(s: string): {
+  protected messageFormat(s: string): {
     number: number;
     event: ReceivceEvent;
     data: DataType;

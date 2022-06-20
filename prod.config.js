@@ -1,5 +1,4 @@
 const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
   entry: {
@@ -9,7 +8,7 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.ts?$/,
+        test: /\.ts$/,
         use: "ts-loader",
         exclude: /node_modules/,
       },
@@ -23,16 +22,11 @@ module.exports = {
     extensions: [".tsx", ".ts", ".js"],
   },
   output: {
+    clean: true,
     filename: "[name].js",
     path: path.resolve(__dirname, "dist"),
     library: "canvaslib",
     libraryTarget: "umd",
   },
   target: "web",
-  plugins: [
-    new HtmlWebpackPlugin({
-      filename: "index.html",
-      template: "public/index.html",
-    }),
-  ],
 };

@@ -68,8 +68,6 @@ export class BaseShape {
     this.__isSelect = this.__isDelete ? false : b;
     if (this.__isSelect) {
       this.stagingMatrix = new DOMMatrix();
-    } else {
-      // meger matrix & stagingMatrix
     }
   }
   /** 是否被刪除 */

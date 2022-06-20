@@ -37,8 +37,19 @@ export class ImageShape extends BaseShape {
         this.changeLoadStatue();
       }, 3000);
     };
-    this.image.src =
-      typeof source === "string" ? source : URL.createObjectURL(source);
+
+    if (typeof source === "string") {
+      fetch(source)
+        .then((res) => res.blob())
+        .then((blob) => {
+          this.image.src = URL.createObjectURL(blob);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    } else {
+      this.image.src = URL.createObjectURL(source);
+    }
   }
 
   changeLoadStatue() {
@@ -82,6 +93,7 @@ export class PDFShape extends BaseShape {
     );
     this.fileReader = new FileReader();
     this.initial(source);
+    console.log("pdf", source);
   }
 
   prevPage() {
@@ -122,7 +134,12 @@ export class PDFShape extends BaseShape {
   }
 
   private pdfReadUri(uri: string) {
-    this.pdftask = pdfjsLib.getDocument(uri);
+    this.pdftask = pdfjsLib.getDocument({
+      url: uri,
+      httpHeaders: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
     this.isLoad = true;
     this.renderPdf();
   }
