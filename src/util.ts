@@ -60,6 +60,12 @@ export const defaultTransform: Transform = {
   f: 0.0,
 };
 
+export const defaultZoom: Zoom = {
+  x: 200,
+  y: 100,
+  k: 4,
+};
+
 /** 計算函式 / 工具函式 */
 export class UtilTools {
   static getCnavasElement(c?: string | HTMLElement): HTMLCanvasElement {
@@ -214,6 +220,16 @@ export class UtilTools {
     newPath.addPath(
       path,
       m.scale(zoom.k * windowRatio).translate(-zoom.x, -zoom.y)
+    );
+    return newPath;
+  }
+
+  static getZoomedPreviewPath(path: Path2D, zoom: Zoom, previewZoom: Zoom) {
+    const newPath = new Path2D(),
+      m = new DOMMatrix();
+    newPath.addPath(
+      path,
+      m.scale(previewZoom.k / zoom.k).translate(-previewZoom.x, -previewZoom.y)
     );
     return newPath;
   }

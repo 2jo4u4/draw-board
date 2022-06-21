@@ -1,5 +1,4 @@
-import math, { xgcd } from "mathjs";
-import { Board, padding, UtilTools, Rect } from "..";
+import { Board, UtilTools, Rect, defaultTransform, defaultZoom } from "..";
 import { BaseShape } from "../shape";
 
 const defaultSolidboxStyle: Styles = {
@@ -13,6 +12,7 @@ const defaultSolidboxStyle: Styles = {
 export class ViewportRect extends BaseShape {
   readonly $type;
   private zoom!: Zoom;
+  private prevPreviewZoom!: Zoom;
   /** 紀錄被選取的圖形 */
   startPosition!: Vec2;
   shapes: BaseShape[] = [];
@@ -43,10 +43,48 @@ export class ViewportRect extends BaseShape {
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
   settingAndOpen(mrv: Rect = this.coveredRect) {
-    const clone = mrv.clone();
-    console.log(mrv);
-    this.coveredRect = clone;
+    const { x, y, k } = this.board.previewCtrl.getPreviewZoom(
+      this.board.zoom,
+      this.windowRatio
+    );
+    this.coveredRect = UtilTools.generateMinRect(
+      { x: 0, y: 0 },
+      {
+        x: this.board.canvas.width,
+        y: this.board.canvas.height,
+      }
+    ).translateSelf(
+      new DOMMatrix().translate(x, y).scale(1 / this.board.zoom.k)
+    );
     this.assignPathAndDraw();
+  }
+  drawViewport(previewZoom: Zoom) {
+    const { width, height } = this.board.canvas;
+    const { x, y, k } = this.board.zoom;
+    const { top, right, bottom, left } = UtilTools.getPointsBox([
+      { x: 0, y: 0 },
+      { x: width, y: height },
+    ]);
+    const transform = UtilTools.nextTransform(
+      UtilTools.nextTransform(
+        UtilTools.nextTransform(
+          UtilTools.nextTransform(defaultTransform, {
+            rScale: 1 / k,
+          }),
+          { rScale: 1 / this.windowRatio }
+        ),
+        {
+          dx: x,
+          dy: y,
+        }
+      ),
+      {
+        dx: -previewZoom.x,
+        dy: -previewZoom.y,
+        rScale: previewZoom.k,
+      }
+    );
+    return transform;
   }
 
   /** 清除最小矩形 並 關閉控制欄位 */
@@ -88,10 +126,7 @@ export class ViewportRect extends BaseShape {
     previousPreviewZoom: Zoom,
     isMaskZoomLimited = false
   ) {
-    const prevPreviewZoom = this.board.previewCtrl.getPreviewZoom(
-      this.board.zoom,
-      this.windowRatio
-    );
+    const { prevPreviewZoom } = this;
 
     const { x, y, k } = this.board.zoom;
     const { x: nx, y: ny } = nextPreviewZoom;
@@ -104,11 +139,6 @@ export class ViewportRect extends BaseShape {
         return;
 
       this.board.updateZoom({
-        x: nx < prevPreviewZoom.x ? prevPreviewZoom.x : nx > px ? px : nx,
-        y: ny < prevPreviewZoom.y ? prevPreviewZoom.y : ny > py ? py : ny,
-        k,
-      });
-      console.log("lol", {
         x: nx < prevPreviewZoom.x ? prevPreviewZoom.x : nx > px ? px : nx,
         y: ny < prevPreviewZoom.y ? prevPreviewZoom.y : ny > py ? py : ny,
         k,
@@ -126,22 +156,12 @@ export class ViewportRect extends BaseShape {
       this.board.zoom,
       this.windowRatio
     );
+    this.prevPreviewZoom = prevPreviewZoom;
     switch (this.flag) {
       case "translate": {
-        const path = new Path2D(),
-          m = new DOMMatrix(),
-          scaleX = this.board.zoom.k * this.devicePixelRatio,
-          scaleY = this.board.zoom.k * this.devicePixelRatio,
-          originX = this.board.zoom.x,
-          originY = this.board.zoom.y;
-        const translateMatrix = UtilTools.translate(
-          this.startPosition,
-          v,
-          this.zoom.k // * this.windowRatio
-        );
         const nextPreviewZoom = this.getNextPreviewZoom({
-          x: (v.x - this.startPosition.x) / 1, // * Math.sqrt(this.zoom.k),
-          y: (v.y - this.startPosition.y) / 1, // * Math.sqrt(this.zoom.k),
+          x: (v.x - this.startPosition.x) * this.zoom.k, // * Math.sqrt(this.zoom.k),
+          y: (v.y - this.startPosition.y) * this.zoom.k, // * Math.sqrt(this.zoom.k),
         });
 
         this.updatePageZoom(nextPreviewZoom, prevPreviewZoom);
@@ -165,14 +185,6 @@ export class ViewportRect extends BaseShape {
   handleEnd(v: Vec2) {
     switch (this.flag) {
       case "translate": {
-        // this.transferEnd(
-        //   v,
-        //   UtilTools.translate(
-        //     this.startPosition,
-        //     v,
-        //     this.zoom.k * this.devicePixelRatio
-        //   )
-        // );
         break;
       }
       case "nw-scale":
@@ -203,7 +215,22 @@ export class ViewportRect extends BaseShape {
   }
 
   private assignPathAndDraw(path: Path2D | undefined = undefined) {
-    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
+    const scaleX = 100,
+      scaleY = 100,
+      zoomPath = new Path2D(),
+      m = new DOMMatrix();
+    const { nw, ne, sw, se, centerPoint } = this.coveredRect;
+    zoomPath.moveTo(nw.x, nw.y);
+    zoomPath.lineTo(ne.x, ne.y);
+    zoomPath.lineTo(se.x, se.y);
+    zoomPath.lineTo(sw.x, sw.y);
+    zoomPath.lineTo(nw.x, nw.y);
+    m.scale(scaleX, scaleY, 1, centerPoint.x, centerPoint.y);
+
+    const mp = new Path2D();
+    mp.addPath(zoomPath, m);
+
+    this.bindingBox = mp;
     this.path = this.bindingBox;
     this.board.previewCtrl?.rerenderToEvent({
       needClear: true,

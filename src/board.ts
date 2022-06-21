@@ -178,7 +178,6 @@ export class Board {
     this.logAction("draw", bs.id);
     // this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
     this.previewCtrl.rerender();
-    console.log("who");
   }
 
   addFileShape(file: File) {}

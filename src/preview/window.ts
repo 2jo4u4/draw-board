@@ -79,20 +79,13 @@ export class PreviewWindow {
     bs?: { p: Path2D; s: Styles } | BaseShape;
   }) {
     const { needClear, bs } = v;
-    console.log("rerenderToEvent", bs, UtilTools.isBaseShape(bs));
     Boolean(needClear) && this.clearCanvas("event");
     if (bs) {
-      const path = new Path2D(),
-        m = new DOMMatrix(),
-        scaleX = this.board.zoom.k / this.windowRatio,
-        scaleY = this.board.zoom.k / this.windowRatio,
-        originX = this.board.zoom.x,
-        originY = this.board.zoom.y;
       if (UtilTools.isBaseShape(bs)) {
-        const path = UtilTools.getZoomedPath(
+        const path = UtilTools.getZoomedPreviewPath(
           bs.path,
-          this.zoom,
-          this.windowRatio
+          this.board.zoom,
+          this.zoom
         );
         UtilTools.injectStyle(this.ctx, bs.style);
         if (bs.style.fillColor) {
@@ -102,7 +95,11 @@ export class PreviewWindow {
         }
         this.ctx.stroke(path);
       } else {
-        const path = UtilTools.getZoomedPath(bs.p, this.zoom, this.windowRatio);
+        const path = UtilTools.getZoomedPreviewPath(
+          bs.p,
+          this.board.zoom,
+          this.zoom
+        );
         UtilTools.injectStyle(this.ctx, bs.s);
         if (bs.s.fillColor) {
           this.ctx.fill(path);
@@ -113,10 +110,10 @@ export class PreviewWindow {
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && _bs.isSelect) {
-          const path = UtilTools.getZoomedPath(
+          const path = UtilTools.getZoomedPreviewPath(
             _bs.path,
-            this.zoom,
-            this.windowRatio
+            this.board.zoom,
+            this.zoom
           );
           UtilTools.injectStyle(this.ctx, _bs.style);
           this.ctx.stroke(path);
@@ -129,10 +126,10 @@ export class PreviewWindow {
     const { needClear, bs } = v;
     Boolean(needClear) && this.clearCanvas("static");
     if (bs) {
-      const path = UtilTools.getZoomedPath(
+      const path = UtilTools.getZoomedPreviewPath(
         bs.path,
         this.board.zoom,
-        this.windowRatio
+        this.zoom
       );
       UtilTools.injectStyle(this.ctxStatic, bs.style);
       if (bs.style.fillColor) {
@@ -143,10 +140,10 @@ export class PreviewWindow {
     } else {
       this.shapes.forEach((_bs) => {
         if (!_bs.isDelete && !_bs.isSelect) {
-          const path = UtilTools.getZoomedPath(
+          const path = UtilTools.getZoomedPreviewPath(
             _bs.path,
             this.board.zoom,
-            this.windowRatio
+            this.zoom
           );
           UtilTools.injectStyle(this.ctxStatic, _bs.style);
           this.ctxStatic.stroke(path);
@@ -217,7 +214,6 @@ export class PreviewWindow {
   private onEventMove(event: TouchEvent | MouseEvent) {
     const position = this.eventToPosition(event);
     // TODO move viewport or wheel
-    // console.log("onEventMove", position);
     if (this.activeFlag) {
       this.toolsCtrl.onEventMoveActive(position);
     } else {
@@ -255,7 +251,6 @@ export class PreviewWindow {
         ((y - top) / (this.canvas.height / this.devicePixelRatio / height)) *
         this.devicePixelRatio,
     };
-
     return back;
   }
 
@@ -298,7 +293,10 @@ export class PreviewWindow {
     const canvas = this.canvas;
     const viewportArea = UtilTools.getPointsBox([
       { x: 0, y: 0 },
-      { x: canvas.width, y: canvas.height },
+      {
+        x: canvas.width,
+        y: canvas.height,
+      },
     ]);
     const transform = UtilTools.nextTransform(
       UtilTools.nextTransform(
@@ -324,19 +322,18 @@ export class PreviewWindow {
       transform
     );
 
-    const topLefts = Array.from(this.shapes).map(([_id, shape]) => {
-      console.log(shape);
-      const { ne, nw, se } = shape.coveredRect;
-      return { y: ne.y || nw.y, x: ne.x || se.x };
-    });
-    const bottomRights = Array.from(this.shapes).map(([_id, shape]) => {
-      const { ne, se, sw } = shape.coveredRect;
+    // const topLefts = Array.from(this.shapes).map(([_id, shape]) => {
+    //   const { ne, nw, se } = shape.coveredRect;
+    //   return { y: ne.y || nw.y, x: ne.x || se.x };
+    // });
+    // const bottomRights = Array.from(this.shapes).map(([_id, shape]) => {
+    //   const { ne, se, sw } = shape.coveredRect;
 
-      return { y: se.y || sw.y, x: ne.x || se.x };
-    });
+    //   return { y: se.y || sw.y, x: ne.x || se.x };
+    // });
     const { top, right, bottom, left } = UtilTools.getPointsBox([
-      ...topLefts,
-      ...bottomRights,
+      // ...topLefts,
+      // ...bottomRights,
       { x: vRight, y: vTop },
       { x: vLeft, y: vBottom },
     ]);
@@ -348,7 +345,6 @@ export class PreviewWindow {
       canvas.width / width < canvas.height / height
         ? canvas.width / width
         : canvas.height / height;
-    this.zoom = { x, y, k };
     return { x, y, k };
   }
 }
