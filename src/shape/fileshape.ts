@@ -66,14 +66,7 @@ export class ImageShape extends BaseShape {
     };
 
     if (typeof source === "string") {
-      fetch(source)
-        .then((res) => res.blob())
-        .then((blob) => {
-          this.htmlEl.src = URL.createObjectURL(blob);
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      this.htmlEl.src = source;
     } else {
       this.htmlEl.src = URL.createObjectURL(source);
     }
@@ -150,16 +143,9 @@ export class PDFShape extends BaseShape {
     this.startPoint = startPoint;
     this.ctx = UtilTools.checkCanvasContext(this.htmlEl);
     if (typeof source === "string") {
-      fetch(source)
-        .then((res) => res.blob())
-        .then((blob) => {
-          this.initial(URL.createObjectURL(blob));
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      this.pdfReadUri(source);
     } else {
-      this.initial(URL.createObjectURL(source));
+      this.pdfReadUri(URL.createObjectURL(source));
     }
   }
 
