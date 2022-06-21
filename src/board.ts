@@ -279,7 +279,10 @@ export class Board {
 
   /** 確認路徑是否包含座標 */
   checkPointInPath(p: Path2D, v: Vec2): boolean {
-    return this.ctx.isPointInPath(p, v.x, v.y);
+    return (
+      this.ctx.isPointInPath(p, v.x, v.y) ||
+      this.ctx.isPointInStroke(p, v.x, v.y)
+    );
   }
 
   /** 上一步 */

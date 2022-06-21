@@ -57,7 +57,11 @@ export class SelectSolidRect extends BaseShape {
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
   settingAndOpen(mrv: Rect) {
-    const clone = mrv.clone();
+    const clone = mrv
+      .clone()
+      .transferSelf(
+        UtilTools.scale({ x: 1, y: 1 }, { x: 1.1, y: 1.1 }, mrv.centerPoint)
+      );
     this.coveredRect = clone;
     this.path = UtilTools.minRectToPath(this.coveredRect);
 

@@ -217,7 +217,7 @@ export class SelectTools implements BaseTools {
       ];
       return Boolean(
         fourCorner.find(({ x, y }) => {
-          return this.board.ctx.isPointInPath(bs.bindingBox, x, y);
+          return this.board.ctx.isPointInPath(bs.bindingBoxWithMatrix, x, y);
         })
       );
     }

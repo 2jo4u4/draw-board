@@ -11,7 +11,7 @@ export const defaultStyle: Styles = {
   lineDash: [],
 };
 
-export const defaultImageShapeStyle: Styles = {
+export const defaultFileShapeStyle: Styles = {
   lineColor: "#000000",
   lineWidth: 4,
   fillColor: "#00000030",
@@ -357,7 +357,7 @@ export class UtilTools {
     return bs instanceof BaseShape;
   }
 
-  /** 取得中心點 */
+  /** @deprecated 取得中心點 */
   static getMinRectCenter(mrv: MinRectVec): Vec2 {
     const {
       leftTop: { x: x1, y: y1 },

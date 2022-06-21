@@ -1,6 +1,6 @@
 import * as pdfjsLib from "pdfjs-dist";
 import { BaseShape } from ".";
-import { Board, defaultImageShapeStyle, Rect, UtilTools } from "..";
+import { Board, defaultFileShapeStyle, Rect, UtilTools } from "..";
 
 type URLString = string;
 interface FileConfig {
@@ -11,19 +11,20 @@ interface FileConfig {
   transform: DOMMatrix;
 }
 
-const startPosition: Vec2 = { x: 50, y: 50 };
+const defStartPosition: Vec2 = { x: 50, y: 50 };
 const defaultWidth = 100;
 const beforeLoad: MinRectVec = {
-  leftTop: startPosition,
+  leftTop: defStartPosition,
   rightBottom: {
-    x: startPosition.x + defaultWidth,
-    y: startPosition.y + defaultWidth,
+    x: defStartPosition.x + defaultWidth,
+    y: defStartPosition.y + defaultWidth,
   },
 };
 export class ImageShape extends BaseShape {
   readonly $type;
   htmlEl: HTMLImageElement;
   isLoad = false;
+  startPoint: Vec2;
 
   constructor(
     id: string,
@@ -31,10 +32,11 @@ export class ImageShape extends BaseShape {
     source: URLString | Blob,
     config?: FileConfig
   ) {
-    let rect!: Rect, matrix!: DOMMatrix;
+    let rect!: Rect, matrix!: DOMMatrix, startPoint: Vec2;
     if (config) {
+      startPoint = { x: config.x, y: config.y };
       rect = new Rect({
-        leftTop: { x: config.x, y: config.y },
+        leftTop: startPoint,
         rightBottom: {
           x: config.x + config.width,
           y: config.y + config.height,
@@ -42,19 +44,22 @@ export class ImageShape extends BaseShape {
       });
       matrix = DOMMatrix.fromMatrix(config.transform);
     } else {
+      startPoint = defStartPosition;
       rect = new Rect(beforeLoad);
       matrix = new DOMMatrix();
     }
+
     super(
       id,
       board,
       UtilTools.minRectToPath(rect),
-      defaultImageShapeStyle,
+      defaultFileShapeStyle,
       rect,
       matrix
     );
     this.$type = "image-shape";
     this.htmlEl = new Image();
+    this.startPoint = startPoint;
     this.board.addShapeByBs(this);
     this.htmlEl.onload = (event) => {
       this.changeLoadStatue();
@@ -79,14 +84,14 @@ export class ImageShape extends BaseShape {
       this.isLoad = true;
       const { width, height } = this.htmlEl;
       this.path = new Path2D();
-      this.path.rect(startPosition.x, startPosition.y, width, height);
+      this.path.rect(this.startPoint.x, this.startPoint.y, width, height);
       this.reInit(
         this.path,
         new Rect({
-          leftTop: startPosition,
+          leftTop: this.startPoint,
           rightBottom: {
-            x: width + startPosition.x,
-            y: height + startPosition.y,
+            x: width + this.startPoint.x,
+            y: height + this.startPoint.y,
           },
         })
       );
@@ -95,9 +100,11 @@ export class ImageShape extends BaseShape {
 }
 
 export class PDFShape extends BaseShape {
+  readonly $type;
   fileReader: FileReader;
   pdftask: pdfjsLib.PDFDocumentLoadingTask | null = null;
   isLoad = false;
+  startPoint: Vec2;
   private __currentPage = 1;
   get currentPage(): number {
     return this.__currentPage;
@@ -112,10 +119,11 @@ export class PDFShape extends BaseShape {
     source: URLString | Blob,
     config?: FileConfig
   ) {
-    let rect!: Rect, matrix!: DOMMatrix;
+    let rect!: Rect, matrix!: DOMMatrix, startPoint: Vec2;
     if (config) {
+      startPoint = { x: config.x, y: config.y };
       rect = new Rect({
-        leftTop: { x: config.x, y: config.y },
+        leftTop: startPoint,
         rightBottom: {
           x: config.x + config.width,
           y: config.y + config.height,
@@ -123,19 +131,23 @@ export class PDFShape extends BaseShape {
       });
       matrix = DOMMatrix.fromMatrix(config.transform);
     } else {
+      startPoint = defStartPosition;
       rect = new Rect(beforeLoad);
       matrix = new DOMMatrix();
     }
+
     super(
       id,
       board,
       UtilTools.minRectToPath(rect),
-      { lineColor: "#000", lineWidth: 1 },
+      defaultFileShapeStyle,
       rect,
       matrix
     );
+    this.$type = "pfd-shape";
     this.fileReader = new FileReader();
     this.htmlEl = document.createElement("canvas");
+    this.startPoint = startPoint;
     this.ctx = UtilTools.checkCanvasContext(this.htmlEl);
     if (typeof source === "string") {
       fetch(source)
@@ -154,13 +166,13 @@ export class PDFShape extends BaseShape {
   prevPage() {
     const page = this.currentPage - 1;
     if (page !== 0) {
-      this.settingProxy(page);
+      this.settingCanvas(page);
     }
   }
 
   nextPage() {
     const page = this.currentPage + 1;
-    this.settingProxy(page);
+    this.settingCanvas(page);
   }
 
   initial(file: File | string) {
@@ -202,10 +214,10 @@ export class PDFShape extends BaseShape {
 
   private pdfReadUri(uri: string) {
     this.pdftask = pdfjsLib.getDocument(uri);
-    this.settingProxy();
+    this.settingCanvas();
   }
 
-  private settingProxy(page = this.__currentPage) {
+  private settingCanvas(page = this.__currentPage) {
     this.pdftask?.promise.then(
       (pdf) => {
         pdf
@@ -216,8 +228,11 @@ export class PDFShape extends BaseShape {
               context = { canvasContext, viewport };
             this.setCanvasStyle(viewport.width, viewport.height);
             const newRect = new Rect({
-              leftTop: { x: 0, y: 0 },
-              rightBottom: { x: viewport.width, y: viewport.height },
+              leftTop: this.startPoint,
+              rightBottom: {
+                x: this.startPoint.x + viewport.width,
+                y: this.startPoint.y + viewport.height,
+              },
             });
             this.reInit(UtilTools.minRectToPath(newRect), newRect);
 
