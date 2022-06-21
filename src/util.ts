@@ -1,3 +1,4 @@
+import * as math from "mathjs";
 import { BaseShape } from ".";
 
 const dashedLine = [10, 10];
@@ -39,6 +40,21 @@ export const defaultFlexboxStyle: Styles = {
   lineDash: dashedLine,
 };
 
+export const defaultTransform: Transform = {
+  a: 1.0,
+  b: 0.0,
+  c: 0.0,
+  d: 1.0,
+  e: 0.0,
+  f: 0.0,
+};
+
+export const defaultZoom: Zoom = {
+  x: 200,
+  y: 100,
+  k: 4,
+};
+
 /** 計算函式 / 工具函式 */
 export class UtilTools {
   static getCnavasElement(c?: string | HTMLElement): HTMLCanvasElement {
@@ -78,6 +94,124 @@ export class UtilTools {
       Object.prototype.hasOwnProperty.call(v, "x") &&
       Object.prototype.hasOwnProperty.call(v, "y")
     );
+  }
+
+  static cos(theta: number) {
+    return math.cos(theta);
+  }
+  static sin(theta: number) {
+    return math.sin(theta);
+  }
+  static atan2(y: number, x: number) {
+    return math.atan2(y, x);
+  }
+  static matrixMultiply(a: math.Matrix, b: math.Matrix) {
+    return math.multiply(a, b);
+  }
+
+  static transformToMatrix(transform: Transform) {
+    const { a = 1, b = 0, c = 0, d = 1, e = 0, f = 0 } = transform;
+    return math.matrix([
+      [a, c, e],
+      [b, d, f],
+      [0, 0, 1],
+    ]);
+  }
+
+  static getTransformFromMatrix(matrix: math.Matrix): Transform {
+    return {
+      a: Number(matrix.subset(math.index(0, 0))),
+      b: Number(matrix.subset(math.index(1, 0))),
+      c: Number(matrix.subset(math.index(0, 1))),
+      d: Number(matrix.subset(math.index(1, 1))),
+      e: Number(matrix.subset(math.index(0, 2))),
+      f: Number(matrix.subset(math.index(1, 2))),
+    };
+  }
+
+  static nextTransform(
+    prevTransform: Transform,
+    { dx = 0, dy = 0, rScale = 1, dTheta = 0, cx = 0, cy = 0 }
+  ) {
+    const transformMatrix = this.transformToMatrix(prevTransform);
+    const translateToOriginMatrix = this.transformToMatrix({
+      e: dx - cx,
+      f: dy - cy,
+    });
+    const scaleMatrix = this.transformToMatrix({ a: rScale, d: rScale });
+    const rotationMatrix = this.transformToMatrix({
+      a: this.cos(dTheta),
+      b: this.sin(dTheta),
+      c: -this.sin(dTheta),
+      d: this.cos(dTheta),
+    });
+    const translateBackMatrix = this.transformToMatrix({
+      e: cx,
+      f: cy,
+    });
+    const applyTranslateToOrigin = this.matrixMultiply(
+      translateToOriginMatrix,
+      transformMatrix
+    );
+    const applyScale = this.matrixMultiply(scaleMatrix, applyTranslateToOrigin);
+    const applyRotation = this.matrixMultiply(rotationMatrix, applyScale);
+    const result = this.matrixMultiply(translateBackMatrix, applyRotation);
+    return this.getTransformFromMatrix(result);
+  }
+
+  static getPointsBox(points: Vec2[]) {
+    if (!points.length) return { top: 0, right: 0, bottom: 0, left: 0 };
+
+    const xs = points.map(({ x }) => x);
+    const ys = points.map(({ y }) => y);
+
+    return {
+      top: Math.min(...ys),
+      right: Math.max(...xs),
+      bottom: Math.max(...ys),
+      left: Math.min(...xs),
+    };
+  }
+
+  static applyTransform(position: Vec2, transform: Transform) {
+    const { x, y } = position;
+    const { a = 1, b = 0, c = 0, d = 1, e = 0, f = 0 } = transform;
+
+    return {
+      x: a * x + c * y + e,
+      y: b * x + d * y + f,
+    };
+  }
+
+  static unZoomPosition(pageZoom: Zoom, { x, y }: Vec2) {
+    const unZoomedTransform = this.nextTransform(defaultTransform, {
+      rScale: 1 / pageZoom.k,
+      cx: pageZoom.x,
+      cy: pageZoom.y,
+      dx: pageZoom.x,
+      dy: pageZoom.y,
+    });
+    return this.applyTransform({ x, y }, unZoomedTransform);
+  }
+
+  static getZoomedPath(path: Path2D, zoom: Zoom, windowRatio: number = 1) {
+    const newPath = new Path2D(),
+      m = new DOMMatrix();
+    newPath.addPath(
+      path,
+      m.scale(zoom.k * windowRatio).translate(-zoom.x, -zoom.y)
+    );
+    return newPath;
+  }
+
+  static getZoomedPreviewPath(path: Path2D, zoom: Zoom, previewZoom: Zoom) {
+    const newPath = new Path2D(),
+      m = new DOMMatrix();
+    newPath.addPath(
+      path,
+      m.scale(previewZoom.k / zoom.k).translate(-previewZoom.x, -previewZoom.y)
+    );
+    return newPath;
   }
 
   /** 是否為 MinRectVec */
@@ -236,9 +370,10 @@ export class UtilTools {
   }
 
   /** 移動 */
-  static translate(prev: Vec2, next: Vec2): DOMMatrix {
+  static translate(prev: Vec2, next: Vec2, k: number = 1): DOMMatrix {
+    
     const [dx, dy] = UtilTools.getOffset(prev, next);
-    return new DOMMatrix().translate(dx, dy);
+    return new DOMMatrix().translate(dx * k, dy * k);
   }
   /** 旋轉 */
   static rotate(center: Vec2, next: Vec2, initDegree?: number): DOMMatrix {

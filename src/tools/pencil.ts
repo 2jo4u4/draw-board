@@ -29,17 +29,19 @@ export class PencilTools implements BaseTools {
   }
 
   onEventStart(v: Vec2): void {
-    this.minRect = { leftTop: v, rightBottom: v };
+    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+    this.minRect = { leftTop: { x, y }, rightBottom: { x, y } };
     this.path = new Path2D();
-    this.path.moveTo(v.x - 1, v.y - 1);
-    this.path.lineTo(v.x, v.y);
+    this.path.moveTo(x - 1, y - 1);
+    this.path.lineTo(x, y);
     this.draw();
   }
 
   onEventMoveActive(v: Vec2): void {
-    this.path.lineTo(v.x, v.y);
+    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+    this.path.lineTo(x, y);
     this.draw();
-    this.minRect = UtilTools.newMinRect(v, this.minRect);
+    this.minRect = UtilTools.newMinRect({ x, y }, this.minRect);
   }
 
   onEventMoveInActive(v: Vec2): void {
@@ -47,10 +49,11 @@ export class PencilTools implements BaseTools {
   }
 
   onEventEnd(v: Vec2): void {
-    this.path.lineTo(v.x, v.y);
+    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+    this.path.lineTo(x, y);
     this.draw();
-    this.minRect = UtilTools.newMinRect(v, this.minRect);
-    this.addToBoard(v);
+    this.minRect = UtilTools.newMinRect({ x, y }, this.minRect);
+    this.addToBoard({ x, y });
     this.drawOver();
   }
 
