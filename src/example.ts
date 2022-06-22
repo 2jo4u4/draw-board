@@ -15,14 +15,13 @@ const canvas = document.createElement("canvas");
 const grid = document.createElement("canvas");
 const tools = document.createElement("ul");
 const p = document.createElement("p");
-const src = "https://i.imgur.com/yBcdym6.jpeg";
+const src = "https://i.imgur.com/m5c8KGt.jpeg";
 const pdfsrc =
   "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/examples/learning/helloworld.pdf";
 const gridCtx = grid.getContext("2d") as CanvasRenderingContext2D;
 
 const fakePdf: PdfData = {
-  objecturl:
-    "https%3A%2F%2Fteamshareone-cf.optoma.com%2FCB%2FFile%2Fwb202204110850301SXIIglv7Q%2Fhub%20socket%20event%20-%20%E5%B7%A5%E4%BD%9C%E8%A1%A81.pdf",
+  objecturl: pdfsrc,
   objectid: "w_406015b3-14e1-42c5-be40",
   tools: "pdf",
   type: "confirmobject",
@@ -43,8 +42,7 @@ const fakePdf: PdfData = {
 };
 
 const fakeImage: ImageData = {
-  objecturl:
-    "https%3A%2F%2Fteamshareone-cf.optoma.com%2FCB%2FImage%2Fwb202204110850301SXIIglv7Q%2Fdog.jpeg",
+  objecturl: src,
   objectid: "w_a552ffbf-cc75-4f62-b33a",
   tools: "image",
   type: "confirmobject",
@@ -273,8 +271,9 @@ function develop() {
 
   function initialTools() {
     tools.style.cursor = "pointer";
-    board.toolsCtrl.switchTypeToSelect();
-    p.innerText = `目前工具： 選擇器`;
+    board.toolsCtrl.switchTypeToViewer();
+    p.innerText = `目前工具： 觀察者`;
+    AddTools(ToolsEnum.觀察者);
     AddTools(ToolsEnum.鉛筆);
     AddTools(ToolsEnum.選擇器);
     AddTools(ToolsEnum.擦子);
@@ -403,12 +402,6 @@ function myTest() {
   p11.addPath(p1, m11);
   console.log("m11", m11.toString());
   draw(ctx, p11, "#000");
-}
-
-function getTransition(prev: Rect, next: Rect): DOMMatrix {
-  const angle = UtilTools.getAngle(next.centerPoint, prev.centerPoint);
-
-  return new DOMMatrix();
 }
 
 drawGrid();

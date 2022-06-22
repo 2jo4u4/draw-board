@@ -3,6 +3,7 @@ import { BaseTools } from "./base";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";
 import { EarserTools } from "./earser";
+import { ViewerTools } from "./viewer";
 
 export enum ToolsEnum {
   "選擇器" = "select",
@@ -10,6 +11,7 @@ export enum ToolsEnum {
   "圖形生成" = "shapeGenerate",
   "擦子" = "eraser",
   "文字框" = "textRect",
+  "觀察者" = "viewer",
 }
 
 export enum LineWidth {
@@ -35,7 +37,7 @@ export class ToolsManagement {
   }
   constructor(board: Board) {
     this.board = board;
-    this.switchTypeToSelect(); // 設定初始工具
+    this.switchTypeToViewer(); // 設定初始工具
   }
   /** 觸摸/滑鼠下壓 */
   onEventStart(v: Vec2): void {
@@ -80,6 +82,9 @@ export class ToolsManagement {
         case ToolsEnum.圖形生成:
           this.__usingTools = new SelectTools(this.board);
           break;
+        case ToolsEnum.觀察者:
+          this.__usingTools = new ViewerTools(this.board);
+          break;
         default:
           break;
       }
@@ -104,5 +109,9 @@ export class ToolsManagement {
 
   switchTypeToEraser(): void {
     this.switchTypeTo(ToolsEnum.擦子);
+  }
+
+  switchTypeToViewer(): void {
+    this.switchTypeTo(ToolsEnum.觀察者);
   }
 }
