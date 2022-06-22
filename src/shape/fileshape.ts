@@ -20,11 +20,21 @@ const beforeLoad: MinRectVec = {
     y: defStartPosition.y + defaultWidth,
   },
 };
-export class ImageShape extends BaseShape {
+
+export abstract class FileShape {
+  abstract htmlEl: CanvasImageSource;
+}
+
+export class ImageShape extends BaseShape implements FileShape {
   readonly $type;
   htmlEl: HTMLImageElement;
   isLoad = false;
   startPoint: Vec2;
+  override get matrix() {
+    return DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(
+      this.stagingMatrix
+    );
+  }
 
   constructor(
     id: string,
@@ -92,7 +102,7 @@ export class ImageShape extends BaseShape {
   }
 }
 
-export class PDFShape extends BaseShape {
+export class PDFShape extends BaseShape implements FileShape {
   readonly $type;
   fileReader: FileReader;
   pdftask: pdfjsLib.PDFDocumentLoadingTask | null = null;
@@ -102,7 +112,11 @@ export class PDFShape extends BaseShape {
   get currentPage(): number {
     return this.__currentPage;
   }
-
+  override get matrix() {
+    return DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(
+      this.stagingMatrix
+    );
+  }
   htmlEl: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 

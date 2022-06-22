@@ -63,7 +63,7 @@ export class SelectSolidRect extends BaseShape {
         UtilTools.scale({ x: 1, y: 1 }, { x: 1.1, y: 1.1 }, mrv.centerPoint)
       );
     this.coveredRect = clone;
-    this.path = UtilTools.minRectToPath(this.coveredRect);
+    this.path = UtilTools.minRectToPath(clone);
 
     this.showCtrlPoint = true;
     this.assignScale();
@@ -186,6 +186,7 @@ export class SelectSolidRect extends BaseShape {
       angle: UtilTools.getDegree(
         UtilTools.getAngle(centerPoint, this.startPosition)
       ),
+      // scalePoint: this.coveredRectWithmatrix.centerPoint,
       scalePoint: this.coveredRectWithmatrix.getReferPointOpposite(this.flag),
       zoomPosition: UtilTools.unZoomPosition(
         this.board.zoom,

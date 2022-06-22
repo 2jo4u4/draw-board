@@ -2,7 +2,7 @@ import * as math from "mathjs";
 import { BaseShape } from ".";
 
 const dashedLine = [10, 10];
-export const padding = 8; // px
+export const padding = 16; // px
 // 畫筆預設樣式
 export const defaultStyle: Styles = {
   lineColor: "#000",
@@ -342,10 +342,7 @@ export class UtilTools {
    * 利用最小矩形產生路徑
    */
   static minRectToPath(mrv: Rect | MinRectVec): Path2D {
-    const scaleX = 1.2,
-      scaleY = 1.2,
-      path = new Path2D(),
-      m = new DOMMatrix();
+    const path = new Path2D();
     if (mrv instanceof Rect) {
       const { nw, ne, sw, se } = mrv;
       path.moveTo(nw.x, nw.y);
@@ -353,19 +350,15 @@ export class UtilTools {
       path.lineTo(se.x, se.y);
       path.lineTo(sw.x, sw.y);
       path.lineTo(nw.x, nw.y);
-      m.scale(scaleX, scaleY, 1, mrv.centerPoint.x, mrv.centerPoint.y);
     } else {
       const {
         leftTop: { x: x1, y: y1 },
         rightBottom: { x: x2, y: y2 },
       } = mrv;
       path.rect(x1, y1, x2 - x1, y2 - y1);
-      m.scale(scaleX, scaleY, 1, x1 + (x2 - x1), y1 + (y2 - y1));
     }
-    const mp = new Path2D();
-    mp.addPath(path, m);
 
-    return mp;
+    return path;
   }
 
   /** @deprecated 讓此檔案不在相依其他檔案，故不再提供此方法 */
@@ -419,9 +412,10 @@ export class UtilTools {
         scaleY = next.y / prev.y;
       }
     }
+    const scale = Math.max(scaleX, scaleY);
     return center
-      ? new DOMMatrix().scale(scaleX, scaleY, 1, center.x, center.y)
-      : new DOMMatrix().scale(scaleX, scaleY);
+      ? new DOMMatrix().scale(scale, scale, 1, center.x, center.y)
+      : new DOMMatrix().scale(scale, scale);
   }
 
   /** 取得兩點間之弧度 */

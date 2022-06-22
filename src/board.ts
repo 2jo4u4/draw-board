@@ -150,7 +150,7 @@ export class Board {
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
-  /** 清除指定畫布(若無指定則清除兩畫布) */
+  /** @deprecated 清除指定畫布(若無指定則清除兩畫布) */
   clearCanvas(type?: "static" | "event") {
     const [width, height] = this.size;
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
@@ -397,8 +397,6 @@ export class Board {
   }
 
   private resizeCanvas() {
-    // 清除畫面
-    this.clearCanvas();
     // 設定大小
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);

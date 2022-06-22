@@ -80,14 +80,14 @@ export class BaseShape {
     this.__isDelete = b;
   }
 
-  private __matrix: DOMMatrix;
+  protected __matrix: DOMMatrix;
   get matrix() {
     return this.__matrix;
   }
   set matrix(m: DOMMatrix) {
     this.__matrix = m;
   }
-  private stagingMatrix!: DOMMatrix;
+  protected stagingMatrix!: DOMMatrix;
   /** 紀錄 */
   private shapeActionLog: ShapeAction[] = [];
   private shapeActionLimit: number;
@@ -127,7 +127,7 @@ export class BaseShape {
   transferEnd(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
     // merge matrix and stagingMatrix
     this.stagingMatrix = new DOMMatrix();
-    this.matrix = DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(m);
+    this.__matrix = DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(m);
   }
 
   updata(t: number) {
@@ -150,7 +150,8 @@ export class BaseShape {
 
   reInit(path: Path2D, minRect: Rect) {
     this.__path = new Path2D(path);
-    this.coveredRect = minRect.clone();
-    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
+    const newRect = minRect.clone();
+    this.coveredRect = newRect;
+    this.bindingBox = UtilTools.minRectToPath(newRect);
   }
 }
