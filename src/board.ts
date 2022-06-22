@@ -6,6 +6,7 @@ import {
   UtilTools,
   ImageShape,
   PDFShape,
+  defaultZoom,
 } from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
@@ -47,7 +48,7 @@ export class Board {
     return this.__ctxStatic;
   }
   /** Preview Canvas網頁元素 */
-  private __previewCanvas: HTMLCanvasElement;
+  private __previewCanvas!: HTMLCanvasElement;
   get preview(): HTMLCanvasElement {
     return this.__previewCanvas;
   }
@@ -78,7 +79,7 @@ export class Board {
     return this.__tools;
   }
   /** Preview中間件 */
-  private __preview: PreviewWindow;
+  private __preview!: PreviewWindow;
   get previewCtrl() {
     return this.__preview;
   }
@@ -114,19 +115,8 @@ export class Board {
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
     this.devicePixelRatio = window.devicePixelRatio;
-    this.zoom = {
-      x: 0,
-      y: 0,
-      k: 1,
-    }; // pageZoom, default { x: 0, y: 0, k: 1 }
+    this.zoom = defaultZoom; // pageZoom, default { x: 0, y: 0, k: 1 }
     this.initial();
-    const {
-      preview,
-      canvas: previewCanvas,
-      tools: previewTools,
-    } = this.initialPreview();
-    this.__previewCanvas = previewCanvas;
-    this.__preview = new PreviewWindow(previewCanvas, this);
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__socket = Socket || null;
     this.__tools = new Tools(this);
@@ -176,8 +166,6 @@ export class Board {
   addShapeByBs(bs: BaseShape) {
     this.shapes.set(bs.id, bs);
     this.logAction("draw", bs.id);
-    // this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
-    this.previewCtrl.rerender();
   }
 
   addFileShape(file: File) {}
@@ -206,19 +194,24 @@ export class Board {
 
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
+    const zoomMatrix = UtilTools.translate(
+      { x: this.zoom.x, y: this.zoom.y },
+      { x: 0, y: 0 }
+    ).scale(this.zoom.k, this.zoom.k, 1, this.zoom.x, this.zoom.y);
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
       useCtx.setTransform(bs.matrix);
       useCtx.drawImage(bs.htmlEl, x, y, width, height);
-      useCtx.setTransform(1, 0, 0, 1, 0, 0);
     } else {
+      useCtx.setTransform(DOMMatrix.fromMatrix(zoomMatrix));
       if (bs.style.fillColor) {
         useCtx.fill(bs.pathWithMatrix);
       } else {
         useCtx.stroke(bs.pathWithMatrix);
       }
     }
+    useCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
@@ -289,15 +282,9 @@ export class Board {
   /** 下一步 */
   redo() {}
 
-  private initialPreview() {
-    const preview = document.createElement("div");
-    const canvas = document.createElement("canvas");
-    const tools = document.createElement("ul");
-
-    document.body.append(preview, canvas, tools);
-
-    // const previewWindow = new PreviewWindow(canvas, board);
-    return { preview, canvas, tools };
+  initialPreview(canvas: HTMLCanvasElement) {
+    this.__previewCanvas = canvas;
+    this.__preview = new PreviewWindow(canvas, this);
   }
 
   /** 初始化 canvas */
@@ -433,9 +420,6 @@ export class Board {
   }
 
   updateZoom(zoom: Zoom) {
-    console.log("first", zoom);
-
     this.zoom = zoom;
-    // this.rerender();
   }
 }

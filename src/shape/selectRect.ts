@@ -108,7 +108,7 @@ export class SelectSolidRect extends BaseShape {
     } else if (this.board.checkPointInPath(this.scalePath[3], nV)) {
       this.flag = "se-scale";
       this.board.changeCursor("se-resize");
-    } else if (this.board.checkPointInPath(this.pathWithMatrix, v)) {
+    } else if (this.board.checkPointInPath(this.pathWithMatrix, nV)) {
       this.flag = "translate";
       this.board.changeCursor("move");
     } else {
@@ -250,11 +250,26 @@ export class SelectSolidRect extends BaseShape {
 
   override updata(t: number): void {
     super.updata(t);
+    const zoomMatrix = UtilTools.translate(
+      { x: this.board.zoom.x, y: this.board.zoom.y },
+      { x: 0, y: 0 }
+    ).scale(
+      this.board.zoom.k,
+      this.board.zoom.k,
+      1,
+      this.board.zoom.x,
+      this.board.zoom.y
+    );
+
     if (this.showCtrlPoint) {
       this.scalePath.forEach((p) => {
-        this.board.renderPathToEvent(p, defauletScalePoint);
+        this.board.renderPathToEvent(p, defauletScalePoint, zoomMatrix);
       });
-      this.board.renderPathToEvent(this.rotatePath, defauletRotatePoint);
+      this.board.renderPathToEvent(
+        this.rotatePath,
+        defauletRotatePoint,
+        zoomMatrix
+      );
     }
   }
 
@@ -324,6 +339,7 @@ class ActionBar {
       const {
         leftTop: { x: x1, y: y1 },
       } = mrv.rectPoint;
+      // TODO update zoomed pos
 
       this.block.style.top = `${y1 / this.board.devicePixelRatio - interval}px`;
       this.block.style.left = `${
