@@ -14,7 +14,7 @@ export class PreviewTools implements BaseTools {
   /** 紀錄滑鼠起點 */
   private startPosition: Vec2 = { x: 0, y: 0 };
   /** 固定框 */
-  private viewportRect!: ViewportRect;
+  viewportRect!: ViewportRect;
   readonly windowRatio: number;
 
   constructor(board: Board, windowRatio: number = 1) {

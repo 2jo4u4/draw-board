@@ -5,6 +5,8 @@ import {
   BaseTools,
   defaultTransform,
   UtilTools,
+  ImageShape,
+  PDFShape,
 } from "..";
 import { PreviewTools } from "./previewTool";
 
@@ -54,114 +56,88 @@ export class PreviewWindow {
   get shapes(): BoardShapeLog {
     return this.__shapes;
   }
+  private cancelLoopId: number;
+
+  get size(): [number, number] {
+    const { width, height } = this.__canvasStatic;
+    return [width, height];
+  }
+
   constructor(canvas: HTMLCanvasElement | string, board: Board) {
     this.__canvas = UtilTools.getCnavasElement(canvas);
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
+    this.devicePixelRatio = window.devicePixelRatio;
     this.board = board;
     this.__shapes = board.shapes;
-    this.windowRatio = 1 / 3;
+    this.windowRatio = 1 / 2;
     this.__tools = new PreviewTools(board, this.windowRatio);
+    this.initial();
     this.activeFlag = false;
-    this.devicePixelRatio = window.devicePixelRatio;
     this.zoom = this.getPreviewZoom(board.zoom, this.windowRatio);
 
-    this.initial();
+    this.addListener();
+    this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
+  }
+
+  loopClear() {
+    const [width, height] = this.size;
+    this.ctx.clearRect(0, 0, width, height);
+    this.ctxStatic.clearRect(0, 0, width, height);
+  }
+
+  loop(t: number) {
+    this.loopClear();
+    this.shapes.forEach((bs) => {
+      this.renderBaseShape(bs);
+    });
+    this.toolsCtrl.viewportRect.updata(t);
+    this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
   clearCanvas(type?: "static" | "event") {
-    const { width, height } = this.canvasStatic;
+    const [width, height] = this.size;
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
   }
-  rerenderToEvent(v: {
-    needClear?: boolean;
-    bs?: { p: Path2D; s: Styles } | BaseShape;
-  }) {
-    const { needClear, bs } = v;
-    Boolean(needClear) && this.clearCanvas("event");
-    if (bs) {
-      if (UtilTools.isBaseShape(bs)) {
-        const path = UtilTools.getZoomedPreviewPath(
-          bs.path,
-          this.board.zoom,
-          this.zoom
-        );
-        UtilTools.injectStyle(this.ctx, bs.style);
-        if (bs.style.fillColor) {
-          this.ctx.fill(path);
-        } else {
-          this.ctx.stroke(path);
-        }
-        this.ctx.stroke(path);
-      } else {
-        const path = UtilTools.getZoomedPreviewPath(
-          bs.p,
-          this.board.zoom,
-          this.zoom
-        );
-        UtilTools.injectStyle(this.ctx, bs.s);
-        if (bs.s.fillColor) {
-          this.ctx.fill(path);
-        } else {
-          this.ctx.stroke(path);
-        }
-      }
-    } else {
-      this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && _bs.isSelect) {
-          const path = UtilTools.getZoomedPreviewPath(
-            _bs.path,
-            this.board.zoom,
-            this.zoom
-          );
-          UtilTools.injectStyle(this.ctx, _bs.style);
-          this.ctx.stroke(path);
-        }
-      });
-    }
+  renderBaseShape(bs: BaseShape) {
+    let ctx: CanvasRenderingContext2D;
+    ctx = this.ctx;
+    this.render(ctx, bs);
   }
-  /** 重新繪製圖層 */
-  rerenderToPaint(v: { needClear?: boolean; bs?: BaseShape }) {
-    const { needClear, bs } = v;
-    Boolean(needClear) && this.clearCanvas("static");
-    if (bs) {
-      const path = UtilTools.getZoomedPreviewPath(
-        bs.path,
-        this.board.zoom,
-        this.zoom
-      );
-      UtilTools.injectStyle(this.ctxStatic, bs.style);
+  render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
+    UtilTools.injectStyle(useCtx, bs.style);
+    const previewZoomMatrix = UtilTools.translate(
+      { x: this.zoom.x, y: this.zoom.y },
+      { x: 0, y: 0 }
+    ).scale(1 / this.zoom.k, 1 / this.zoom.k, 1, this.zoom.x, this.zoom.y);
+    useCtx.setTransform(DOMMatrix.fromMatrix(previewZoomMatrix));
+    if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
+      const { x, y } = bs.coveredRect.nw;
+      const [width, height] = bs.coveredRect.size;
+      useCtx.drawImage(bs.htmlEl, x, y, width, height);
+    } else {
       if (bs.style.fillColor) {
-        this.ctxStatic.fill(path);
+        useCtx.fill(bs.pathWithMatrix);
       } else {
-        this.ctxStatic.stroke(path);
+        useCtx.stroke(bs.pathWithMatrix);
       }
-    } else {
-      this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && !_bs.isSelect) {
-          const path = UtilTools.getZoomedPreviewPath(
-            _bs.path,
-            this.board.zoom,
-            this.zoom
-          );
-          UtilTools.injectStyle(this.ctxStatic, _bs.style);
-          this.ctxStatic.stroke(path);
-        }
-      });
+      useCtx.setTransform(1, 0, 0, 1, 0, 0);
     }
   }
-  rerender() {
-    this.clearCanvas();
-    this.shapes.forEach((bs) => {
-      this.rerenderToPaint({ bs });
-    });
-    this.toolsCtrl.renderViewport();
+  renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
+    this.ctx.setTransform(DOMMatrix.fromMatrix(m));
+    UtilTools.injectStyle(this.ctx, s);
+    if (s.fillColor) {
+      this.ctx.fill(p);
+    } else {
+      this.ctx.stroke(p);
+    }
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   private initial() {
     this.settingChild();
-    this.addListener();
     this.toolsCtrl.initial();
   }
 
@@ -260,7 +236,6 @@ export class PreviewWindow {
     // 設定大小
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);
-    this.rerender();
   }
 
   private setCanvasStyle(el: HTMLCanvasElement) {

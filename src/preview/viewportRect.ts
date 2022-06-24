@@ -47,49 +47,18 @@ export class ViewportRect extends BaseShape {
       this.board.zoom,
       this.windowRatio
     );
-    this.coveredRect = UtilTools.generateMinRect(
-      { x: 0, y: 0 },
-      {
-        x: this.board.canvas.width,
-        y: this.board.canvas.height,
-      }
-    ).translateSelf(
-      new DOMMatrix().translate(x, y).scale(1 / this.board.zoom.k)
-    );
+    // this.coveredRect = UtilTools.generateMinRect(
+    //   { x: 0, y: 0 },
+    //   {
+    //     x: this.board.canvas.width,
+    //     y: this.board.canvas.height,
+    //   }
+    // );
     this.assignPathAndDraw();
-  }
-  drawViewport(previewZoom: Zoom) {
-    const { width, height } = this.board.canvas;
-    const { x, y, k } = this.board.zoom;
-    const { top, right, bottom, left } = UtilTools.getPointsBox([
-      { x: 0, y: 0 },
-      { x: width, y: height },
-    ]);
-    const transform = UtilTools.nextTransform(
-      UtilTools.nextTransform(
-        UtilTools.nextTransform(
-          UtilTools.nextTransform(defaultTransform, {
-            rScale: 1 / k,
-          }),
-          { rScale: 1 / this.windowRatio }
-        ),
-        {
-          dx: x,
-          dy: y,
-        }
-      ),
-      {
-        dx: -previewZoom.x,
-        dy: -previewZoom.y,
-        rScale: previewZoom.k,
-      }
-    );
-    return transform;
   }
 
   /** 清除最小矩形 並 關閉控制欄位 */
   closeSolidRect() {
-    // this.settingBindingBox();
     this.clearAllPath();
     this.shapes = [];
     this.board.changeCursor("default");
@@ -198,44 +167,63 @@ export class ViewportRect extends BaseShape {
       const newPath = new Path2D();
       newPath.addPath(this.path, matrix);
       this.assignPathAndDraw(newPath);
-      this.shapes.forEach((bs) => {
-        bs.transfer(v, matrix, this.flag);
-      });
     }
   }
 
   override transferEnd(v: Vec2, matrix: DOMMatrix): void {
     if (this.flag !== null) {
-      this.coveredRect.translateSelf(matrix);
+      this.coveredRect.transferSelf(matrix);
       this.assignPathAndDraw();
-      this.shapes.forEach((bs) => {
-        bs.transferEnd(v, matrix, this.flag as ShapeActionType);
-      });
     }
   }
 
+  override updata(t: number) {
+    this.assignPathAndDraw();
+  }
+
   private assignPathAndDraw(path: Path2D | undefined = undefined) {
-    const scaleX = 100,
-      scaleY = 100,
-      zoomPath = new Path2D(),
-      m = new DOMMatrix();
-    const { nw, ne, sw, se, centerPoint } = this.coveredRect;
+    const zoomPath = new Path2D();
+    const { nw, ne, sw, se } = this.coveredRect;
     zoomPath.moveTo(nw.x, nw.y);
     zoomPath.lineTo(ne.x, ne.y);
     zoomPath.lineTo(se.x, se.y);
     zoomPath.lineTo(sw.x, sw.y);
     zoomPath.lineTo(nw.x, nw.y);
-    m.scale(scaleX, scaleY, 1, centerPoint.x, centerPoint.y);
 
-    const mp = new Path2D();
-    mp.addPath(zoomPath, m);
+    const { x, y, k } = this.board.previewCtrl.getPreviewZoom(
+      this.board.zoom,
+      this.windowRatio
+    );
+    const mp = UtilTools.getZoomedPreviewPath(zoomPath, this.board.zoom, {
+      x,
+      y,
+      k,
+    });
+    const zoomMatrix = new DOMMatrix()
+      .translate(
+        (-defaultZoom.x * defaultZoom.k) / k,
+        (-defaultZoom.y * defaultZoom.k) / k
+      )
+      .preMultiplySelf(
+        new DOMMatrix()
+          .scale(1 / k)
+          .translate(x, y)
+          .scale(
+            this.windowRatio,
+            this.windowRatio,
+            1,
+            x * this.windowRatio,
+            y * this.windowRatio
+          )
+      );
 
     this.bindingBox = mp;
     this.path = this.bindingBox;
-    this.board.previewCtrl?.rerenderToEvent({
-      needClear: true,
-      bs: { p: path || this.bindingBox, s: defaultSolidboxStyle },
-    });
+    this.board.previewCtrl.renderPathToEvent(
+      path || this.bindingBox,
+      defaultSolidboxStyle,
+      zoomMatrix
+    );
   }
 
   private clearAllPath() {
