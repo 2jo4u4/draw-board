@@ -36,12 +36,7 @@ export class EarserTools implements BaseTools {
         this.board.ctx.isPointInPath(bs.path, v.x, v.y)
       ) {
         bs.isSelect = true;
-        this.board.rerenderToEvent({
-          bs: {
-            p: bs.path,
-            s: { ...bs.style, lineColor: defaultDeleteStyle.lineColor },
-          },
-        });
+        bs.style = { ...bs.style, lineColor: "red" };
       }
     });
   }

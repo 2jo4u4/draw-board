@@ -1,5 +1,5 @@
 import { BaseTools } from ".";
-import { Board, defaultStyle, Rect, UtilTools } from "..";
+import { BaseShape, Board, defaultStyle, Rect, UtilTools } from "..";
 
 /** 鉛筆 */
 export class PencilTools implements BaseTools {
@@ -11,8 +11,8 @@ export class PencilTools implements BaseTools {
     leftTop: { x: 0, y: 0 },
     rightBottom: { x: 0, y: 0 },
   };
+  shape!: BaseShape;
   /** 圖形路徑 */
-  private path!: Path2D;
   constructor(board: Board, drawStyle = defaultStyle) {
     this.board = board;
     this.drawStyle = drawStyle;
@@ -31,17 +31,23 @@ export class PencilTools implements BaseTools {
   onEventStart(v: Vec2): void {
     const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
     this.minRect = { leftTop: { x, y }, rightBottom: { x, y } };
-    this.path = new Path2D();
-    this.path.moveTo(x - 1, y - 1);
-    this.path.lineTo(x, y);
-    this.draw();
+    const path = UtilTools.minRectToPath(this.minRect);
+    this.shape = new BaseShape(
+      UtilTools.RandomID(),
+      this.board,
+      path,
+      this.drawStyle,
+      new Rect(this.minRect)
+    );
+    this.board.addShapeByBs(this.shape);
   }
 
   onEventMoveActive(v: Vec2): void {
     const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
-    this.path.lineTo(x, y);
-    this.draw();
     this.minRect = UtilTools.newMinRect({ x, y }, this.minRect);
+    const path = new Path2D(this.shape.path);
+    path.lineTo(x, y);
+    this.shape.reInit(path, new Rect(this.minRect));
   }
 
   onEventMoveInActive(v: Vec2): void {
@@ -50,24 +56,9 @@ export class PencilTools implements BaseTools {
 
   onEventEnd(v: Vec2): void {
     const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
-    this.path.lineTo(x, y);
-    this.draw();
     this.minRect = UtilTools.newMinRect({ x, y }, this.minRect);
-    this.addToBoard({ x, y });
-    this.drawOver();
-  }
-
-  // ----有使用到 board --------------------------
-  private draw() {
-    // 畫在事件層級
-    this.board.rerenderToEvent({ bs: { p: this.path, s: this.drawStyle } });
-  }
-  private addToBoard(v: Vec2) {
-    // 新增畫好的圖形
-    this.board.addShape(this.path, this.drawStyle, new Rect(this.minRect));
-  }
-  private drawOver() {
-    // 畫完後刪除事件層級的圖
-    this.board.clearCanvas("event");
+    const p = new Path2D(this.shape.path);
+    p.lineTo(x, y);
+    this.shape.reInit(p, new Rect(this.minRect));
   }
 }

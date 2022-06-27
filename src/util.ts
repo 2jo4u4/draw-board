@@ -2,16 +2,16 @@ import * as math from "mathjs";
 import { BaseShape } from ".";
 
 const dashedLine = [10, 10];
-export const padding = 8; // px
+export const padding = 16; // px
 // 畫筆預設樣式
 export const defaultStyle: Styles = {
   lineColor: "#000",
-  lineWidth: 4,
+  lineWidth: 8,
   fillColor: undefined,
   lineDash: [],
 };
 
-export const defaultImageShapeStyle: Styles = {
+export const defaultFileShapeStyle: Styles = {
   lineColor: "#000000",
   lineWidth: 4,
   fillColor: "#00000030",
@@ -40,6 +40,17 @@ export const defaultFlexboxStyle: Styles = {
   lineDash: dashedLine,
 };
 
+export enum UserAction {
+  "下筆",
+  "筆移動",
+  "提筆",
+  "選取圖形",
+  "變形開始",
+  "變形",
+  "變形結束",
+  "純移動",
+  "刪除圖形",
+}
 export const defaultTransform: Transform = {
   a: 1.0,
   b: 0.0,
@@ -94,6 +105,15 @@ export class UtilTools {
       Object.prototype.hasOwnProperty.call(v, "x") &&
       Object.prototype.hasOwnProperty.call(v, "y")
     );
+  }
+
+  static DOMMatrixToMathMatrix(m: DOMMatrix) {
+    const { a, b, c, d, e, f } = m;
+    return math.matrix([
+      [a, c, e],
+      [b, d, f],
+      [0, 0, 1],
+    ]);
   }
 
   static cos(theta: number) {
@@ -311,23 +331,18 @@ export class UtilTools {
 
   /** 樣式注入 */
   static injectStyle(ctx: CanvasRenderingContext2D, s: Styles) {
-    const { lineColor, lineWidth, lineDash, fillColor } = s;
+    const { lineColor, lineWidth, lineDash = [], fillColor = "" } = s;
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = lineWidth;
-    ctx.setLineDash(lineDash || []);
-    ctx.fillStyle = fillColor || "";
+    ctx.setLineDash(lineDash);
+    ctx.fillStyle = fillColor;
   }
 
   /**
    * 利用最小矩形產生路徑
-   *
-   * @deprecated parameter(padding) will delete
    */
-  static minRectToPath(mrv: Rect | MinRectVec, padding = 0): Path2D {
-    const scaleX = 1.2,
-      scaleY = 1.2,
-      path = new Path2D(),
-      m = new DOMMatrix();
+  static minRectToPath(mrv: Rect | MinRectVec): Path2D {
+    const path = new Path2D();
     if (mrv instanceof Rect) {
       const { nw, ne, sw, se } = mrv;
       path.moveTo(nw.x, nw.y);
@@ -335,26 +350,23 @@ export class UtilTools {
       path.lineTo(se.x, se.y);
       path.lineTo(sw.x, sw.y);
       path.lineTo(nw.x, nw.y);
-      m.scale(scaleX, scaleY, 1, mrv.centerPoint.x, mrv.centerPoint.y);
     } else {
       const {
         leftTop: { x: x1, y: y1 },
         rightBottom: { x: x2, y: y2 },
       } = mrv;
       path.rect(x1, y1, x2 - x1, y2 - y1);
-      m.scale(scaleX, scaleY, 1, x1 + (x2 - x1), y1 + (y2 - y1));
     }
-    const mp = new Path2D();
-    mp.addPath(path, m);
 
-    return mp;
+    return path;
   }
 
+  /** @deprecated 讓此檔案不在相依其他檔案，故不再提供此方法 */
   static isBaseShape(bs: unknown): bs is BaseShape {
     return bs instanceof BaseShape;
   }
 
-  /** 取得中心點 */
+  /** @deprecated 取得中心點 */
   static getMinRectCenter(mrv: MinRectVec): Vec2 {
     const {
       leftTop: { x: x1, y: y1 },
@@ -371,7 +383,6 @@ export class UtilTools {
 
   /** 移動 */
   static translate(prev: Vec2, next: Vec2, k: number = 1): DOMMatrix {
-    
     const [dx, dy] = UtilTools.getOffset(prev, next);
     return new DOMMatrix().translate(dx * k, dy * k);
   }
@@ -385,18 +396,26 @@ export class UtilTools {
   /** 縮放 */
   static scale(prev: Vec2, next: Vec2, c?: Rect | Vec2): DOMMatrix {
     let center: Vec2 | undefined = undefined;
-    const scaleX = next.x / prev.x,
-      scaleY = next.y / prev.y;
+    let scaleX = 1,
+      scaleY = 1;
     if (c) {
       if (c instanceof Rect) {
-        center = c.centerPoint;
+        center = c.nw;
+        const [w, h] = c.size;
+        const nw = next.x - prev.x + w;
+        const nh = next.y - prev.y + h;
+        scaleX = nw / w;
+        scaleY = nh / h;
       } else {
         center = c;
+        scaleX = next.x / prev.x;
+        scaleY = next.y / prev.y;
       }
     }
+    const scale = Math.max(scaleX, scaleY);
     return center
-      ? new DOMMatrix().scale(scaleX, scaleY, 1, center.x, center.y)
-      : new DOMMatrix().scale(scaleX, scaleY);
+      ? new DOMMatrix().scale(scale, scale, 1, center.x, center.y)
+      : new DOMMatrix().scale(scale, scale);
   }
 
   /** 取得兩點間之弧度 */
@@ -436,14 +455,14 @@ export class Rect {
         this.sw = sw ? new DOMPoint(sw.x, sw.y) : new DOMPoint(nw.x, nw.y);
         this.se = se ? new DOMPoint(se.x, se.y) : new DOMPoint(nw.x, nw.y);
       }
+      this.rotatePoint = new DOMPoint(this.sw.x - padding, this.sw.y + padding);
     } else {
       this.nw = new DOMPoint();
       this.ne = new DOMPoint();
       this.sw = new DOMPoint();
       this.se = new DOMPoint();
+      this.rotatePoint = new DOMPoint();
     }
-
-    this.rotatePoint = new DOMPoint(this.sw.x - padding, this.sw.y + padding);
   }
 
   get centerPoint(): Vec2 {
@@ -483,10 +502,39 @@ export class Rect {
     return [this.nw, this.ne, this.sw, this.se];
   }
 
+  get size(): [number, number] {
+    const { x: ox, y: oy } = this.nw;
+    const { x: wx, y: wy } = this.ne;
+    const { x: hx, y: hy } = this.sw;
+    const width = Math.sqrt(Math.pow(wx - ox, 2) + Math.pow(wy - oy, 2));
+    const height = Math.sqrt(Math.pow(hx - ox, 2) + Math.pow(hy - oy, 2));
+    return [width, height];
+  }
+
   clone(): Rect {
     return new Rect(this.nw, this.ne, this.sw, this.se);
   }
 
+  transferSelf(matrix: DOMMatrix): Rect {
+    this.nw = this.nw.matrixTransform(matrix);
+    this.ne = this.ne.matrixTransform(matrix);
+    this.sw = this.sw.matrixTransform(matrix);
+    this.se = this.se.matrixTransform(matrix);
+    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
+    return this;
+  }
+
+  transfer(matrix: DOMMatrix): Rect {
+    const nw = this.nw.matrixTransform(matrix);
+    const ne = this.ne.matrixTransform(matrix);
+    const sw = this.sw.matrixTransform(matrix);
+    const se = this.se.matrixTransform(matrix);
+    return new Rect(nw, ne, sw, se);
+  }
+
+  /**
+   * @deprecated 統一使用 `transferSelf`
+   */
   translateSelf(matrix: DOMMatrix): Rect {
     this.nw = this.nw.matrixTransform(matrix);
     this.ne = this.ne.matrixTransform(matrix);
@@ -495,6 +543,9 @@ export class Rect {
     this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
+  /**
+   * @deprecated 統一使用 `transferSelf`
+   */
   scaleSelf(matrix: DOMMatrix): Rect {
     this.nw = this.nw.matrixTransform(matrix);
     this.ne = this.ne.matrixTransform(matrix);
@@ -503,6 +554,9 @@ export class Rect {
     this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
+  /**
+   * @deprecated 統一使用 `transferSelf`
+   */
   rotateSelf(matrix: DOMMatrix): Rect {
     this.nw = this.nw.matrixTransform(matrix);
     this.ne = this.ne.matrixTransform(matrix);
@@ -512,7 +566,7 @@ export class Rect {
     return this;
   }
 
-  getReferPointOpposite(type: ShapeActionType): Vec2 {
+  getReferPointOpposite(type: ShapeActionType | null): Vec2 {
     switch (type) {
       case "nw-scale":
         return this.sePoint;

@@ -26,14 +26,15 @@ export class SelectTools implements BaseTools {
     this.flexRectStyle = defaultFlexboxStyle;
     this.selectFlag = "none";
     this.selectSolidRect = new SelectSolidRect(board);
+    board.addShapeByBs(this.selectSolidRect);
   }
 
   onDestroy(): void {
     this.board.shapes.forEach((bs) => {
       bs.isSelect = false;
     });
-    this.board.rerender();
     this.selectSolidRect.closeSolidRect();
+    this.board.absoluteDelete(this.selectSolidRect.id);
   }
 
   onEventStart(v: Vec2): void {
@@ -76,12 +77,7 @@ export class SelectTools implements BaseTools {
   }
 
   private selectStart(v: Vec2) {
-    // 清除已選圖形 + 刪除標記 + 放回圖層級
     this.selectSolidRect.closeSolidRect();
-    this.board.shapes.forEach((bs) => {
-      bs.isSelect = false;
-    });
-    this.board.rerender();
   }
 
   private select(v: Vec2) {
@@ -93,10 +89,11 @@ export class SelectTools implements BaseTools {
     );
     const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
     p.rect(x, y, nX - x, nY - y);
-    this.board.rerenderToEvent({ needClear: true, bs: { p, s } });
+    this.selectSolidRect.path = p;
   }
 
   private selectEnd(v: Vec2) {
+    this.selectSolidRect.path = new Path2D();
     let minRectVec!: Rect, // 紀錄最小矩形
       shape: [string, BaseShape][] = [];
     const { x, y } = UtilTools.unZoomPosition(
@@ -108,38 +105,47 @@ export class SelectTools implements BaseTools {
       // 單點選擇圖形
       const single = Array.from(this.board.shapes)
         .reverse()
-        .find((item) => !item[1].isDelete && this.isSelected(v, item[1]));
+        .find(
+          (item) =>
+            item[1].canSelect &&
+            !item[1].isDelete &&
+            this.isSelected(v, item[1])
+        );
       if (single) {
         shape = [single];
-        minRectVec = single[1].coveredRect;
+        minRectVec = single[1].coveredRectWithmatrix;
       }
     } else {
       // 移動結束
       const minRect = UtilTools.generateMinRect({ x: nX, y: nY }, { x, y }); // 伸縮框的範圍
       // 判定是否有圖形在此路徑內
       const regBS = Array.from(this.board.shapes).filter(
-        (item) => !item[1].isDelete && this.isSelected(minRect, item[1])
+        (item) =>
+          item[1].canSelect &&
+          !item[1].isDelete &&
+          this.isSelected(minRect, item[1])
       );
       if (regBS.length > 0) {
         shape = regBS;
-        minRectVec = UtilTools.mergeMinRect(
-          ...regBS.map((bs) => bs[1].coveredRect.rectPoint)
-        );
+        if (regBS.length === 1) {
+          minRectVec = regBS[0][1].coveredRectWithmatrix;
+        } else {
+          minRectVec = UtilTools.mergeMinRect(
+            ...regBS.map((bs) => bs[1].coveredRectWithmatrix.rectPoint)
+          );
+        }
       }
     }
+
     if (shape[0]) {
       this.selectFlag = "selected";
       shape.forEach((item) => {
         item[1].isSelect = true;
       });
-      this.board.rerender();
-
       this.selectSolidRect.settingAndOpen(minRectVec);
     } else {
-      this.board.clearCanvas("event");
       this.selectFlag = "none";
     }
-
     this.selectSolidRect.isCovered(v);
   }
 
@@ -158,7 +164,7 @@ export class SelectTools implements BaseTools {
   /** 是否選中 */
   private isSelected(v: Vec2 | Rect, bs: BaseShape): Boolean {
     if (UtilTools.isVec2(v)) {
-      return this.board.ctx.isPointInPath(bs.bindingBox, v.x, v.y);
+      return this.board.checkPointInPath(bs.bindingBoxWithMatrix, v);
     } else {
       return this.isInRectBlock(v, bs);
     }
@@ -173,7 +179,7 @@ export class SelectTools implements BaseTools {
     const {
       leftTop: { x: x1, y: y1 },
       rightBottom: { x: x2, y: y2 },
-    } = bs.coveredRect.rectPoint;
+    } = bs.coveredRectWithmatrix.rectPoint;
 
     if (selectx1 <= x1 && selecty1 <= y1 && selectx2 >= x2 && selecty2 >= y2) {
       // 完全包覆
@@ -211,7 +217,7 @@ export class SelectTools implements BaseTools {
       ];
       return Boolean(
         fourCorner.find(({ x, y }) => {
-          return this.board.ctx.isPointInPath(bs.bindingBox, x, y);
+          return this.board.ctx.isPointInPath(bs.bindingBoxWithMatrix, x, y);
         })
       );
     }

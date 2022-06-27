@@ -1,8 +1,9 @@
 const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
-  entry: "./src/example.ts",
+  entry: {
+    index: "./src/index.ts",
+  },
   devtool: "inline-source-map",
   module: {
     rules: [
@@ -21,13 +22,11 @@ module.exports = {
     extensions: [".tsx", ".ts", ".js"],
   },
   output: {
+    clean: true,
     filename: "[name].js",
     path: path.resolve(__dirname, "dist"),
+    library: "canvaslib",
+    libraryTarget: "umd",
   },
-  plugins: [
-    new HtmlWebpackPlugin({
-      filename: "index.html",
-      template: "public/index.html",
-    }),
-  ],
+  target: "web",
 };

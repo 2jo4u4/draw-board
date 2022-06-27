@@ -4,7 +4,8 @@ import {
   SocketMiddle,
   ToolsManagement,
   UtilTools,
-  defaultZoom,
+  ImageShape,
+  PDFShape,
 } from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
@@ -87,6 +88,21 @@ export class Board {
     return this.__socket;
   }
 
+  private __canEdit = true;
+  get canEdit() {
+    return this.__canEdit;
+  }
+  set canEdit(b: boolean) {
+    this.__canEdit = b;
+  }
+
+  private cancelLoopId: number;
+
+  get size(): [number, number] {
+    const { width, height } = this.__canvasStatic;
+    return [width, height];
+  }
+
   constructor(
     canvas: HTMLCanvasElement | string,
     config?: {
@@ -94,16 +110,15 @@ export class Board {
       Tools?: typeof ToolsManagement;
     }
   ) {
-    this.__canvas = getCnavasElement(canvas);
-    this.__ctx = checkCanvasContext(this.__canvas);
+    this.__canvas = UtilTools.getCnavasElement(canvas);
+    this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
-    const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
-    this.__tools = new Tools(this);
-
-    this.__socket = Socket || null;
-    this.zoom = defaultZoom; // pageZoom, default { x: 0, y: 0, k: 1 }
     this.devicePixelRatio = window.devicePixelRatio;
-
+    this.zoom = {
+      x: 0,
+      y: 0,
+      k: 1,
+    }; // pageZoom, default { x: 0, y: 0, k: 1 }
     this.initial();
     const {
       preview,
@@ -112,14 +127,40 @@ export class Board {
     } = this.initialPreview();
     this.__previewCanvas = previewCanvas;
     this.__preview = new PreviewWindow(previewCanvas, this);
+    const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
+    this.__socket = Socket || null;
+    this.__tools = new Tools(this);
+
+    this.addListener();
+    this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
-  /** 清除指定畫布(若無指定則清除兩畫布) */
+  loopClear() {
+    const [width, height] = this.size;
+    this.ctx.clearRect(0, 0, width, height);
+    this.ctxStatic.clearRect(0, 0, width, height);
+  }
+
+  loop(t: number) {
+    this.loopClear();
+    this.shapes.forEach((bs) => {
+      bs.updata(t);
+    });
+
+    this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
+  }
+
+  /** @deprecated 清除指定畫布(若無指定則清除兩畫布) */
   clearCanvas(type?: "static" | "event") {
-    const { width, height } = this.canvasStatic;
+    const [width, height] = this.size;
     type !== "static" && this.ctx.clearRect(0, 0, width, height);
     type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
   }
+
+  absoluteDelete(id: string) {
+    this.shapes.delete(id);
+  }
+
   /** 取得圖形物件 */
   getShapeById(id: string): BaseShape | undefined {
     return this.shapes.get(id);
@@ -128,13 +169,19 @@ export class Board {
   addShape(p: Path2D, s: Styles, m: Rect) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys())),
       bs = new BaseShape(id, this, p, s, m);
-    this.shapes.set(id, bs);
-    this.logAction("draw", id);
-    this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
+    this.addShapeByBs(bs);
+  }
+
+  /** 添加圖形到圖層級 & 紀錄 */
+  addShapeByBs(bs: BaseShape) {
+    this.shapes.set(bs.id, bs);
+    this.logAction("draw", bs.id);
+    // this.rerenderToPaint({ bs }); // TODO update shape's transform from zoom
     this.previewCtrl.rerender();
   }
 
-  addShapeWithFile() {}
+  addFileShape(file: File) {}
+
   /** 刪除已選圖形 */
   deleteShape() {
     const id: string[] = [];
@@ -145,86 +192,46 @@ export class Board {
       }
     });
     this.logAction("delete", ...id);
-    this.rerender();
   }
-  /** 重新繪製事件層 */
-  rerenderToEvent(v: {
-    needClear?: boolean;
-    bs?: { p: Path2D; s: Styles } | BaseShape;
-  }) {
-    const { needClear, bs } = v;
-    Boolean(needClear) && this.clearCanvas("event");
-    if (bs) {
-      const path = new Path2D(),
-        m = new DOMMatrix(),
-        scaleX = this.zoom.k,
-        scaleY = this.zoom.k,
-        originX = this.zoom.x,
-        originY = this.zoom.y;
-      if (UtilTools.isBaseShape(bs)) {
-        const path = UtilTools.getZoomedPath(bs.path, this.zoom);
-        UtilTools.injectStyle(this.ctx, bs.style);
-        if (bs.style.fillColor) {
-          this.ctx.fill(path);
-        } else {
-          this.ctx.stroke(path);
-        }
-        this.ctx.stroke(path);
-      } else {
-        const path = UtilTools.getZoomedPath(bs.p, this.zoom);
-        UtilTools.injectStyle(this.ctx, bs.s);
-        if (bs.s.fillColor) {
-          this.ctx.fill(path);
-        } else {
-          this.ctx.stroke(path);
-        }
-      }
+
+  renderBaseShape(bs: BaseShape) {
+    let ctx: CanvasRenderingContext2D;
+    if (bs.isSelect) {
+      ctx = this.ctx;
     } else {
-      this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && _bs.isSelect) {
-          const newPath = UtilTools.getZoomedPath(_bs.path, this.zoom);
-          UtilTools.injectStyle(this.ctx, _bs.style);
-          this.ctx.stroke(_bs.path);
-        }
-      });
+      ctx = this.ctxStatic;
     }
+    this.render(ctx, bs);
   }
-  /** 重新繪製圖層 */
-  rerenderToPaint(v: { needClear?: boolean; bs?: BaseShape }) {
-    const { needClear, bs } = v;
-    Boolean(needClear) && this.clearCanvas("static");
-    if (bs) {
-      const newPath = UtilTools.getZoomedPath(bs.path, this.zoom);
-      UtilTools.injectStyle(this.ctxStatic, bs.style);
+
+  render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
+    UtilTools.injectStyle(useCtx, bs.style);
+    if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
+      const { x, y } = bs.coveredRect.nw;
+      const [width, height] = bs.coveredRect.size;
+      useCtx.setTransform(bs.matrix);
+      useCtx.drawImage(bs.htmlEl, x, y, width, height);
+      useCtx.setTransform(1, 0, 0, 1, 0, 0);
+    } else {
       if (bs.style.fillColor) {
-        this.ctxStatic.fill(newPath);
+        useCtx.fill(bs.pathWithMatrix);
       } else {
-        this.ctxStatic.stroke(newPath);
+        useCtx.stroke(bs.pathWithMatrix);
       }
-    } else {
-      this.shapes.forEach((_bs) => {
-        if (!_bs.isDelete && !_bs.isSelect) {
-          const newPath = UtilTools.getZoomedPath(_bs.path, this.zoom);
-          UtilTools.injectStyle(this.ctxStatic, _bs.style);
-          this.ctxStatic.stroke(_bs.path);
-        }
-      });
     }
   }
-  /** 重新繪製所有層 */
-  rerender() {
-    this.clearCanvas();
-    this.shapes.forEach((bs) => {
-      if (!bs.isDelete) {
-        if (bs.isSelect) {
-          this.rerenderToEvent({ bs });
-        } else {
-          this.rerenderToPaint({ bs });
-        }
-      }
-    });
-    this.previewCtrl.rerender();
+
+  renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
+    this.ctx.setTransform(DOMMatrix.fromMatrix(m));
+    UtilTools.injectStyle(this.ctx, s);
+    if (s.fillColor) {
+      this.ctx.fill(p);
+    } else {
+      this.ctx.stroke(p);
+    }
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
+
   /** 紀錄行為 */
   logAction(type: Action, ...id: string[]) {
     const actionNumber = this.actionStoreCount++;
@@ -245,7 +252,6 @@ export class Board {
   /** 變更Page */
   changePage(shapes: BoardShapeLog) {
     this.__shapes = shapes;
-    this.rerender();
   }
   /** 變更鼠標樣式 */
   changeCursor(
@@ -272,7 +278,10 @@ export class Board {
 
   /** 確認路徑是否包含座標 */
   checkPointInPath(p: Path2D, v: Vec2): boolean {
-    return this.ctx.isPointInPath(p, v.x, v.y);
+    return (
+      this.ctx.isPointInPath(p, v.x, v.y) ||
+      this.ctx.isPointInStroke(p, v.x, v.y)
+    );
   }
 
   /** 上一步 */
@@ -299,11 +308,12 @@ export class Board {
 
   destroy() {
     this.removeListener();
+    cancelAnimationFrame(this.cancelLoopId);
   }
 
   private setStaticCanvas() {
-    this.__canvasStatic = getCnavasElement();
-    this.__ctxStatic = checkCanvasContext(this.canvasStatic);
+    this.__canvasStatic = UtilTools.getCnavasElement();
+    this.__ctxStatic = UtilTools.checkCanvasContext(this.canvasStatic);
   }
 
   private addListener() {
@@ -351,9 +361,6 @@ export class Board {
     } else {
       this.toolsCtrl.onEventMoveInActive(position);
     }
-    // if (this.socketCtrl) {
-    //   this.socketCtrl.postData();
-    // }
   }
 
   private onEventEnd(event: TouchEvent | MouseEvent) {
@@ -390,12 +397,9 @@ export class Board {
   }
 
   private resizeCanvas() {
-    // 清除畫面
-    this.clearCanvas();
     // 設定大小
     this.setCanvasStyle(this.canvas);
     this.setCanvasStyle(this.canvasStatic);
-    this.rerender();
   }
 
   private setCanvasStyle(el: HTMLCanvasElement) {
@@ -427,28 +431,9 @@ export class Board {
   }
 
   updateZoom(zoom: Zoom) {
+    console.log("first", zoom);
+
     this.zoom = zoom;
-    this.rerender();
-  }
-}
-
-function getCnavasElement(c?: string | HTMLElement): HTMLCanvasElement {
-  if (c instanceof HTMLCanvasElement) {
-    return c;
-  } else if (typeof c === "string") {
-    const el = document.getElementById(c);
-    if (el && el instanceof HTMLCanvasElement) {
-      return el;
-    }
-  }
-  return document.createElement("canvas");
-}
-
-function checkCanvasContext(c: HTMLCanvasElement) {
-  const ctx = c.getContext("2d");
-  if (ctx) {
-    return ctx;
-  } else {
-    throw new Error("無法獲取 getContext");
+    // this.rerender();
   }
 }

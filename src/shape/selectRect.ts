@@ -17,12 +17,26 @@ const defauletRotatePoint: Styles = {
 export class SelectSolidRect extends BaseShape {
   readonly $type;
   readonly actionBar: ActionBar;
-  startPosition!: Vec2;
+  readonly canSelect: boolean;
   shapes: BaseShape[] = [];
   scalePath: ScalePoint;
   rotatePath: Path2D;
   flag: ShapeActionType | null;
-  initDegree: number;
+  showCtrlPoint = false;
+
+  override get bindingBox(): Path2D {
+    return this.path;
+  }
+  override set bindingBox(p: Path2D) {
+    this.path = p;
+  }
+
+  private tranferRef = {
+    angle: 0,
+    centerPoint: { x: 0, y: 0 },
+    scalePoint: { x: 0, y: 0 },
+    zoomPosition: { x: 0, y: 0 },
+  };
 
   constructor(board: Board) {
     super(
@@ -34,19 +48,26 @@ export class SelectSolidRect extends BaseShape {
     );
     this.$type = "selectSolid-shape";
     this.actionBar = new ActionBar(board, this, ["delete"]);
+    this.canSelect = false;
 
     this.rotatePath = new Path2D();
     this.scalePath = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
     this.flag = null;
-    this.initDegree = 0;
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
   settingAndOpen(mrv: Rect) {
-    const clone = mrv.clone();
-
+    const clone = mrv
+      .clone()
+      .transferSelf(
+        UtilTools.scale({ x: 1, y: 1 }, { x: 1.1, y: 1.1 }, mrv.centerPoint)
+      );
     this.coveredRect = clone;
-    this.assignPathAndDraw();
+    this.path = UtilTools.minRectToPath(clone);
+
+    this.showCtrlPoint = true;
+    this.assignScale();
+    this.assignRotate();
 
     this.shapes = Array.from(this.board.shapes)
       .filter((bs) => !bs[1].isDelete && bs[1].isSelect)
@@ -57,8 +78,13 @@ export class SelectSolidRect extends BaseShape {
 
   /** 清除最小矩形 並 關閉控制欄位 */
   closeSolidRect() {
+    this.showCtrlPoint = false;
+    this.matrix = new DOMMatrix();
     this.actionBar.closeBar();
     this.clearAllPath();
+    this.shapes.forEach((bs) => {
+      bs.isSelect = false;
+    });
     this.shapes = [];
     this.flag = null;
     this.board.changeCursor("default");
@@ -82,7 +108,7 @@ export class SelectSolidRect extends BaseShape {
     } else if (this.board.checkPointInPath(this.scalePath[3], nV)) {
       this.flag = "se-scale";
       this.board.changeCursor("se-resize");
-    } else if (this.board.checkPointInPath(this.path, nV)) {
+    } else if (this.board.checkPointInPath(this.pathWithMatrix, v)) {
       this.flag = "translate";
       this.board.changeCursor("move");
     } else {
@@ -94,11 +120,80 @@ export class SelectSolidRect extends BaseShape {
     return ans;
   }
 
+  conputerMatrix(v: Vec2, flag: ShapeActionType | null): DOMMatrix {
+    const { x, y } = this.tranferRef.zoomPosition;
+    const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
+    switch (flag) {
+      case "translate": {
+        const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
+        return matrix;
+      }
+      case "rotate": {
+        const matrix = UtilTools.rotate(
+          this.tranferRef.centerPoint,
+          { x: nX, y: nY },
+          this.tranferRef.angle
+        );
+        return matrix;
+      }
+      case "nw-scale": {
+        const matrix = UtilTools.scale(
+          { x: nX, y: nY },
+          { x, y },
+          this.tranferRef.scalePoint
+        );
+        return matrix;
+      }
+      case "ne-scale": {
+        const matrix = UtilTools.scale(
+          { x, y: nY },
+          { x: nX, y },
+          this.tranferRef.scalePoint
+        );
+        return matrix;
+      }
+      case "sw-scale": {
+        const matrix = UtilTools.scale(
+          { x: nX, y },
+          { x, y: nY },
+          this.tranferRef.scalePoint
+        );
+        return matrix;
+      }
+      case "se-scale": {
+        const matrix = UtilTools.scale(
+          { x, y },
+          { x: nX, y: nY },
+          this.tranferRef.scalePoint
+        );
+        return matrix;
+      }
+      default:
+        return new DOMMatrix();
+    }
+  }
+
   handleStart(v: Vec2) {
-    this.startPosition = v;
-    this.initDegree = UtilTools.getDegree(
-      UtilTools.getAngle(this.coveredRect.centerPoint, v)
-    );
+    const m = new DOMMatrix();
+    this.actionBar.closeBar();
+    this.shapes.forEach((bs) => {
+      bs.transferStart(v, m, this.flag);
+    });
+    super.transferStart(v, m, this.flag);
+    const centerPoint = this.coveredRectWithmatrix.centerPoint;
+    this.tranferRef = {
+      centerPoint,
+      angle: UtilTools.getDegree(
+        UtilTools.getAngle(centerPoint, this.startPosition)
+      ),
+      // scalePoint: this.coveredRectWithmatrix.centerPoint,
+      scalePoint: this.coveredRectWithmatrix.getReferPointOpposite(this.flag),
+      zoomPosition: UtilTools.unZoomPosition(
+        this.board.zoom,
+        this.startPosition
+      ),
+    };
+
     switch (this.flag) {
       case "rotate":
         this.board.changeCursor("grabbing");
@@ -106,75 +201,8 @@ export class SelectSolidRect extends BaseShape {
     }
   }
   handleActive(v: Vec2) {
-    switch (this.flag) {
-      case "translate":
-        {
-          const { x, y } = UtilTools.unZoomPosition(
-            this.board.zoom,
-            this.startPosition
-          );
-          const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
-          const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
-          this.transfer(v, matrix);
-        }
-        break;
-      case "rotate":
-        {
-          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
-          const matrix = UtilTools.rotate(
-            this.coveredRect.centerPoint,
-            { x, y }, //v,
-            this.initDegree
-          );
-          this.transfer(v, matrix);
-        }
-        break;
-      case "nw-scale":
-        {
-          const { x: nX, y: nY } = UtilTools.unZoomPosition(
-            this.board.zoom,
-            this.startPosition
-          );
-          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
-          const matrix = UtilTools.scale(
-            v,
-            this.startPosition,
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transfer({ x, y }, matrix);
-        }
-        break;
-      case "ne-scale":
-        {
-          const matrix = UtilTools.scale(
-            { x: this.startPosition.x, y: v.y },
-            { x: v.x, y: this.startPosition.y },
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transfer(v, matrix);
-        }
-        break;
-      case "sw-scale":
-        {
-          const matrix = UtilTools.scale(
-            { x: v.x, y: this.startPosition.y },
-            { x: this.startPosition.x, y: v.y },
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transfer(v, matrix);
-        }
-        break;
-      case "se-scale":
-        {
-          const matrix = UtilTools.scale(
-            this.startPosition,
-            v,
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transfer(v, matrix);
-        }
-        break;
-    }
+    const m = this.conputerMatrix(v, this.flag);
+    this.transfer(v, m, this.flag);
   }
   handleInactive(v: Vec2) {
     if (this.shapes.length > 0) {
@@ -182,145 +210,72 @@ export class SelectSolidRect extends BaseShape {
     }
   }
   handleEnd(v: Vec2) {
-    switch (this.flag) {
-      case "translate":
-        {
-          const { x, y } = UtilTools.unZoomPosition(
-            this.board.zoom,
-            this.startPosition
-          );
-          const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
-          const matrix = UtilTools.translate({ x, y }, { x: nX, y: nY });
-          this.transferEnd(v, matrix);
-        }
-        break;
-      case "rotate":
-        {
-          const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
-          const matrix = UtilTools.rotate(
-            this.coveredRect.centerPoint,
-            { x, y }, //v,
-            this.initDegree
-          );
-          this.board.changeCursor("grab");
-          this.transferEnd(v, matrix);
-        }
-        break;
-      case "nw-scale":
-        {
-          const matrix = UtilTools.scale(
-            v,
-            this.startPosition,
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transferEnd(v, matrix);
-        }
-        break;
-      case "ne-scale":
-        {
-          const matrix = UtilTools.scale(
-            { x: this.startPosition.x, y: v.y },
-            { x: v.x, y: this.startPosition.y },
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transferEnd(v, matrix);
-        }
-        break;
-      case "sw-scale":
-        {
-          const matrix = UtilTools.scale(
-            { x: v.x, y: this.startPosition.y },
-            { x: this.startPosition.x, y: v.y },
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transferEnd(v, matrix);
-        }
-        break;
-      case "se-scale":
-        {
-          const matrix = UtilTools.scale(
-            this.startPosition,
-            v,
-            this.coveredRect.getReferPointOpposite(this.flag)
-          );
-          this.transferEnd(v, matrix);
-        }
-        break;
-    }
+    const m = this.conputerMatrix(v, this.flag);
+    this.transferEnd(v, m, this.flag);
     this.flag = null;
-    this.actionBar.openBar(this.coveredRect);
   }
 
   // TODO update nw-scale, ne-scale, sw-scale, se-scale with zoom
-  override transfer(v: Vec2, matrix: DOMMatrix): void {
+  override transfer(
+    v: Vec2,
+    matrix: DOMMatrix,
+    type: ShapeActionType | null
+  ): void {
     if (this.flag !== null) {
-      this.board.clearCanvas("event");
-      this.actionBar.closeBar();
       this.shapes.forEach((bs) => {
-        bs.transfer(v, matrix);
+        bs.transfer(v, matrix, type);
       });
-      super.transfer(v, matrix);
+      super.transfer(v, matrix, type);
+      this.assignScale();
+      this.assignRotate();
     }
   }
 
-  // TODO update nw-scale, ne-scale, sw-scale, se-scale with zoom
-  override transferEnd(v: Vec2, matrix: DOMMatrix): void {
+  override transferEnd(
+    v: Vec2,
+    m: DOMMatrix,
+    type: ShapeActionType | null
+  ): void {
     if (this.flag !== null) {
-      this.board.clearCanvas("event");
       this.shapes.forEach((bs) => {
-        bs.transferEnd(v, matrix, this.flag as ShapeActionType);
+        bs.transferEnd(v, m, type);
       });
-      super.transferEnd(v, matrix, this.flag);
+      super.transferEnd(v, m, type);
 
-      this.rerenderScale(matrix, true);
-      this.rerenderRotate(matrix, true);
+      this.assignScale();
+      this.assignRotate();
+    }
+
+    this.actionBar.openBar(this.coveredRectWithmatrix);
+  }
+
+  override updata(t: number): void {
+    super.updata(t);
+    if (this.showCtrlPoint) {
+      this.scalePath.forEach((p) => {
+        this.board.renderPathToEvent(p, defauletScalePoint);
+      });
+      this.board.renderPathToEvent(this.rotatePath, defauletRotatePoint);
     }
   }
 
-  private assignPathAndDraw() {
-    this.bindingBox = UtilTools.minRectToPath(this.coveredRect);
-    this.path = this.bindingBox;
-    this.board.rerenderToEvent({
-      bs: { p: this.bindingBox, s: defaultSolidboxStyle },
-    });
-
-    this.rerenderScale(new DOMMatrix(), true);
-    this.rerenderRotate(new DOMMatrix(), true);
-  }
-
-  private rerenderScale(matrix: DOMMatrix, updata = false) {
-    this.coveredRect.fourCorner.forEach(({ x, y }, i) => {
+  private assignScale() {
+    this.coveredRectWithmatrix.fourCorner.forEach((point, i) => {
+      const { x, y } = point;
       const p = new Path2D();
       p.arc(x, y, 8, 0, 2 * Math.PI);
-      this.board.rerenderToEvent({
-        bs: { p, s: defauletScalePoint },
-      });
-      if (updata) {
-        this.scalePath[i] = p;
-      }
+      this.scalePath[i] = p;
     });
   }
-  private rerenderRotate(matrix: DOMMatrix, updata = false) {
-    const path = new Path2D();
-    path.arc(
-      this.coveredRect.rotatePoint.x,
-      this.coveredRect.rotatePoint.y,
-      8,
-      0,
-      2 * Math.PI
-    );
-    this.board.rerenderToEvent({
-      bs: { p: path, s: defauletRotatePoint },
-    });
-
-    if (updata) {
-      this.rotatePath = path;
-    }
+  private assignRotate() {
+    const { x, y } = this.coveredRectWithmatrix.rotatePoint;
+    const p = new Path2D();
+    p.arc(x, y, 8, 0, 2 * Math.PI);
+    this.rotatePath = p;
   }
 
   private clearAllPath() {
     const once = new Path2D();
-    this.bindingBox = once;
     this.path = once;
     this.rotatePath = once;
     this.scalePath = [once, once, once, once];
@@ -376,7 +331,7 @@ class ActionBar {
         (x1 - padding - defaultSolidboxStyle.lineWidth) /
         this.board.devicePixelRatio
       }px`;
-      this.rootBlock.append(this.block);
+      this.rootBlock?.append(this.block);
     }
   }
 

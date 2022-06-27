@@ -16,7 +16,6 @@ export class ViewportRect extends BaseShape {
   /** 紀錄被選取的圖形 */
   startPosition!: Vec2;
   shapes: BaseShape[] = [];
-  path!: Path2D;
   flag: ShapeActionType | null;
   readonly windowRatio: number;
   /** 像素密度 */
@@ -200,7 +199,7 @@ export class ViewportRect extends BaseShape {
       newPath.addPath(this.path, matrix);
       this.assignPathAndDraw(newPath);
       this.shapes.forEach((bs) => {
-        bs.transfer(v, matrix);
+        bs.transfer(v, matrix, this.flag);
       });
     }
   }

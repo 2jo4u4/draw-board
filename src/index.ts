@@ -1,3 +1,4 @@
+import "./pdf";
 export * from "./util";
 export * from "./board";
 export * from "./shape";
