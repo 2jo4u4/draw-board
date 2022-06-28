@@ -81,8 +81,7 @@ export class SelectTools implements BaseTools {
   }
 
   private select(v: Vec2) {
-    const p = new Path2D(),
-      s = this.flexRectStyle;
+    const p = new Path2D();
     const { x, y } = UtilTools.unZoomPosition(
       this.board.zoom,
       this.startPosition
@@ -164,7 +163,8 @@ export class SelectTools implements BaseTools {
   /** 是否選中 */
   private isSelected(v: Vec2 | Rect, bs: BaseShape): Boolean {
     if (UtilTools.isVec2(v)) {
-      return this.board.checkPointInPath(bs.bindingBoxWithMatrix, v);
+      const nV = UtilTools.unZoomPosition(this.board.zoom, v as Vec2);
+      return this.board.checkPointInPath(bs.bindingBoxWithMatrix, nV);
     } else {
       return this.isInRectBlock(v, bs);
     }

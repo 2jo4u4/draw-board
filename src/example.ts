@@ -247,6 +247,7 @@ function drawGrid() {
 function develop() {
   const board = new Board(canvas);
   initialTools();
+  initialPreview();
 
   const pdf = toPdfShape(fakePdf, board);
   board.addShapeByBs(pdf);
@@ -277,6 +278,16 @@ function develop() {
     AddTools(ToolsEnum.鉛筆);
     AddTools(ToolsEnum.選擇器);
     AddTools(ToolsEnum.擦子);
+  }
+
+  function initialPreview() {
+    const preview = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    const tools = document.createElement("ul");
+
+    document.body.append(preview, canvas, tools);
+
+    board.initialPreview(canvas);
   }
 }
 

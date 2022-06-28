@@ -61,9 +61,9 @@ export const defaultTransform: Transform = {
 };
 
 export const defaultZoom: Zoom = {
-  x: 200,
-  y: 100,
-  k: 4,
+  x: 0,
+  y: 0,
+  k: 1,
 };
 
 /** 計算函式 / 工具函式 */
