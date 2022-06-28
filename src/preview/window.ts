@@ -127,6 +127,7 @@ export class PreviewWindow {
   }
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
     this.ctx.setTransform(DOMMatrix.fromMatrix(m));
+    // const path = UtilTools.getZoomedPreviewPath(p, this.board.zoom, this.zoom);
     UtilTools.injectStyle(this.ctx, s);
     if (s.fillColor) {
       this.ctx.fill(p);
