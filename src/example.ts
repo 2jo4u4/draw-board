@@ -284,11 +284,34 @@ function develop() {
   function initialPreview() {
     const preview = document.createElement("div");
     const canvas = document.createElement("canvas");
-    const tools = document.createElement("ul");
+    const tool = document.createElement("div");
+    const button = document.createElement("button");
+    button.textContent = "Preview Toogle";
+    tool.append(button);
 
-    document.body.append(preview, canvas, tools);
+    preview.append(canvas, tool);
+    preview.classList.add("previewRoot");
+    preview.style.display = "flex";
+    preview.style.justifyContent = "center";
+    tool.style.position = "absolute";
+    tool.style.bottom = "0";
+
+    document.body.append(preview);
 
     board.initialPreview(canvas);
+    initialMask(button);
+  }
+
+  function initialMask(button: HTMLButtonElement) {
+    const mask = document.createElement("canvas");
+    board.previewCtrl.initialMask(mask);
+    const { previewCtrl: previewWindow } = board;
+    button.onclick = () => {
+      previewWindow.toggle();
+      const display = previewWindow.isOpen ? "inline-flex" : "none";
+      previewWindow.rootBlock.style.display = display;
+      mask.style.display = display;
+    };
   }
 }
 

@@ -8,6 +8,7 @@ import {
   ImageShape,
   PDFShape,
 } from "..";
+import { PreviewMask } from "./mask";
 import { PreviewTools } from "./previewTool";
 
 type ActiveFlag = true | false;
@@ -36,6 +37,13 @@ export class PreviewWindow {
   get ctxStatic(): CanvasRenderingContext2D {
     return this.__ctxStatic;
   }
+  /** Preview Canvas網頁元素 */
+  private __maskCanvas!: HTMLCanvasElement;
+  get mask(): HTMLCanvasElement {
+    return this.__maskCanvas;
+  }
+
+  isOpen: ActiveFlag = false;
   private activeFlag: ActiveFlag;
   /** 板子實例 */
   private board: Board;
@@ -43,6 +51,10 @@ export class PreviewWindow {
   readonly windowRatio: number;
   get previewRatio() {
     return `${this.zoom.k * 100}`;
+  }
+  private __mask!: PreviewMask;
+  get maskCtrl() {
+    return this.__mask;
   }
   /** 儲存當前選擇的工具 */
   private __tools: PreviewTools;
@@ -137,9 +149,30 @@ export class PreviewWindow {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
+  initialMask(canvas: HTMLCanvasElement) {
+    this.__maskCanvas = canvas;
+    this.__mask = new PreviewMask(canvas, this.board);
+    this.rootBlock.insertAdjacentElement("beforebegin", this.__maskCanvas);
+  }
+
   private initial() {
     this.settingChild();
     this.toolsCtrl.initial();
+  }
+
+  open() {
+    this.isOpen = true;
+    this.maskCtrl.open();
+  }
+
+  close() {
+    this.isOpen = false;
+    this.maskCtrl.close();
+  }
+
+  toggle() {
+    this.isOpen = !this.isOpen;
+    this.maskCtrl.toggle();
   }
 
   destroy() {
@@ -250,8 +283,13 @@ export class PreviewWindow {
   /** 調整使用者給予的 Canvas */
   private settingChild() {
     this.__rootBlock = document.createElement("div");
-    this.rootBlock.style.position = "relative";
-    this.rootBlock.classList.add("previewRoot");
+    this.rootBlock.style.position = "absolute";
+    this.rootBlock.style.display = "none";
+    this.rootBlock.style.alignItems = "center";
+    this.rootBlock.style.flexDirection = "column";
+    this.rootBlock.style.bottom = "0";
+    this.rootBlock.style.background = "#fff";
+    this.rootBlock.classList.add("windowRoot");
     this.canvas.after(this.rootBlock);
     this.setCanvasStyle(this.canvas);
     this.canvas.classList.add("event_paint");
