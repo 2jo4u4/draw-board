@@ -16,7 +16,6 @@
   "author": "jay.huang",
   "license": "ISC",
   "devDependencies": {
-    "@types/fabric": "^4.5.7",
     "html-webpack-plugin": "^5.5.0",
     "mathjs": "^10.6.1",
     "pdfjs-dist": "^2.14.305",

@@ -1,4 +1,4 @@
-import { Board } from "..";
+import type { Board } from "..";
 
 export abstract class BaseTools {
   constructor(board: Board) {}

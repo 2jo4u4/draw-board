@@ -1,5 +1,5 @@
-import { Board } from "..";
-import { BaseTools } from "./base";
+import type { Board, BaseShape } from "..";
+import type { BaseTools } from "./base";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";
 import { EarserTools } from "./earser";
@@ -24,6 +24,8 @@ export enum LineWidth {
  * 控制插件
  */
 export class ToolsManagement {
+  readonly role: ManagerRole;
+  pageid: string;
   private __toolsType!: ToolsEnum; // 建構時初始化
   get toolsType(): ToolsEnum {
     return this.__toolsType;
@@ -35,8 +37,10 @@ export class ToolsManagement {
   get tools() {
     return this.__usingTools;
   }
-  constructor(board: Board) {
+  constructor(board: Board, role: ManagerRole = "self", pageid = "") {
     this.board = board;
+    this.role = role;
+    this.pageid = pageid;
     this.switchTypeToViewer(); // 設定初始工具
   }
   /** 觸摸/滑鼠下壓 */
@@ -63,34 +67,33 @@ export class ToolsManagement {
   }
 
   switchTypeTo(v: ToolsEnum): void {
-    if (this.__toolsType !== v) {
+    if (this.__toolsType !== v && this.board.canEdit) {
       this.__usingTools?.onDestroy();
       this.__toolsType = v;
       switch (v) {
         case ToolsEnum.選擇器:
-          this.__usingTools = new SelectTools(this.board);
+          this.__usingTools = new SelectTools(this.board, this);
           break;
         case ToolsEnum.鉛筆:
-          this.__usingTools = new PencilTools(this.board);
+          this.__usingTools = new PencilTools(this.board, this);
           break;
         case ToolsEnum.擦子:
-          this.__usingTools = new EarserTools(this.board);
+          this.__usingTools = new EarserTools(this.board, this);
           break;
         case ToolsEnum.文字框:
-          this.__usingTools = new SelectTools(this.board);
+          this.__usingTools = new SelectTools(this.board, this);
           break;
         case ToolsEnum.圖形生成:
-          this.__usingTools = new SelectTools(this.board);
+          this.__usingTools = new SelectTools(this.board, this);
           break;
         case ToolsEnum.觀察者:
-          this.__usingTools = new ViewerTools(this.board);
+          this.__usingTools = new ViewerTools(this.board, this);
           break;
         default:
           break;
       }
     }
   }
-
   switchTypeToSelect(): void {
     this.switchTypeTo(ToolsEnum.選擇器);
   }
@@ -113,5 +116,26 @@ export class ToolsManagement {
 
   switchTypeToViewer(): void {
     this.switchTypeTo(ToolsEnum.觀察者);
+  }
+
+  addBaaseShape(bs: BaseShape) {
+    if (this.role === "self") {
+      this.board.addShapeByBs(bs);
+    } else if (this.board.socketCtrl) {
+      this.board.socketCtrl.addBaseShape(this.pageid, bs);
+    }
+  }
+  addToolsShape(bs: BaseShape) {
+    if (this.role === "self") {
+    } else if (this.board.socketCtrl) {
+      this.board.socketCtrl.addToolsShape(this.pageid, bs);
+    }
+  }
+  deleteShape(bss: BaseShape[]) {
+    if (this.role === "self") {
+      this.board.deleteShape(bss);
+    } else if (this.board.socketCtrl) {
+      this.board.socketCtrl.deleteBaseShape(this.pageid, bss);
+    }
   }
 }

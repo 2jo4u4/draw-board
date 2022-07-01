@@ -1,6 +1,7 @@
-import { Board, defaultSolidboxStyle, padding, UtilTools, Rect } from "..";
-import { BaseShape } from "./";
+import { defaultSolidboxStyle, padding, UtilTools, Rect } from "..";
+import { BaseShape } from ".";
 import trash from "../assets/trash-bin-svgrepo-com.svg";
+import type { ToolsManagement, Board } from "..";
 
 type ScalePoint = [Path2D, Path2D, Path2D, Path2D];
 const defauletScalePoint: Styles = {
@@ -17,7 +18,7 @@ const defauletRotatePoint: Styles = {
 export class SelectSolidRect extends BaseShape {
   readonly $type;
   readonly actionBar: ActionBar;
-  readonly canSelect: boolean;
+  readonly manager: ToolsManagement;
   shapes: BaseShape[] = [];
   scalePath: ScalePoint;
   rotatePath: Path2D;
@@ -30,6 +31,8 @@ export class SelectSolidRect extends BaseShape {
   override set bindingBox(p: Path2D) {
     this.path = p;
   }
+  override set canSelect(v: boolean) {}
+  override set isDelete(v: boolean) {}
 
   private tranferRef = {
     angle: 0,
@@ -38,7 +41,7 @@ export class SelectSolidRect extends BaseShape {
     zoomPosition: { x: 0, y: 0 },
   };
 
-  constructor(board: Board) {
+  constructor(board: Board, manager: ToolsManagement) {
     super(
       "selectRect_onlyOne",
       board,
@@ -47,8 +50,9 @@ export class SelectSolidRect extends BaseShape {
       new Rect()
     );
     this.$type = "selectSolid-shape";
+    this.manager = manager;
     this.actionBar = new ActionBar(board, this, ["delete"]);
-    this.canSelect = false;
+    super.canSelect = false;
 
     this.rotatePath = new Path2D();
     this.scalePath = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
@@ -56,7 +60,8 @@ export class SelectSolidRect extends BaseShape {
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
-  settingAndOpen(mrv: Rect) {
+  settingAndOpen(mrv: Rect, shapes: BaseShape[]) {
+    this.shapes = shapes;
     const clone = mrv
       .clone()
       .transferSelf(
@@ -69,10 +74,6 @@ export class SelectSolidRect extends BaseShape {
     this.assignScale();
     this.assignRotate();
 
-    this.shapes = Array.from(this.board.shapes)
-      .filter((bs) => !bs[1].isDelete && bs[1].isSelect)
-      .map((bs) => bs[1]);
-
     this.actionBar.openBar(clone);
   }
 
@@ -82,9 +83,6 @@ export class SelectSolidRect extends BaseShape {
     this.matrix = new DOMMatrix();
     this.actionBar.closeBar();
     this.clearAllPath();
-    this.shapes.forEach((bs) => {
-      bs.isSelect = false;
-    });
     this.shapes = [];
     this.flag = null;
     this.board.changeCursor("default");
@@ -213,6 +211,10 @@ export class SelectSolidRect extends BaseShape {
     const m = this.conputerMatrix(v, this.flag);
     this.transferEnd(v, m, this.flag);
     this.flag = null;
+  }
+
+  deleteShape() {
+    this.board.deleteShape(this.shapes);
   }
 
   // TODO update nw-scale, ne-scale, sw-scale, se-scale with zoom
@@ -365,7 +367,7 @@ class ActionBar {
         case "delete":
           btn = this.generateBtn(trash);
           btn.onclick = () => {
-            this.board.deleteShape();
+            this.solidRect.deleteShape();
             this.solidRect.closeSolidRect();
           };
           break;
