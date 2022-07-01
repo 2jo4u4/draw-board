@@ -1,1 +1,1 @@
-export * from "./window";
+export { PreviewWindow } from "./window";

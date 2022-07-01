@@ -1,4 +1,4 @@
-import * as math from "mathjs";
+import { BaseShape } from ".";
 
 const dashedLine = [10, 10];
 export const padding = 16; // px
@@ -64,9 +64,9 @@ export const defaultTransform: Transform = {
 };
 
 export const defaultZoom: Zoom = {
-  x: 0,
-  y: 0,
-  k: 1,
+  x: 200,
+  y: 100,
+  k: 3,
 };
 
 /** 計算函式 / 工具函式 */
@@ -110,76 +110,40 @@ export class UtilTools {
     );
   }
 
-  static DOMMatrixToMathMatrix(m: DOMMatrix) {
-    const { a, b, c, d, e, f } = m;
-    return math.matrix([
-      [a, c, e],
-      [b, d, f],
-      [0, 0, 1],
-    ]);
-  }
-
-  static cos(theta: number) {
-    return math.cos(theta);
-  }
-  static sin(theta: number) {
-    return math.sin(theta);
-  }
-  static atan2(y: number, x: number) {
-    return math.atan2(y, x);
-  }
-  static matrixMultiply(a: math.Matrix, b: math.Matrix) {
-    return math.multiply(a, b);
-  }
-
-  static transformToMatrix(transform: Transform) {
-    const { a = 1, b = 0, c = 0, d = 1, e = 0, f = 0 } = transform;
-    return math.matrix([
-      [a, c, e],
-      [b, d, f],
-      [0, 0, 1],
-    ]);
-  }
-
-  static getTransformFromMatrix(matrix: math.Matrix): Transform {
-    return {
-      a: Number(matrix.subset(math.index(0, 0))),
-      b: Number(matrix.subset(math.index(1, 0))),
-      c: Number(matrix.subset(math.index(0, 1))),
-      d: Number(matrix.subset(math.index(1, 1))),
-      e: Number(matrix.subset(math.index(0, 2))),
-      f: Number(matrix.subset(math.index(1, 2))),
-    };
+  static isTransform(input: Transform | DOMMatrix): input is Transform {
+    return (
+      typeof input.a === "number" &&
+      typeof input.b === "number" &&
+      typeof input.c === "number" &&
+      typeof input.d === "number" &&
+      typeof input.e === "number" &&
+      typeof input.f === "number"
+    );
   }
 
   static nextTransform(
-    prevTransform: Transform,
+    prevTransform: Transform | DOMMatrix,
     { dx = 0, dy = 0, rScale = 1, dTheta = 0, cx = 0, cy = 0 }
   ) {
-    const transformMatrix = this.transformToMatrix(prevTransform);
-    const translateToOriginMatrix = this.transformToMatrix({
-      e: dx - cx,
-      f: dy - cy,
-    });
-    const scaleMatrix = this.transformToMatrix({ a: rScale, d: rScale });
-    const rotationMatrix = this.transformToMatrix({
-      a: this.cos(dTheta),
-      b: this.sin(dTheta),
-      c: -this.sin(dTheta),
-      d: this.cos(dTheta),
-    });
-    const translateBackMatrix = this.transformToMatrix({
-      e: cx,
-      f: cy,
-    });
-    const applyTranslateToOrigin = this.matrixMultiply(
-      translateToOriginMatrix,
-      transformMatrix
-    );
-    const applyScale = this.matrixMultiply(scaleMatrix, applyTranslateToOrigin);
-    const applyRotation = this.matrixMultiply(rotationMatrix, applyScale);
-    const result = this.matrixMultiply(translateBackMatrix, applyRotation);
-    return this.getTransformFromMatrix(result);
+    const transferMatrix = new DOMMatrix()
+      .scale(rScale, rScale, 1, cx, cy)
+      .rotate(dTheta)
+      .translate(dx, dy);
+    if (prevTransform instanceof DOMMatrix) {
+      return prevTransform.preMultiplySelf(transferMatrix);
+    } else if (this.isTransform(prevTransform)) {
+      const { a, b, c, d, e, f } = prevTransform;
+      const prevMatrix = new DOMMatrix([
+        a as number,
+        b as number,
+        c as number,
+        d as number,
+        e as number,
+        f as number,
+      ]);
+      return DOMMatrix.fromMatrix(prevMatrix).preMultiplySelf(transferMatrix);
+    }
+    return defaultTransform;
   }
 
   static getPointsBox(points: Vec2[]) {
