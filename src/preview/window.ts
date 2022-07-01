@@ -17,6 +17,7 @@ type ActiveFlag = true | false;
  * 控制插件
  */
 export class PreviewWindow {
+  private __className!: string;
   private __rootBlock!: HTMLDivElement;
   get rootBlock(): HTMLDivElement {
     return this.__rootBlock;
@@ -75,7 +76,12 @@ export class PreviewWindow {
     return [width, height];
   }
 
-  constructor(canvas: HTMLCanvasElement | string, board: Board) {
+  constructor(
+    canvas: HTMLCanvasElement | string,
+    board: Board,
+    options: { className?: string }
+  ) {
+    if (options.className) this.__className = options.className;
     this.__canvas = UtilTools.getCnavasElement(canvas);
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
@@ -149,7 +155,7 @@ export class PreviewWindow {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  initialMask(canvas: HTMLCanvasElement) {
+  initialMask(canvas: HTMLCanvasElement = document.createElement("canvas")) {
     this.__maskCanvas = canvas;
     this.__mask = new PreviewMask(canvas, this.board);
     this.rootBlock.insertAdjacentElement("beforebegin", this.__maskCanvas);
@@ -163,16 +169,25 @@ export class PreviewWindow {
   open() {
     this.isOpen = true;
     this.maskCtrl.open();
+    this.display();
   }
 
   close() {
     this.isOpen = false;
     this.maskCtrl.close();
+    this.display();
   }
 
   toggle() {
     this.isOpen = !this.isOpen;
     this.maskCtrl.toggle();
+    this.display();
+  }
+
+  display() {
+    const display = this.isOpen ? "inline-flex" : "none";
+    this.rootBlock.style.display = display;
+    this.mask.style.display = display;
   }
 
   destroy() {
@@ -283,13 +298,16 @@ export class PreviewWindow {
   /** 調整使用者給予的 Canvas */
   private settingChild() {
     this.__rootBlock = document.createElement("div");
-    this.rootBlock.style.position = "absolute";
-    this.rootBlock.style.display = "none";
-    this.rootBlock.style.alignItems = "center";
-    this.rootBlock.style.flexDirection = "column";
-    this.rootBlock.style.bottom = "0";
-    this.rootBlock.style.background = "#fff";
-    this.rootBlock.classList.add("windowRoot");
+    if (this.__className) {
+      this.rootBlock.classList.add(this.__className);
+    } else {
+      this.rootBlock.style.position = "absolute";
+      this.rootBlock.style.display = "none";
+      this.rootBlock.style.alignItems = "center";
+      this.rootBlock.style.flexDirection = "column";
+      this.rootBlock.style.bottom = "0";
+      this.rootBlock.style.background = "#fff";
+    }
     this.canvas.after(this.rootBlock);
     this.setCanvasStyle(this.canvas);
     this.canvas.classList.add("event_paint");
