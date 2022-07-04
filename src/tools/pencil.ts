@@ -1,5 +1,5 @@
 import type { ToolsManagement } from ".";
-import type { Board, BaseTools } from "..";
+import type { Board, BaseTools, Styles, Vec2, MinRectVec } from "..";
 import { defaultStyle, Rect, UtilTools, UserAction, BaseShape } from "..";
 
 /** 鉛筆 */

@@ -1,4 +1,4 @@
-import type { BoardShapeLog } from ".";
+import type { BoardShapeLog, Styles, Vec2, MinRectVec } from ".";
 import {
   BaseShape,
   Board,
@@ -209,6 +209,22 @@ export class DemoSocket implements SocketMiddle {
 
   changePage(id: string) {
     this.pageId = id;
+  }
+
+  getShapeById(id: string, pageid?: string) {
+    if (pageid) {
+      return this.pageData.get(pageid)?.get(id);
+    } else {
+      const shapes = Array.from(this.pageData);
+      let bs: BaseShape | undefined = undefined;
+      for (let index = 0; index < shapes.length; index++) {
+        const [pageid, log] = shapes[index];
+        if (log.has(id)) {
+          bs = log.get(id);
+          break;
+        }
+      }
+    }
   }
 
   postData(action: SendData): void {

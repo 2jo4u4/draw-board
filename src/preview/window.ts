@@ -1,3 +1,4 @@
+import type { Styles, Vec2, Zoom } from "..";
 import {
   Board,
   BaseShape,

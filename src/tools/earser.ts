@@ -1,5 +1,5 @@
 import type { BaseTools, ToolsManagement } from ".";
-import type { Board } from "..";
+import type { Board, Vec2 } from "..";
 import { BaseShape, UserAction } from "..";
 
 /** 擦子 */

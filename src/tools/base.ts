@@ -1,4 +1,4 @@
-import type { Board } from "..";
+import type { Board, Vec2 } from "..";
 
 export abstract class BaseTools {
   constructor(board: Board) {}

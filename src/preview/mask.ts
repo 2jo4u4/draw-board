@@ -1,4 +1,5 @@
 import { Board, BaseShape, BoardShapeLog, UtilTools } from "..";
+import type { Vec2, Zoom } from "..";
 
 type ActiveFlag = true | false;
 

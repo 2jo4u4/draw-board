@@ -1,6 +1,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import { BaseShape } from ".";
-import { Board, defaultFileShapeStyle, Rect, UtilTools } from "..";
+import { defaultFileShapeStyle, Rect, UtilTools } from "..";
+import type { Board, Vec2, MinRectVec } from "..";
 
 type URLString = string;
 interface FileConfig {

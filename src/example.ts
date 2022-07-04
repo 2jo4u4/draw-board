@@ -9,6 +9,8 @@ import {
   ImageData,
   PdfData,
   PenData,
+  Styles,
+  MinRectVec,
 } from ".";
 
 const canvas = document.createElement("canvas");

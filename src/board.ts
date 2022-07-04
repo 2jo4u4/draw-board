@@ -6,7 +6,7 @@ import {
   ImageShape,
   PDFShape,
 } from ".";
-import type { SendData, SocketMiddle, Rect } from ".";
+import type { SendData, SocketMiddle, Rect, Styles, Vec2, Zoom } from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
 

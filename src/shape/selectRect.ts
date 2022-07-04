@@ -1,7 +1,7 @@
 import { defaultSolidboxStyle, padding, UtilTools, Rect } from "..";
 import { BaseShape } from ".";
 import trash from "../assets/trash-bin-svgrepo-com.svg";
-import type { ToolsManagement, Board } from "..";
+import type { ToolsManagement, Board, Styles, Vec2 } from "..";
 
 type ScalePoint = [Path2D, Path2D, Path2D, Path2D];
 const defauletScalePoint: Styles = {

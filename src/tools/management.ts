@@ -1,4 +1,4 @@
-import type { Board, BaseShape } from "..";
+import type { Board, BaseShape, Styles, Vec2 } from "..";
 import type { BaseTools } from "./base";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";

@@ -1,5 +1,5 @@
 import type { ToolsManagement } from ".";
-import type { Board, BaseShape, BaseTools } from "..";
+import type { Board, BaseShape, BaseTools, Styles, Vec2 } from "..";
 import { SelectSolidRect } from "./../shape/selectRect";
 import { UtilTools, defaultFlexboxStyle, Rect, UserAction } from "..";
 

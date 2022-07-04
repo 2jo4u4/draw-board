@@ -1,3 +1,4 @@
+import type { Styles, Vec2, MinRectVec } from "..";
 import { Board, defaultStyle, UtilTools, Rect } from "..";
 
 interface ShapeAction {

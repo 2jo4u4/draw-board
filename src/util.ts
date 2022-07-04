@@ -1,4 +1,35 @@
-import { BaseShape } from ".";
+export interface Styles {
+  lineColor: string;
+  lineWidth: number;
+  fillColor?: string;
+  lineDash?: number[];
+  lineCap?: "butt" | "round" | "square";
+}
+
+export interface Vec2 {
+  x: number;
+  y: number;
+}
+
+export interface MinRectVec {
+  leftTop: Vec2;
+  rightBottom: Vec2;
+}
+
+export interface Transform {
+  a?: number;
+  b?: number;
+  c?: number;
+  d?: number;
+  e?: number;
+  f?: number;
+}
+
+export interface Zoom {
+  x: number;
+  y: number;
+  k: number;
+}
 
 const dashedLine = [10, 10];
 export const padding = 16; // px
@@ -468,6 +499,10 @@ export class Rect {
     const width = Math.sqrt(Math.pow(wx - ox, 2) + Math.pow(wy - oy, 2));
     const height = Math.sqrt(Math.pow(hx - ox, 2) + Math.pow(hy - oy, 2));
     return [width, height];
+  }
+
+  get path2D() {
+    return UtilTools.minRectToPath(this);
   }
 
   clone(): Rect {
