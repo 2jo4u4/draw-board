@@ -282,9 +282,9 @@ export class Board {
   /** 下一步 */
   redo() {}
 
-  initialPreview(canvas: HTMLCanvasElement) {
+  initialPreview(canvas: HTMLCanvasElement, options: { className?: string }) {
     this.__previewCanvas = canvas;
-    this.__preview = new PreviewWindow(canvas, this);
+    this.__preview = new PreviewWindow(canvas, this, options);
   }
 
   /** 初始化 canvas */
