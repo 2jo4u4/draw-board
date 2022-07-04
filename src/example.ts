@@ -244,6 +244,7 @@ function drawGrid() {
     gridCtx.stroke();
   }
 }
+
 function develop() {
   const board = new Board(canvas);
   initialTools();
@@ -297,7 +298,7 @@ function develop() {
 
     document.body.append(preview);
 
-    board.initialPreview(canvas);
+    board.initialPreview(canvas, {});
     initialMask(button);
   }
 
@@ -305,12 +306,7 @@ function develop() {
     const mask = document.createElement("canvas");
     board.previewCtrl.initialMask(mask);
     const { previewCtrl: previewWindow } = board;
-    button.onclick = () => {
-      previewWindow.toggle();
-      const display = previewWindow.isOpen ? "inline-flex" : "none";
-      previewWindow.rootBlock.style.display = display;
-      mask.style.display = display;
-    };
+    button.onclick = () => previewWindow.toggle();
   }
 }
 

@@ -291,9 +291,9 @@ export class Board {
     this.socketCtrl?.postData(p);
   }
 
-  initialPreview(canvas: HTMLCanvasElement) {
+  initialPreview(canvas: HTMLCanvasElement, options: { className?: string }) {
     this.__previewCanvas = canvas;
-    this.__preview = new PreviewWindow(canvas, this);
+    this.__preview = new PreviewWindow(canvas, this, options);
   }
 
   /** 初始化 canvas */
