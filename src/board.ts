@@ -1,13 +1,12 @@
 import {
-  BaseShape,
-  Rect,
-  SocketMiddle,
   ToolsManagement,
   UtilTools,
+  defaultZoom,
+  BaseShape,
   ImageShape,
   PDFShape,
-  defaultZoom,
 } from ".";
+import type { SendData, SocketMiddle, Rect } from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
 
@@ -52,7 +51,6 @@ export class Board {
   get preview(): HTMLCanvasElement {
     return this.__previewCanvas;
   }
-
   /** 滑鼠旗標（是否點擊） */
   private mouseFlag: MouseFlag = "inactive";
   zoom: Zoom;
@@ -61,7 +59,12 @@ export class Board {
   /** 所有被繪製的圖形 */
   private __shapes: BoardShapeLog = new Map<string, BaseShape>();
   get shapes(): BoardShapeLog {
-    return this.__shapes;
+    return this.__socket?.getShapes || this.__shapes;
+  }
+
+  private __toolsShape: BoardShapeLog = new Map<string, BaseShape>();
+  get toolsShape(): BoardShapeLog {
+    return this.__socket?.getToolsShapes || this.__toolsShape;
   }
   /** 紀錄行為 */
   __actionStore: ActionStore[] = [];
@@ -95,6 +98,9 @@ export class Board {
   }
   set canEdit(b: boolean) {
     this.__canEdit = b;
+    if (!this.__canEdit) {
+      this.toolsCtrl.switchTypeToViewer();
+    }
   }
 
   private cancelLoopId: number;
@@ -136,19 +142,21 @@ export class Board {
     this.shapes.forEach((bs) => {
       bs.updata(t);
     });
+    this.toolsShape.forEach((bs) => {
+      bs.updata(t);
+    });
 
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
-  /** @deprecated 清除指定畫布(若無指定則清除兩畫布) */
-  clearCanvas(type?: "static" | "event") {
-    const [width, height] = this.size;
-    type !== "static" && this.ctx.clearRect(0, 0, width, height);
-    type !== "event" && this.ctxStatic.clearRect(0, 0, width, height);
+  /** 變更Page */
+  changePage(shapes: BoardShapeLog) {
+    this.__shapes = shapes;
   }
 
-  absoluteDelete(id: string) {
-    this.shapes.delete(id);
+  /** 工具用圖形 */
+  addToolsShape(bs: BaseShape) {
+    this.toolsShape.set(bs.id, bs);
   }
 
   /** 取得圖形物件 */
@@ -168,13 +176,11 @@ export class Board {
     this.logAction("draw", bs.id);
   }
 
-  addFileShape(file: File) {}
-
   /** 刪除已選圖形 */
-  deleteShape() {
+  deleteShape(shapes: BaseShape[]) {
     const id: string[] = [];
-    this.shapes.forEach((bs) => {
-      if (bs.isSelect) {
+    shapes.forEach((bs) => {
+      if (bs.canSelect && (bs.isSelect || bs.willDelete)) {
         id.push(bs.id);
         bs.isDelete = true;
       }
@@ -184,7 +190,7 @@ export class Board {
 
   renderBaseShape(bs: BaseShape) {
     let ctx: CanvasRenderingContext2D;
-    if (bs.isSelect) {
+    if (bs.isSelect || bs.willDelete) {
       ctx = this.ctx;
     } else {
       ctx = this.ctxStatic;
@@ -242,10 +248,7 @@ export class Board {
       }
     }
   }
-  /** 變更Page */
-  changePage(shapes: BoardShapeLog) {
-    this.__shapes = shapes;
-  }
+
   /** 變更鼠標樣式 */
   changeCursor(
     type:
@@ -281,6 +284,12 @@ export class Board {
   undo() {}
   /** 下一步 */
   redo() {}
+
+  /** 統一與socket middleware溝通 */
+  sendEvent(p: SendData) {
+    // console.log("sendEvent", UserAction[p.type], p);
+    this.socketCtrl?.postData(p);
+  }
 
   initialPreview(canvas: HTMLCanvasElement, options: { className?: string }) {
     this.__previewCanvas = canvas;

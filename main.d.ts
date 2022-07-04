@@ -18,6 +18,7 @@ interface Styles {
   lineWidth: number;
   fillColor?: string;
   lineDash?: number[];
+  lineCap?: "butt" | "round" | "square";
 }
 
 type ShapeActionType =
@@ -28,13 +29,6 @@ type ShapeActionType =
   | "sw-scale" // 縮放左下
   | "se-scale"; // 縮放右下
 
-interface ShapeAction {
-  type: ShapeActionType;
-  matrix: DOMMatrix;
-}
-
-/** 基準點位不同(m1: 一開始的位置, m2: 上一個位置) */
-type MultiMatrix = { m1: DOMMatrix; m2: DOMMatrix };
 interface Transform {
   a?: number;
   b?: number;
@@ -49,3 +43,5 @@ interface Zoom {
   y: number;
   k: number;
 }
+
+type ManagerRole = "self" | "other" | string;

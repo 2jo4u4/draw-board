@@ -1,18 +1,15 @@
+import type { ToolsManagement } from ".";
+import type { Board, BaseShape, BaseTools } from "..";
 import { SelectSolidRect } from "./../shape/selectRect";
-import {
-  Board,
-  BaseShape,
-  UtilTools,
-  BaseTools,
-  defaultFlexboxStyle,
-  Rect,
-} from "..";
+import { UtilTools, defaultFlexboxStyle, Rect, UserAction } from "..";
 
 type SelectFlag = "none" | "selected"; // 是否有選到圖形
 
 /** 選擇器 */
 export class SelectTools implements BaseTools {
+  static selectToolsId = "";
   readonly board: Board;
+  readonly manager: ToolsManagement;
   readonly flexRectStyle: Styles;
   /** 選取狀態旗標 */
   private selectFlag!: SelectFlag;
@@ -20,21 +17,27 @@ export class SelectTools implements BaseTools {
   private startPosition: Vec2 = { x: 0, y: 0 };
   /** 固定框 */
   private selectSolidRect: SelectSolidRect;
+  private isSelectShapes: BaseShape[] = [];
 
-  constructor(board: Board) {
+  constructor(board: Board, manager: ToolsManagement) {
     this.board = board;
+    this.manager = manager;
     this.flexRectStyle = defaultFlexboxStyle;
     this.selectFlag = "none";
-    this.selectSolidRect = new SelectSolidRect(board);
-    board.addShapeByBs(this.selectSolidRect);
+    if (board.toolsShape.has(SelectTools.selectToolsId)) {
+      this.selectSolidRect = board.toolsShape.get(
+        SelectTools.selectToolsId
+      ) as SelectSolidRect;
+    } else {
+      this.selectSolidRect = new SelectSolidRect(board, manager);
+      board.addToolsShape(this.selectSolidRect);
+      SelectTools.selectToolsId = this.selectSolidRect.id;
+    }
   }
 
   onDestroy(): void {
-    this.board.shapes.forEach((bs) => {
-      bs.isSelect = false;
-    });
+    this.recoverShapesStatus();
     this.selectSolidRect.closeSolidRect();
-    this.board.absoluteDelete(this.selectSolidRect.id);
   }
 
   onEventStart(v: Vec2): void {
@@ -76,8 +79,18 @@ export class SelectTools implements BaseTools {
     }
   }
 
+  private recoverShapesStatus() {
+    this.isSelectShapes.forEach((bs) => {
+      bs.isSelect = false;
+      bs.canSelect = true;
+    });
+  }
+
   private selectStart(v: Vec2) {
+    this.recoverShapesStatus();
     this.selectSolidRect.closeSolidRect();
+    this.isSelectShapes = [];
+    this.board.sendEvent({ type: UserAction["選取圖形(開始)"], v, bss: [] });
   }
 
   private select(v: Vec2) {
@@ -138,26 +151,49 @@ export class SelectTools implements BaseTools {
 
     if (shape[0]) {
       this.selectFlag = "selected";
-      shape.forEach((item) => {
+      this.isSelectShapes = shape.map((item) => {
         item[1].isSelect = true;
+        item[1].canSelect = false;
+        return item[1];
       });
-      this.selectSolidRect.settingAndOpen(minRectVec);
+      this.selectSolidRect.settingAndOpen(minRectVec, this.isSelectShapes);
     } else {
+      this.isSelectShapes = [];
       this.selectFlag = "none";
     }
     this.selectSolidRect.isCovered(v);
+    this.board.sendEvent({
+      type: UserAction["選取圖形(結束)"],
+      v,
+      bss: this.isSelectShapes,
+    });
   }
 
   private moveStart(v: Vec2) {
     this.selectSolidRect.handleStart(v);
+    this.board.sendEvent({
+      type: UserAction["變形(開始)"],
+      v,
+      bss: this.isSelectShapes,
+    });
   }
 
   private move(v: Vec2) {
     this.selectSolidRect.handleActive(v);
+    this.board.sendEvent({
+      type: UserAction["變形(過程)"],
+      v,
+      bss: this.isSelectShapes,
+    });
   }
 
   private moveEnd(v: Vec2) {
     this.selectSolidRect.handleEnd(v);
+    this.board.sendEvent({
+      type: UserAction["變形(結束)"],
+      v,
+      bss: this.isSelectShapes,
+    });
   }
 
   /** 是否選中 */

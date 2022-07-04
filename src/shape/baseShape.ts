@@ -1,5 +1,14 @@
 import { Board, defaultStyle, UtilTools, Rect } from "..";
 
+interface ShapeAction {
+  type: ShapeActionType;
+  matrix: DOMMatrix;
+}
+
+const defWillDeleteStyle: Styles = {
+  ...defaultStyle,
+  lineColor: "red",
+};
 /**
  * 圖形基本類
  */
@@ -7,8 +16,18 @@ export class BaseShape {
   readonly $type;
   readonly id: string;
   readonly board: Board;
-  readonly canSelect: boolean;
-  style: Styles;
+
+  private __style: Styles;
+  get style() {
+    if (this.__willDelete) {
+      return defWillDeleteStyle;
+    } else {
+      return this.__style;
+    }
+  }
+  set style(s: Styles) {
+    this.__style = s;
+  }
 
   private __path: Path2D;
   get path(): Path2D {
@@ -16,11 +35,9 @@ export class BaseShape {
   }
 
   get pathWithMatrix(): Path2D {
-    const p1 = new Path2D();
-    p1.addPath(this.__path, this.matrix);
-    const p2 = new Path2D();
-    p2.addPath(p1, this.stagingMatrix);
-    return p2;
+    const p = new Path2D();
+    p.addPath(this.__path, this.finallyMatrix);
+    return p;
   }
   set path(p: Path2D) {
     this.__path = p;
@@ -31,10 +48,7 @@ export class BaseShape {
     return this.__coveredRect.clone();
   }
   get coveredRectWithmatrix(): Rect {
-    return this.__coveredRect
-      .clone()
-      .transferSelf(this.matrix)
-      .transferSelf(this.stagingMatrix);
+    return this.__coveredRect.clone().transferSelf(this.finallyMatrix);
   }
   set coveredRect(r: Rect) {
     this.__coveredRect = r;
@@ -49,17 +63,24 @@ export class BaseShape {
     return this.__bindingBox;
   }
   get bindingBoxWithMatrix(): Path2D {
-    const p1 = new Path2D();
-    p1.addPath(this.__bindingBox, this.matrix);
-    const p2 = new Path2D();
-    p2.addPath(p1, this.stagingMatrix);
-    return p2;
+    const p = new Path2D();
+    p.addPath(this.__bindingBox, this.finallyMatrix);
+    return p;
   }
   set bindingBox(p: Path2D) {
     this.__bindingBox = p;
   }
 
-  /** 是否被選取 */
+  /** 可否選取 */
+  private __canSelect = true;
+  get canSelect() {
+    return this.__canSelect;
+  }
+  set canSelect(b: boolean) {
+    this.__canSelect = b;
+  }
+
+  /** 是否被選取(選擇器使用) */
   private __isSelect = false;
   get isSelect() {
     return this.__isSelect;
@@ -76,8 +97,19 @@ export class BaseShape {
     return this.__isDelete;
   }
   set isDelete(b: boolean) {
-    this.__isSelect = false;
     this.__isDelete = b;
+    this.__isSelect = false;
+    this.__willDelete = false;
+    this.__canSelect = !this.__isDelete;
+  }
+
+  /** 用於被擦子擦到的圖形 */
+  private __willDelete = false;
+  get willDelete() {
+    return this.__willDelete;
+  }
+  set willDelete(b: boolean) {
+    this.__willDelete = b;
   }
 
   protected __matrix: DOMMatrix;
@@ -88,25 +120,30 @@ export class BaseShape {
     this.__matrix = m;
   }
   protected stagingMatrix!: DOMMatrix;
+  get finallyMatrix(): DOMMatrix {
+    return DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(
+      this.stagingMatrix
+    );
+  }
   /** 紀錄 */
   private shapeActionLog: ShapeAction[] = [];
   private shapeActionLimit: number;
-  startPosition!: Vec2;
-  regPosition!: Vec2;
+  startPosition: Vec2 = { x: 0, y: 0 };
+  regPosition: Vec2 = { x: 0, y: 0 };
 
   constructor(
     id: string,
     board: Board,
     path: Path2D,
     style: Styles = defaultStyle,
-    coveredRect: Rect,
+    coveredRect: Rect = new Rect(),
     matrix?: DOMMatrix
   ) {
     this.$type = "base-shape";
     this.id = id;
     this.board = board;
     this.canSelect = true;
-    this.style = style;
+    this.__style = style;
     this.shapeActionLimit = board.actionStoreLimit;
     this.__matrix = DOMMatrix.fromMatrix(matrix);
     this.__path = new Path2D(path);
@@ -125,7 +162,6 @@ export class BaseShape {
   }
 
   transferEnd(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
-    // merge matrix and stagingMatrix
     this.stagingMatrix = new DOMMatrix();
     this.__matrix = DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(m);
   }

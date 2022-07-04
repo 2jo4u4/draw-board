@@ -1,15 +1,20 @@
+import type { BoardShapeLog } from ".";
 import {
   BaseShape,
   Board,
-  BoardShapeLog,
   UtilTools,
   UserAction,
+  Rect,
+  ToolsManagement,
   ImageShape,
   PDFShape,
-  Rect,
 } from ".";
 
-export type PageData = Map<string, BoardShapeLog>;
+type AcountId = string;
+type PageId = string;
+export type PageData = Map<PageId, BoardShapeLog>;
+export type ToolsData = PageData;
+export type OtherManager = Map<PageId, Map<AcountId, ToolsManagement>>;
 export type DataType =
   | Record<string | keyof ReceviceData, unknown>
   | Record<string | keyof ReceviceData, unknown>[];
@@ -94,44 +99,137 @@ export enum ReceivceEvent {
  * 網路插件
  */
 export abstract class SocketMiddle {
-  /** 傳送資料 */
-  abstract postData(action: unknown): void;
-  /** 接收資料 */
-  abstract receviceData(v: unknown): void;
+  abstract get getToolsShapes(): BoardShapeLog | undefined;
+  abstract get getShapes(): BoardShapeLog | undefined;
+  abstract postData(action: SendData): void;
+  abstract messageFormat(v: string): {
+    number: number;
+    event: ReceivceEvent;
+    data: DataType;
+  };
+  abstract addBaseShape(pageid: string, bs: BaseShape): void;
+  abstract addToolsShape(pageid: string, bs: BaseShape): void;
+  abstract deleteBaseShape(pageid: string, bss: BaseShape[]): void;
 }
 
 const regexp = new RegExp(/^([0-9]*)((\[")([a-zA-Z]*)(",)([\S\s]*)(]))?/);
 export class DemoSocket implements SocketMiddle {
-  readonly socket: WebSocket;
   readonly board: Board;
+  readonly pageData: PageData;
+  readonly otherManager: OtherManager;
+  readonly toolsShpaes: ToolsData;
+  pageId: string;
 
-  isReady = false;
-  pageId!: string;
-  pageData: PageData = new Map<string, BoardShapeLog>();
+  constructor(canvas: HTMLCanvasElement | string) {
+    this.pageData = new Map();
+    this.otherManager = new Map();
+    this.toolsShpaes = new Map();
+    this.pageId = "initial";
 
-  constructor(url: string, canvas: HTMLCanvasElement | string) {
-    this.socket = new WebSocket(url);
     this.board = new Board(canvas, { Socket: this });
+  }
+
+  get getToolsShapes(): BoardShapeLog | undefined {
+    return this.toolsShpaes.get(this.pageId);
+  }
+
+  get getShapes(): BoardShapeLog | undefined {
+    return this.pageData.get(this.pageId);
+  }
+
+  findManagerInstance(accountid: string): ToolsManagement | undefined {
+    return Array.from(this.otherManager)
+      .find(([pageid, instance]) => instance.has(accountid))?.[1]
+      .get(accountid);
+  }
+
+  addAnyShape(type: "common" | "special", pageid: string, bs: BaseShape) {
+    const maps = type === "special" ? this.toolsShpaes : this.pageData;
+    if (maps.has(pageid)) {
+      (maps.get(pageid) as BoardShapeLog).set(bs.id, bs);
+    } else {
+      maps.set(pageid, new Map([[bs.id, bs]]));
+    }
+  }
+
+  addBaseShape(pageid: string, bs: BaseShape) {
+    this.addAnyShape("common", pageid, bs);
+  }
+
+  addToolsShape(pageid: string, bs: BaseShape): void {
+    this.addAnyShape("special", pageid, bs);
+  }
+
+  deleteBaseShape(pageid: string, shapeids: BaseShape[]) {
+    if (this.pageData.has(pageid)) {
+      const shapes = this.pageData.get(pageid) as BoardShapeLog;
+      shapeids.forEach((bs) => {
+        shapes.delete(bs.id);
+      });
+    }
+  }
+
+  changeToolsShapePage(accountid: string, pageid: string) {
+    const managers = Array.from(this.otherManager);
+    let tools: ToolsManagement | undefined;
+    for (let index = 0; index < managers.length; index++) {
+      const [pageid, manager] = managers[index];
+      if (manager.has(accountid)) {
+        tools = manager.get(accountid);
+        manager.delete(accountid);
+        break;
+      }
+    }
+    if (tools) {
+      const page = this.otherManager.get(pageid);
+      if (page) {
+        page.set(accountid, tools);
+      }
+    }
+  }
+
+  managerEnterSession(accountid: string, pageid: string) {
+    if (!this.otherManager.has(pageid)) {
+      this.otherManager.set(
+        pageid,
+        new Map([
+          [accountid, new ToolsManagement(this.board, accountid, pageid)],
+        ])
+      );
+    }
+  }
+
+  managerLeaveSession(accountid: string) {
+    const managers = Array.from(this.otherManager);
+    for (let index = 0; index < managers.length; index++) {
+      const [pageid, manager] = managers[index];
+      if (manager.delete(accountid)) break;
+    }
+  }
+
+  changePage(id: string) {
+    this.pageId = id;
   }
 
   postData(action: SendData): void {
     switch (action.type) {
-      case UserAction.刪除圖形:
-        this.deleteShape(action.bss);
+      case UserAction["刪除圖形(用選擇器刪除)"]:
         break;
-      case UserAction.下筆:
+      case UserAction["筆(開始)"]:
         break;
-      case UserAction.提筆:
+      case UserAction["筆(移動)"]:
         break;
-      case UserAction.筆移動:
+      case UserAction["筆(結束)"]:
         break;
-      case UserAction.選取圖形:
+      case UserAction["選取圖形(開始)"]:
         break;
-      case UserAction.變形開始:
+      case UserAction["選取圖形(結束)"]:
         break;
-      case UserAction.變形:
+      case UserAction["變形(開始)"]:
         break;
-      case UserAction.變形結束:
+      case UserAction["變形(過程)"]:
+        break;
+      case UserAction["變形(結束)"]:
         break;
       default:
         break;
@@ -140,70 +238,27 @@ export class DemoSocket implements SocketMiddle {
 
   destroy() {
     this.board.destroy();
-    this.socket.close();
-  }
-
-  protected deleteShape(bss: BaseShape[]) {
-    const ids = bss.map((bs) => bs.id);
-    ids.forEach((id) => {
-      const post = [
-        "broadcast",
-        {
-          accountid: "",
-          application: "",
-          objectid: id,
-          ot: "",
-          pageid: "",
-          request_datetime: "",
-          socketid: "",
-          teamid: "",
-          tools: "",
-          wbid: "",
-        },
-      ];
-    });
-  }
-
-  receviceData(message: MessageEvent<string>): void {
-    const { number, event, data } = this.messageFormat(message.data);
-    switch (event) {
-      case "unknown":
-        if (number === 2) {
-          this.socket.send("3");
-        }
-        break;
-      case "sync":
-        {
-          this.dataToCanvas(data as DrawData[]);
-        }
-        break;
-      default:
-        break;
-    }
   }
 
   protected dataToCanvas<T extends DrawData>(data: T[]) {
-    let bs: BaseShape | null = null;
     data.forEach((item) => {
       switch (item.tools) {
         case "pdf":
-          bs = this.toPdfShape(item as PdfData);
+          this.toPdfShape(item as PdfData);
           break;
         case "image":
-          bs = this.toImageShape(item as ImageData);
+          this.toImageShape(item as ImageData);
           break;
         case "pen":
-          bs = this.toBaseShape(item as PenData);
+          this.toBaseShape(item as PenData);
           break;
         default:
-          bs = null;
           break;
       }
-      bs && this.board.addShapeByBs(bs);
     });
   }
 
-  protected messageFormat(s: string): {
+  messageFormat(s: string): {
     number: number;
     event: ReceivceEvent;
     data: DataType;
@@ -233,7 +288,7 @@ export class DemoSocket implements SocketMiddle {
     return { number, event, data };
   }
 
-  protected toBaseShape(data: PenData): BaseShape {
+  protected toBaseShape(data: PenData) {
     const p = new Path2D(),
       [p1, ...ps] = data.children,
       s: Styles = {
@@ -266,27 +321,31 @@ export class DemoSocket implements SocketMiddle {
       new Rect(minRect),
       matrix
     );
-    return bs;
+
+    this.addBaseShape(data.pageid, bs);
   }
 
-  protected toImageShape(data: ImageData): ImageShape {
-    return new ImageShape(data.objectid, this.board, data.objecturl, {
+  protected toImageShape(data: ImageData) {
+    const bs = new ImageShape(data.objectid, this.board, data.objecturl, {
       x: parseInt(data.x1),
       y: parseInt(data.y1),
       width: parseInt(data.width),
       height: parseInt(data.height),
       transform: this.getMatrix(data.transform),
     });
+
+    this.addBaseShape(data.pageid, bs);
   }
 
-  protected toPdfShape(data: PdfData): PDFShape {
-    return new PDFShape(data.objectid, this.board, data.objecturl, {
+  protected toPdfShape(data: PdfData) {
+    const bs = new PDFShape(data.objectid, this.board, data.objecturl, {
       x: parseInt(data.x1),
       y: parseInt(data.y1),
       width: parseInt(data.width),
       height: parseInt(data.height),
       transform: this.getMatrix(data.transform),
     });
+    this.addBaseShape(data.pageid, bs);
   }
 
   protected getMatrix(t: string) {

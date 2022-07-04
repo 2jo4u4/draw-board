@@ -40,15 +40,19 @@ export const defaultFlexboxStyle: Styles = {
 };
 
 export enum UserAction {
-  "下筆",
-  "筆移動",
-  "提筆",
-  "選取圖形",
-  "變形開始",
-  "變形",
-  "變形結束",
+  "筆(開始)",
+  "筆(移動)",
+  "筆(結束)",
+  "選取圖形(開始)",
+  "選取圖形(結束)",
+  "變形(開始)",
+  "變形(過程)",
+  "變形(結束)",
   "純移動",
-  "刪除圖形",
+  "橡皮擦(開始)",
+  "橡皮擦(移動)",
+  "橡皮擦(結束)",
+  "刪除圖形(用選擇器刪除)",
 }
 export const defaultTransform: Transform = {
   a: 1.0,
@@ -294,7 +298,14 @@ export class UtilTools {
 
   /** 樣式注入 */
   static injectStyle(ctx: CanvasRenderingContext2D, s: Styles) {
-    const { lineColor, lineWidth, lineDash = [], fillColor = "" } = s;
+    const {
+      lineColor,
+      lineWidth,
+      lineDash = [],
+      fillColor = "",
+      lineCap = "round",
+    } = s;
+    ctx.lineCap = lineCap;
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = lineWidth;
     ctx.setLineDash(lineDash);
@@ -322,21 +333,6 @@ export class UtilTools {
     }
 
     return path;
-  }
-
-  /** @deprecated 讓此檔案不在相依其他檔案，故不再提供此方法 */
-  static isBaseShape(bs: unknown): bs is BaseShape {
-    return bs instanceof BaseShape;
-  }
-
-  /** @deprecated 取得中心點 */
-  static getMinRectCenter(mrv: MinRectVec): Vec2 {
-    const {
-      leftTop: { x: x1, y: y1 },
-      rightBottom: { x: x2, y: y2 },
-    } = mrv;
-
-    return { x: x1 + (x2 - x1) / 2, y: y1 + (y2 - y1) / 2 };
   }
 
   /** 取得偏移量(dx,dy) */
@@ -493,40 +489,6 @@ export class Rect {
     const sw = this.sw.matrixTransform(matrix);
     const se = this.se.matrixTransform(matrix);
     return new Rect(nw, ne, sw, se);
-  }
-
-  /**
-   * @deprecated 統一使用 `transferSelf`
-   */
-  translateSelf(matrix: DOMMatrix): Rect {
-    this.nw = this.nw.matrixTransform(matrix);
-    this.ne = this.ne.matrixTransform(matrix);
-    this.sw = this.sw.matrixTransform(matrix);
-    this.se = this.se.matrixTransform(matrix);
-    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
-    return this;
-  }
-  /**
-   * @deprecated 統一使用 `transferSelf`
-   */
-  scaleSelf(matrix: DOMMatrix): Rect {
-    this.nw = this.nw.matrixTransform(matrix);
-    this.ne = this.ne.matrixTransform(matrix);
-    this.sw = this.sw.matrixTransform(matrix);
-    this.se = this.se.matrixTransform(matrix);
-    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
-    return this;
-  }
-  /**
-   * @deprecated 統一使用 `transferSelf`
-   */
-  rotateSelf(matrix: DOMMatrix): Rect {
-    this.nw = this.nw.matrixTransform(matrix);
-    this.ne = this.ne.matrixTransform(matrix);
-    this.sw = this.sw.matrixTransform(matrix);
-    this.se = this.se.matrixTransform(matrix);
-    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
-    return this;
   }
 
   getReferPointOpposite(type: ShapeActionType | null): Vec2 {
