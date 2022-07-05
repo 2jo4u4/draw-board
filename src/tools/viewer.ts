@@ -24,7 +24,7 @@ export class ViewerTools implements BaseTools {
   private justMove(v: Vec2) {
     if (this.regPoint.x !== v.x && this.regPoint.y !== v.y) {
       this.regPoint = v;
-      this.board.sendEvent({ type: UserAction.純移動, v, bss: [] });
+      this.manager.sendEvent({ type: UserAction.純移動, v, bss: [] });
     }
   }
 }

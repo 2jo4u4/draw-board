@@ -11,11 +11,14 @@ import {
   PenData,
   Styles,
   MinRectVec,
+  DemoSocket,
 } from ".";
 
 const canvas = document.createElement("canvas");
 const grid = document.createElement("canvas");
 const tools = document.createElement("ul");
+tools.style.position = "absolute";
+tools.style.top = "0px";
 const p = document.createElement("p");
 const src = "https://i.imgur.com/m5c8KGt.jpeg";
 const pdfsrc =
@@ -246,19 +249,31 @@ function drawGrid() {
     gridCtx.stroke();
   }
 }
-
+declare global {
+  interface Window {
+    socket: DemoSocket;
+    board: Board;
+  }
+}
 function develop() {
-  const board = new Board(canvas);
+  const socket = new DemoSocket(canvas);
+  const board = socket.board;
+  window["socket"] = socket;
+
+  // const board = new Board(canvas);
+  // window["board"] = board;
+
+  const manager = board.toolsCtrl;
   initialTools();
   initialPreview();
 
   const pdf = toPdfShape(fakePdf, board);
-  board.addShapeByBs(pdf);
+  manager.addBaaseShape(pdf);
   const image = toImageShape(fakeImage, board);
-  board.addShapeByBs(image);
+  manager.addBaaseShape(image);
 
   const pen = toBaseShape(fakePen, board);
-  board.addShapeByBs(pen);
+  manager.addBaaseShape(pen);
 
   function AddTools(v: ToolsEnum) {
     const child = document.createElement("li");

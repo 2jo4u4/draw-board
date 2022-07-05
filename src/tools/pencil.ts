@@ -50,7 +50,7 @@ export class PencilTools implements BaseTools {
       new Rect(this.minRect)
     );
     this.manager.addBaaseShape(this.shape);
-    this.board.sendEvent({
+    this.manager.sendEvent({
       type: UserAction["筆(開始)"],
       v,
       bss: [this.shape],
@@ -63,7 +63,7 @@ export class PencilTools implements BaseTools {
     this.path.lineTo(x, y);
     this.shape.reInit(this.path, new Rect(this.minRect));
     this.shape.style = this.drawStyle;
-    this.board.sendEvent({
+    this.manager.sendEvent({
       type: UserAction["筆(移動)"],
       v,
       bss: [this.shape],
@@ -80,7 +80,7 @@ export class PencilTools implements BaseTools {
     const p = new Path2D(this.shape.path);
     p.lineTo(x, y);
     this.shape.reInit(p, new Rect(this.minRect));
-    this.board.sendEvent({
+    this.manager.sendEvent({
       type: UserAction["筆(結束)"],
       v,
       bss: [this.shape],

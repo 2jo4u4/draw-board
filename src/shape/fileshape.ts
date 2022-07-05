@@ -71,7 +71,6 @@ export class ImageShape extends BaseShape implements FileShape {
     this.$type = "image-shape";
     this.htmlEl = new Image();
     this.startPoint = startPoint;
-    this.board.addShapeByBs(this);
     this.htmlEl.onload = (event) => {
       this.changeLoadStatue();
     };

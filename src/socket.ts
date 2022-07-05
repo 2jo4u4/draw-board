@@ -8,6 +8,7 @@ import {
   ToolsManagement,
   ImageShape,
   PDFShape,
+  initialPageId,
 } from ".";
 
 type AcountId = string;
@@ -99,8 +100,8 @@ export enum ReceivceEvent {
  * 網路插件
  */
 export abstract class SocketMiddle {
-  abstract get getToolsShapes(): BoardShapeLog | undefined;
-  abstract get getShapes(): BoardShapeLog | undefined;
+  abstract get toolsShapes(): BoardShapeLog | undefined;
+  abstract get shapes(): BoardShapeLog | undefined;
   abstract postData(action: SendData): void;
   abstract messageFormat(v: string): {
     number: number;
@@ -110,31 +111,34 @@ export abstract class SocketMiddle {
   abstract addBaseShape(pageid: string, bs: BaseShape): void;
   abstract addToolsShape(pageid: string, bs: BaseShape): void;
   abstract deleteBaseShape(pageid: string, bss: BaseShape[]): void;
+  abstract removeToolsShape(pageid: string, bs: BaseShape): void;
+  abstract localManagerEnter(manager: ToolsManagement): void;
 }
 
 const regexp = new RegExp(/^([0-9]*)((\[")([a-zA-Z]*)(",)([\S\s]*)(]))?/);
 export class DemoSocket implements SocketMiddle {
   readonly board: Board;
-  readonly pageData: PageData;
   readonly otherManager: OtherManager;
-  readonly toolsShpaes: ToolsData;
+  readonly pageShapes: PageData;
+  readonly pageToolsShapes: ToolsData;
+  private localManager!: ToolsManagement;
   pageId: string;
 
   constructor(canvas: HTMLCanvasElement | string) {
-    this.pageData = new Map();
+    this.pageShapes = new Map();
     this.otherManager = new Map();
-    this.toolsShpaes = new Map();
-    this.pageId = "initial";
+    this.pageToolsShapes = new Map();
+    this.pageId = initialPageId;
 
     this.board = new Board(canvas, { Socket: this });
   }
 
-  get getToolsShapes(): BoardShapeLog | undefined {
-    return this.toolsShpaes.get(this.pageId);
+  get toolsShapes(): BoardShapeLog | undefined {
+    return this.pageToolsShapes.get(this.pageId);
   }
 
-  get getShapes(): BoardShapeLog | undefined {
-    return this.pageData.get(this.pageId);
+  get shapes(): BoardShapeLog | undefined {
+    return this.pageShapes.get(this.pageId);
   }
 
   findManagerInstance(accountid: string): ToolsManagement | undefined {
@@ -144,7 +148,7 @@ export class DemoSocket implements SocketMiddle {
   }
 
   addAnyShape(type: "common" | "special", pageid: string, bs: BaseShape) {
-    const maps = type === "special" ? this.toolsShpaes : this.pageData;
+    const maps = type === "special" ? this.pageToolsShapes : this.pageShapes;
     if (maps.has(pageid)) {
       (maps.get(pageid) as BoardShapeLog).set(bs.id, bs);
     } else {
@@ -156,46 +160,33 @@ export class DemoSocket implements SocketMiddle {
     this.addAnyShape("common", pageid, bs);
   }
 
+  deleteBaseShape(pageid: string, shapes: BaseShape[]) {
+    shapes.forEach((bs) => {
+      bs.isDelete = true;
+    });
+  }
+
   addToolsShape(pageid: string, bs: BaseShape): void {
     this.addAnyShape("special", pageid, bs);
   }
 
-  deleteBaseShape(pageid: string, shapeids: BaseShape[]) {
-    if (this.pageData.has(pageid)) {
-      const shapes = this.pageData.get(pageid) as BoardShapeLog;
-      shapeids.forEach((bs) => {
-        shapes.delete(bs.id);
-      });
-    }
+  localManagerEnter(manager: ToolsManagement) {
+    this.localManager = manager;
   }
 
-  changeToolsShapePage(accountid: string, pageid: string) {
-    const managers = Array.from(this.otherManager);
-    let tools: ToolsManagement | undefined;
-    for (let index = 0; index < managers.length; index++) {
-      const [pageid, manager] = managers[index];
-      if (manager.has(accountid)) {
-        tools = manager.get(accountid);
-        manager.delete(accountid);
-        break;
-      }
-    }
-    if (tools) {
-      const page = this.otherManager.get(pageid);
-      if (page) {
-        page.set(accountid, tools);
-      }
-    }
+  removeToolsShape(pageid: string, bs: BaseShape) {
+    this.pageToolsShapes.get(pageid)?.delete(bs.id);
+  }
+
+  otherManagerChangePage(accountid: string, pageid: string) {
+    this.findManagerInstance(accountid)?.changePage(pageid);
   }
 
   managerEnterSession(accountid: string, pageid: string) {
     if (!this.otherManager.has(pageid)) {
-      this.otherManager.set(
-        pageid,
-        new Map([
-          [accountid, new ToolsManagement(this.board, accountid, pageid)],
-        ])
-      );
+      const tools = new ToolsManagement(this.board, accountid, pageid);
+      tools.switchTypeToSelect();
+      this.otherManager.set(pageid, new Map([[accountid, tools]]));
     }
   }
 
@@ -209,22 +200,14 @@ export class DemoSocket implements SocketMiddle {
 
   changePage(id: string) {
     this.pageId = id;
+    this.localManager.changePage(id);
   }
 
-  getShapeById(id: string, pageid?: string) {
-    if (pageid) {
-      return this.pageData.get(pageid)?.get(id);
-    } else {
-      const shapes = Array.from(this.pageData);
-      let bs: BaseShape | undefined = undefined;
-      for (let index = 0; index < shapes.length; index++) {
-        const [pageid, log] = shapes[index];
-        if (log.has(id)) {
-          bs = log.get(id);
-          break;
-        }
-      }
+  addNewPage(id: string) {
+    if (!this.pageShapes.has(id)) {
+      this.pageShapes.set(id, new Map());
     }
+    this.localManager.changePage(id);
   }
 
   postData(action: SendData): void {

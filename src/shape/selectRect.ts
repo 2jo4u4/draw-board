@@ -43,7 +43,7 @@ export class SelectSolidRect extends BaseShape {
 
   constructor(board: Board, manager: ToolsManagement) {
     super(
-      "selectRect_onlyOne",
+      `selectRect_onlyOne_${UtilTools.RandomID()}`,
       board,
       new Path2D(),
       defaultSolidboxStyle,
@@ -214,7 +214,7 @@ export class SelectSolidRect extends BaseShape {
   }
 
   deleteShape() {
-    this.board.deleteShape(this.shapes);
+    this.manager.deleteBaseShape(this.shapes);
   }
 
   // TODO update nw-scale, ne-scale, sw-scale, se-scale with zoom
@@ -253,26 +253,12 @@ export class SelectSolidRect extends BaseShape {
 
   override updata(t: number): void {
     super.updata(t);
-    const zoomMatrix = UtilTools.translate(
-      { x: this.board.zoom.x, y: this.board.zoom.y },
-      { x: 0, y: 0 }
-    ).scale(
-      this.board.zoom.k,
-      this.board.zoom.k,
-      1,
-      this.board.zoom.x,
-      this.board.zoom.y
-    );
 
     if (this.showCtrlPoint) {
       this.scalePath.forEach((p) => {
-        this.board.renderPathToEvent(p, defauletScalePoint, zoomMatrix);
+        this.board.renderPathToEvent(p, defauletScalePoint);
       });
-      this.board.renderPathToEvent(
-        this.rotatePath,
-        defauletRotatePoint,
-        zoomMatrix
-      );
+      this.board.renderPathToEvent(this.rotatePath, defauletRotatePoint);
     }
   }
 

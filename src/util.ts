@@ -1,3 +1,4 @@
+export const initialPageId = "initialPage";
 export interface Styles {
   lineColor: string;
   lineWidth: number;

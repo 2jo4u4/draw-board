@@ -5,6 +5,7 @@ import {
   BaseShape,
   ImageShape,
   PDFShape,
+  SelectSolidRect,
 } from ".";
 import type { SendData, SocketMiddle, Rect, Styles, Vec2, Zoom } from ".";
 import { PreviewWindow } from "./preview";
@@ -59,12 +60,12 @@ export class Board {
   /** 所有被繪製的圖形 */
   private __shapes: BoardShapeLog = new Map<string, BaseShape>();
   get shapes(): BoardShapeLog {
-    return this.__socket?.getShapes || this.__shapes;
+    return this.__socket?.shapes || this.__shapes;
   }
 
-  private __toolsShape: BoardShapeLog = new Map<string, BaseShape>();
-  get toolsShape(): BoardShapeLog {
-    return this.__socket?.getToolsShapes || this.__toolsShape;
+  private __toolsShapes: BoardShapeLog = new Map<string, BaseShape>();
+  get toolsShapes(): BoardShapeLog {
+    return this.__socket?.toolsShapes || this.__toolsShapes;
   }
   /** 紀錄行為 */
   __actionStore: ActionStore[] = [];
@@ -91,7 +92,6 @@ export class Board {
   get socketCtrl() {
     return this.__socket;
   }
-
   private __canEdit = true;
   get canEdit() {
     return this.__canEdit;
@@ -102,13 +102,13 @@ export class Board {
       this.toolsCtrl.switchTypeToViewer();
     }
   }
-
   private cancelLoopId: number;
-
   get size(): [number, number] {
     const { width, height } = this.__canvasStatic;
     return [width, height];
   }
+
+  private refZoomMatrix = new DOMMatrix();
 
   constructor(
     canvas: HTMLCanvasElement | string,
@@ -139,30 +139,29 @@ export class Board {
 
   loop(t: number) {
     this.loopClear();
+    this.refZoomMatrix = UtilTools.translate(
+      { x: this.zoom.x, y: this.zoom.y },
+      { x: 0, y: 0 }
+    ).scale(this.zoom.k, this.zoom.k, 1, this.zoom.x, this.zoom.y);
     this.shapes.forEach((bs) => {
       bs.updata(t);
     });
-    this.toolsShape.forEach((bs) => {
+    this.toolsShapes.forEach((bs) => {
       bs.updata(t);
     });
 
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
-  /** 變更Page */
-  changePage(shapes: BoardShapeLog) {
-    this.__shapes = shapes;
-  }
-
   /** 工具用圖形 */
   addToolsShape(bs: BaseShape) {
-    this.toolsShape.set(bs.id, bs);
+    this.toolsShapes.set(bs.id, bs);
   }
 
-  /** 取得圖形物件 */
-  getShapeById(id: string): BaseShape | undefined {
-    return this.shapes.get(id);
+  removeToolsShape(bs: BaseShape) {
+    this.toolsShapes.delete(bs.id);
   }
+
   /** 添加圖形到圖層級 & 紀錄 */
   addShape(p: Path2D, s: Styles, m: Rect) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys())),
@@ -180,10 +179,8 @@ export class Board {
   deleteShape(shapes: BaseShape[]) {
     const id: string[] = [];
     shapes.forEach((bs) => {
-      if (bs.canSelect && (bs.isSelect || bs.willDelete)) {
-        id.push(bs.id);
-        bs.isDelete = true;
-      }
+      id.push(bs.id);
+      bs.isDelete = true;
     });
     this.logAction("delete", ...id);
   }
@@ -200,17 +197,17 @@ export class Board {
 
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
-    const zoomMatrix = UtilTools.translate(
-      { x: this.zoom.x, y: this.zoom.y },
-      { x: 0, y: 0 }
-    ).scale(this.zoom.k, this.zoom.k, 1, this.zoom.x, this.zoom.y);
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
       useCtx.setTransform(bs.matrix);
       useCtx.drawImage(bs.htmlEl, x, y, width, height);
+    } else if (bs instanceof SelectSolidRect) {
+      const p = new Path2D();
+      p.addPath(bs.pathWithMatrix, this.refZoomMatrix);
+      useCtx.stroke(p);
     } else {
-      useCtx.setTransform(DOMMatrix.fromMatrix(zoomMatrix));
+      useCtx.setTransform(DOMMatrix.fromMatrix(this.refZoomMatrix));
       if (bs.style.fillColor) {
         useCtx.fill(bs.pathWithMatrix);
       } else {
@@ -221,7 +218,9 @@ export class Board {
   }
 
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
-    this.ctx.setTransform(DOMMatrix.fromMatrix(m));
+    this.ctx.setTransform(
+      DOMMatrix.fromMatrix(this.refZoomMatrix).preMultiplySelf(m)
+    );
     UtilTools.injectStyle(this.ctx, s);
     if (s.fillColor) {
       this.ctx.fill(p);
@@ -229,6 +228,11 @@ export class Board {
       this.ctx.stroke(p);
     }
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /** 取得圖形物件 */
+  getShapeById(id: string): BaseShape | undefined {
+    return this.shapes.get(id);
   }
 
   /** 紀錄行為 */
