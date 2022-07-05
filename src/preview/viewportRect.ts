@@ -1,4 +1,4 @@
-import { Board, UtilTools, Rect, defaultTransform, defaultZoom } from "..";
+import { Board, UtilTools, Rect, defaultZoom } from "..";
 import { BaseShape } from "../shape";
 
 const defaultSolidboxStyle: Styles = {
@@ -30,8 +30,8 @@ export class ViewportRect extends BaseShape {
       UtilTools.generateMinRect(
         { x: 0, y: 0 },
         {
-          x: board.canvas.width,
-          y: board.canvas.height,
+          x: board.canvas.width * windowRatio,
+          y: board.canvas.height * windowRatio,
         }
       )
     );
@@ -79,15 +79,22 @@ export class ViewportRect extends BaseShape {
     }
   }
   getNextPreviewZoom({ x, y }: Vec2) {
-    const prevPreviewZoom = this.board.previewCtrl.getPreviewZoom(
-      this.board.zoom,
-      this.windowRatio
-    );
-
+    const { prevPreviewZoom } = this;
     return {
       x: this.zoom.x + x / prevPreviewZoom.k,
       y: this.zoom.y + y / prevPreviewZoom.k,
-      k: prevPreviewZoom.k,
+      k: this.zoom.k,
+    };
+  }
+  getPreviousPreviewZoom(width: number, height: number): Zoom {
+    const {
+      zoom: { k },
+      prevPreviewZoom,
+    } = this;
+    return {
+      x: prevPreviewZoom.x + width * (1 / prevPreviewZoom.k - 1 / (k * 1)),
+      y: prevPreviewZoom.y + height * (1 / prevPreviewZoom.k - 1 / (k * 1)),
+      k,
     };
   }
   updatePageZoom(
@@ -96,7 +103,6 @@ export class ViewportRect extends BaseShape {
     isMaskZoomLimited = false
   ) {
     const { prevPreviewZoom } = this;
-
     const { x, y, k } = this.board.zoom;
     const { x: nx, y: ny } = nextPreviewZoom;
     const { x: px, y: py } = previousPreviewZoom;
@@ -126,21 +132,17 @@ export class ViewportRect extends BaseShape {
       this.windowRatio
     );
     this.prevPreviewZoom = prevPreviewZoom;
-    switch (this.flag) {
-      case "translate": {
-        const nextPreviewZoom = this.getNextPreviewZoom({
-          x: (v.x - this.startPosition.x) * this.zoom.k, // * Math.sqrt(this.zoom.k),
-          y: (v.y - this.startPosition.y) * this.zoom.k, // * Math.sqrt(this.zoom.k),
-        });
+    const [width, height] = this.coveredRect.size;
+    const previousPreviewZoom = this.getPreviousPreviewZoom(
+      width * this.windowRatio,
+      height * this.windowRatio
+    );
+    const nextPreviewZoom = this.getNextPreviewZoom({
+      x: v.x - this.startPosition.x,
+      y: v.y - this.startPosition.y,
+    });
 
-        this.updatePageZoom(nextPreviewZoom, prevPreviewZoom);
-
-        break;
-      }
-      case "nw-scale":
-        break;
-      default:
-    }
+    this.updatePageZoom(nextPreviewZoom, previousPreviewZoom);
   }
   handleInactive(v: Vec2) {
     if (this.shapes.length > 0) {
@@ -182,47 +184,41 @@ export class ViewportRect extends BaseShape {
   }
 
   private assignPathAndDraw(path: Path2D | undefined = undefined) {
-    const zoomPath = new Path2D();
+    const coveredPath = new Path2D();
     const { nw, ne, sw, se } = this.coveredRect;
-    zoomPath.moveTo(nw.x, nw.y);
-    zoomPath.lineTo(ne.x, ne.y);
-    zoomPath.lineTo(se.x, se.y);
-    zoomPath.lineTo(sw.x, sw.y);
-    zoomPath.lineTo(nw.x, nw.y);
+    coveredPath.moveTo(nw.x, nw.y);
+    coveredPath.lineTo(ne.x, ne.y);
+    coveredPath.lineTo(se.x, se.y);
+    coveredPath.lineTo(sw.x, sw.y);
+    coveredPath.lineTo(nw.x, nw.y);
 
-    const { x, y, k } = this.board.previewCtrl.getPreviewZoom(
+    const { x, y, k } = this.board.zoom;
+    const previewZoom = this.board.previewCtrl.getPreviewZoom(
       this.board.zoom,
       this.windowRatio
     );
-    const mp = UtilTools.getZoomedPreviewPath(zoomPath, this.board.zoom, {
-      x,
-      y,
-      k,
-    });
-    const zoomMatrix = new DOMMatrix()
-      .translate(
-        (-defaultZoom.x * defaultZoom.k) / k,
-        (-defaultZoom.y * defaultZoom.k) / k
-      )
-      .preMultiplySelf(
+    const mp = new Path2D(),
+      m = new DOMMatrix();
+
+    mp.addPath(
+      coveredPath,
+      m.preMultiplySelf(
         new DOMMatrix()
-          .scale(1 / k)
-          .translate(x, y)
-          .scale(
-            this.windowRatio,
-            this.windowRatio,
-            1,
-            x * this.windowRatio,
-            y * this.windowRatio
+          .translate(
+            -defaultZoom.x * previewZoom.k,
+            -defaultZoom.y * previewZoom.k
           )
-      );
+          .translate(x * previewZoom.k, y * previewZoom.k)
+          .scale(1 / k)
+      )
+    );
 
     this.bindingBox = mp;
     this.path = this.bindingBox;
     this.board.previewCtrl.renderPathToEvent(
       path || this.bindingBox,
       defaultSolidboxStyle,
-      zoomMatrix
+      new DOMMatrix()
     );
   }
 

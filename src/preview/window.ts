@@ -93,6 +93,10 @@ export class PreviewWindow {
     this.initial();
     this.activeFlag = false;
     this.zoom = this.getPreviewZoom(board.zoom, this.windowRatio);
+    this.onEventStart = this.onEventStart.bind(this);
+    this.onEventMove = this.onEventMove.bind(this);
+    this.onEventEnd = this.onEventEnd.bind(this);
+    this.resizeCanvas = this.resizeCanvas.bind(this);
 
     this.addListener();
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
@@ -125,16 +129,18 @@ export class PreviewWindow {
   }
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
-    const previewZoomMatrix = UtilTools.translate(
-      { x: this.zoom.x, y: this.zoom.y },
-      { x: 0, y: 0 }
-    ).scale(1 / this.zoom.k, 1 / this.zoom.k, 1, this.zoom.x, this.zoom.y);
-    useCtx.setTransform(DOMMatrix.fromMatrix(previewZoomMatrix));
+    const previewZoomMatrix = UtilTools.getZoomMatrix(this.zoom); //.preMultiplySelf(UtilTools.getZoomMatrix(this.zoom));
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
+      useCtx.setTransform(
+        DOMMatrix.fromMatrix(bs.finallyMatrix).preMultiplySelf(
+          previewZoomMatrix
+        )
+      );
       useCtx.drawImage(bs.htmlEl, x, y, width, height);
     } else {
+      useCtx.setTransform(previewZoomMatrix);
       if (bs.style.fillColor) {
         useCtx.fill(bs.pathWithMatrix);
       } else {
@@ -144,8 +150,7 @@ export class PreviewWindow {
     }
   }
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
-    this.ctx.setTransform(DOMMatrix.fromMatrix(m));
-    // const path = UtilTools.getZoomedPreviewPath(p, this.board.zoom, this.zoom);
+    this.ctx.setTransform(m);
     UtilTools.injectStyle(this.ctx, s);
     if (s.fillColor) {
       this.ctx.fill(p);
@@ -155,7 +160,7 @@ export class PreviewWindow {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  initialMask(canvas: HTMLCanvasElement = document.createElement("canvas")) {
+  initialMask(canvas: HTMLCanvasElement) {
     this.__maskCanvas = canvas;
     this.__mask = new PreviewMask(canvas, this.board);
     this.rootBlock.insertAdjacentElement("beforebegin", this.__maskCanvas);
@@ -200,34 +205,34 @@ export class PreviewWindow {
 
   // same as Board.addListener
   private addListener() {
-    this.canvas.addEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.addEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.addEventListener("mousedown", this.onEventStart);
+    this.canvas.addEventListener("touchstart", this.onEventStart);
 
-    this.canvas.addEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.addEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.addEventListener("mousemove", this.onEventMove);
+    this.canvas.addEventListener("touchmove", this.onEventMove);
 
-    this.canvas.addEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.addEventListener("mouseup", this.onEventEnd);
+    this.canvas.addEventListener("mouseleave", this.onEventEnd);
+    this.canvas.addEventListener("touchend", this.onEventEnd);
+    this.canvas.addEventListener("touchcancel", this.onEventEnd);
 
-    window.addEventListener("resize", this.resizeCanvas.bind(this));
+    window.addEventListener("resize", this.resizeCanvas);
   }
 
   // same as Board.removeListener
   private removeListener() {
-    this.canvas.removeEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.removeEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.removeEventListener("mousedown", this.onEventStart);
+    this.canvas.removeEventListener("touchstart", this.onEventStart);
 
-    this.canvas.removeEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.removeEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.removeEventListener("mousemove", this.onEventMove);
+    this.canvas.removeEventListener("touchmove", this.onEventMove);
 
-    this.canvas.removeEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.removeEventListener("mouseup", this.onEventEnd);
+    this.canvas.removeEventListener("mouseleave", this.onEventEnd);
+    this.canvas.removeEventListener("touchend", this.onEventEnd);
+    this.canvas.removeEventListener("touchcancel", this.onEventEnd);
 
-    window.removeEventListener("resize", this.resizeCanvas.bind(this));
+    window.removeEventListener("resize", this.resizeCanvas);
   }
 
   /** 觸摸/滑鼠下壓 */
@@ -333,7 +338,7 @@ export class PreviewWindow {
     const transform = UtilTools.nextTransform(
       UtilTools.nextTransform(
         UtilTools.nextTransform(defaultTransform, {
-          rScale: 1 / currentPageZoom.k,
+          rScale: 1,
         }),
         { rScale: 1 / ratio }
       ),

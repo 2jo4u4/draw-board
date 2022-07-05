@@ -47,8 +47,12 @@ export class PreviewMask {
     this.initial();
     this.activeFlag = false;
     this.zoom = board.previewCtrl.getPreviewZoom(board.zoom, 1);
-
-    this.addListener();
+    this.onEventStart = this.onEventStart.bind(this);
+    this.onEventMove = this.onEventMove.bind(this);
+    this.onEventEnd = this.onEventEnd.bind(this);
+    this.resizeCanvas = this.resizeCanvas.bind(this);
+    this.disableWindowWheel = this.disableWindowWheel.bind(this);
+    this.changeZoomLevel = this.changeZoomLevel.bind(this);
   }
 
   private initial() {
@@ -57,14 +61,18 @@ export class PreviewMask {
 
   open() {
     this.isOpen = true;
+    this.addListener();
   }
 
   close() {
     this.isOpen = false;
+    this.removeListener();
   }
 
   toggle() {
     this.isOpen = !this.isOpen;
+    if (this.isOpen) this.addListener();
+    else this.removeListener();
   }
 
   destroy() {
@@ -73,41 +81,40 @@ export class PreviewMask {
 
   // same as Board.addListener
   private addListener() {
-    this.canvas.addEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.addEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.addEventListener("mousedown", this.onEventStart);
+    this.canvas.addEventListener("touchstart", this.onEventStart);
 
-    this.canvas.addEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.addEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.addEventListener("mousemove", this.onEventMove);
+    this.canvas.addEventListener("touchmove", this.onEventMove);
 
-    this.canvas.addEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.addEventListener("mouseup", this.onEventEnd);
+    this.canvas.addEventListener("mouseleave", this.onEventEnd);
+    this.canvas.addEventListener("touchend", this.onEventEnd);
+    this.canvas.addEventListener("touchcancel", this.onEventEnd);
 
-    this.canvas.addEventListener("wheel", this.changeZoomLevel.bind(this));
-
-    window.addEventListener("wheel", this.disableWindowWheel.bind(this), {
+    window.addEventListener("wheel", this.changeZoomLevel);
+    window.addEventListener("wheel", this.disableWindowWheel, {
       passive: false,
     });
-    window.addEventListener("resize", this.resizeCanvas.bind(this));
+    window.addEventListener("resize", this.resizeCanvas);
   }
 
   // same as Board.removeListener
   private removeListener() {
-    this.canvas.removeEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.removeEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.removeEventListener("mousedown", this.onEventStart);
+    this.canvas.removeEventListener("touchstart", this.onEventStart);
 
-    this.canvas.removeEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.removeEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.removeEventListener("mousemove", this.onEventMove);
+    this.canvas.removeEventListener("touchmove", this.onEventMove);
 
-    this.canvas.removeEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.removeEventListener("mouseup", this.onEventEnd);
+    this.canvas.removeEventListener("mouseleave", this.onEventEnd);
+    this.canvas.removeEventListener("touchend", this.onEventEnd);
+    this.canvas.removeEventListener("touchcancel", this.onEventEnd);
 
-    this.canvas.removeEventListener("wheel", this.changeZoomLevel.bind(this));
-    window.removeEventListener("wheel", this.disableWindowWheel.bind(this));
-    window.removeEventListener("resize", this.resizeCanvas.bind(this));
+    window.removeEventListener("wheel", this.changeZoomLevel);
+    window.removeEventListener("wheel", this.disableWindowWheel);
+    window.removeEventListener("resize", this.resizeCanvas);
   }
 
   private disableWindowWheel(e: Event) {
@@ -122,6 +129,7 @@ export class PreviewMask {
     this.activeFlag = true;
     this.zoom = this.board.previewCtrl.getPreviewZoom(this.board.zoom, 1);
     this.startPosition = position;
+    this.prevPreviewZoom = this.zoom;
   }
   private onEventMove(event: TouchEvent | MouseEvent) {
     const position = this.eventToPosition(event);
@@ -139,7 +147,6 @@ export class PreviewMask {
     if (this.activeFlag) {
       this.activeFlag = false;
     }
-    this.prevPreviewZoom = this.zoom;
   }
 
   // same as Board.eventToPosition
