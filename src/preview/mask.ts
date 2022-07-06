@@ -44,7 +44,6 @@ export class PreviewMask {
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.devicePixelRatio = window.devicePixelRatio;
     this.board = board;
-    this.initial();
     this.activeFlag = false;
     this.zoom = board.previewCtrl.getPreviewZoom(board.zoom, 1);
     this.onEventStart = this.onEventStart.bind(this);
@@ -53,26 +52,26 @@ export class PreviewMask {
     this.resizeCanvas = this.resizeCanvas.bind(this);
     this.disableWindowWheel = this.disableWindowWheel.bind(this);
     this.changeZoomLevel = this.changeZoomLevel.bind(this);
+
+    this.initial();
   }
 
   private initial() {
     this.settingChild();
+    this.addListener();
   }
 
   open() {
     this.isOpen = true;
-    this.addListener();
   }
 
   close() {
     this.isOpen = false;
-    this.removeListener();
   }
 
   toggle() {
-    this.isOpen = !this.isOpen;
-    if (this.isOpen) this.addListener();
-    else this.removeListener();
+    if (this.board.previewCtrl.isOpen) this.close();
+    else this.open();
   }
 
   destroy() {
@@ -133,8 +132,8 @@ export class PreviewMask {
   }
   private onEventMove(event: TouchEvent | MouseEvent) {
     const position = this.eventToPosition(event);
-    // TODO move viewport or wheel
     if (this.activeFlag) {
+      this.board.previewCtrl.hideWindow();
       this.updatePageZoom(position);
     } else {
       this.startPosition = position;

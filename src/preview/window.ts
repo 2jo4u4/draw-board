@@ -177,22 +177,27 @@ export class PreviewWindow {
     this.display();
   }
 
-  close() {
+  hideWindow() {
     this.isOpen = false;
+    this.display();
+  }
+
+  close() {
+    this.hideWindow();
     this.maskCtrl.close();
     this.display();
   }
 
   toggle() {
-    this.isOpen = !this.isOpen;
     this.maskCtrl.toggle();
+    if (this.isOpen) this.close();
+    else this.open();
     this.display();
   }
 
   display() {
-    const display = this.isOpen ? "inline-flex" : "none";
-    this.rootBlock.style.display = display;
-    this.mask.style.display = display;
+    this.mask.style.display = this.maskCtrl.isOpen ? "inline-flex" : "none";
+    this.rootBlock.style.display = this.isOpen ? "inline-flex" : "none";
   }
 
   destroy() {
