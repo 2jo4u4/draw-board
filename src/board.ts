@@ -92,23 +92,14 @@ export class Board {
   get socketCtrl() {
     return this.__socket;
   }
-  private __canEdit = true;
-  get canEdit() {
-    return this.__canEdit;
-  }
-  set canEdit(b: boolean) {
-    this.__canEdit = b;
-    if (!this.__canEdit) {
-      this.toolsCtrl.switchTypeToViewer();
-    }
-  }
+
   private cancelLoopId: number;
   get size(): [number, number] {
     const { width, height } = this.__canvasStatic;
     return [width, height];
   }
 
-  private refZoomMatrix = new DOMMatrix();
+  refZoomMatrix = new DOMMatrix();
 
   constructor(
     canvas: HTMLCanvasElement | string,
@@ -200,7 +191,9 @@ export class Board {
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
-      useCtx.setTransform(bs.matrix);
+      useCtx.setTransform(
+        DOMMatrix.fromMatrix(this.refZoomMatrix).multiply(bs.matrix)
+      );
       useCtx.drawImage(bs.htmlEl, x, y, width, height);
     } else if (bs instanceof SelectSolidRect) {
       const p = new Path2D();

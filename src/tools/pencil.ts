@@ -43,7 +43,7 @@ export class PencilTools implements BaseTools {
     const path = new Path2D();
     path.arc(x, y, this.drawStyle.lineWidth / 2, 0, Math.PI * 2);
     this.shape = new BaseShape(
-      UtilTools.RandomID(),
+      this.manager.specifyNextShapeId,
       this.board,
       path,
       { ...this.drawStyle, fillColor: this.drawStyle.lineColor },
@@ -55,6 +55,7 @@ export class PencilTools implements BaseTools {
       v,
       bss: [this.shape],
     });
+    this.manager.specifyNextShapeId = undefined;
   }
 
   onEventMoveActive(v: Vec2): void {

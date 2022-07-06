@@ -1,4 +1,4 @@
-import type { Board, BaseShape, Styles, Vec2, SendData } from "..";
+import { Board, BaseShape, Styles, Vec2, SendData, UtilTools } from "..";
 import { initialPageId } from "..";
 import type { BaseTools } from "./base";
 import { PencilTools } from "./pencil";
@@ -32,10 +32,18 @@ export class ToolsManagement {
   get toolsType(): ToolsEnum {
     return this.__toolsType;
   }
-
   private __usingTools!: BaseTools;
   get tools() {
     return this.__usingTools;
+  }
+  private __specifyNextShapeId: string | undefined = undefined;
+  get specifyNextShapeId(): string {
+    return this.__specifyNextShapeId || UtilTools.RandomID();
+  }
+  set specifyNextShapeId(id: string | undefined) {
+    if (this.role !== "self") {
+      this.__specifyNextShapeId = id;
+    }
   }
   constructor(
     board: Board,
@@ -75,7 +83,7 @@ export class ToolsManagement {
   }
 
   switchTypeTo(v: ToolsEnum): void {
-    if (this.__toolsType !== v && this.board.canEdit) {
+    if (this.__toolsType !== v) {
       this.__usingTools?.onDestroy();
       this.__toolsType = v;
       switch (v) {

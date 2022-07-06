@@ -11,7 +11,7 @@ import {
   PenData,
   Styles,
   MinRectVec,
-  DemoSocket,
+  Socket,
 } from ".";
 
 const canvas = document.createElement("canvas");
@@ -19,7 +19,6 @@ const grid = document.createElement("canvas");
 const tools = document.createElement("ul");
 tools.style.position = "absolute";
 tools.style.top = "0px";
-const p = document.createElement("p");
 const src = "https://i.imgur.com/m5c8KGt.jpeg";
 const pdfsrc =
   "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/examples/learning/helloworld.pdf";
@@ -207,7 +206,7 @@ const fakePen: PenData = {
 };
 
 function drawGrid() {
-  document.body.append(grid, canvas, p, tools);
+  document.body.append(grid, canvas, tools);
   const { innerWidth, innerHeight, devicePixelRatio } = window;
   grid.setAttribute("width", `${innerWidth * devicePixelRatio}px`);
   grid.setAttribute("height", `${innerHeight * devicePixelRatio}px`);
@@ -251,12 +250,12 @@ function drawGrid() {
 }
 declare global {
   interface Window {
-    socket: DemoSocket;
+    socket: Socket;
     board: Board;
   }
 }
 function develop() {
-  const socket = new DemoSocket(canvas);
+  const socket = new Socket(canvas);
   const board = socket.board;
   window["socket"] = socket;
 
@@ -275,6 +274,23 @@ function develop() {
   const pen = toBaseShape(fakePen, board);
   manager.addBaaseShape(pen);
 
+  (function () {
+    const div = document.createElement("div");
+    div.style.position = "absolute";
+    div.style.bottom = "30px";
+    div.style.left = "30px";
+    div.style.background = "#ffffff";
+    socket.pageRollArray.forEach(([pageid, pg]) => {
+      if (pg.HTMLElement) {
+        pg.HTMLElement.style.border = "1px red solid";
+        pg.HTMLElement.style.width = "200px";
+        pg.HTMLElement.style.height = "100px";
+        div.append(pg.HTMLElement);
+      }
+    });
+    document.body.append(div);
+  })();
+
   function AddTools(v: ToolsEnum) {
     const child = document.createElement("li");
     const text =
@@ -282,7 +298,6 @@ function develop() {
       "未定義工具";
     child.innerText = text;
     child.addEventListener("click", () => {
-      p.innerText = `目前工具：${text}`;
       board.toolsCtrl.switchTypeTo(v);
     });
     tools.appendChild(child);
@@ -291,7 +306,6 @@ function develop() {
   function initialTools() {
     tools.style.cursor = "pointer";
     board.toolsCtrl.switchTypeToViewer();
-    p.innerText = `目前工具： 觀察者`;
     AddTools(ToolsEnum.觀察者);
     AddTools(ToolsEnum.鉛筆);
     AddTools(ToolsEnum.選擇器);
