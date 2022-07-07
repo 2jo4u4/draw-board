@@ -28,6 +28,7 @@ export class ToolsManagement {
   readonly role: ManagerRole;
   readonly board: Board;
   pageid: string;
+  readonly username: string;
   private __toolsType!: ToolsEnum; // 建構時初始化
   get toolsType(): ToolsEnum {
     return this.__toolsType;
@@ -48,11 +49,13 @@ export class ToolsManagement {
   constructor(
     board: Board,
     role: ManagerRole = "self",
-    pageid = initialPageId
+    pageid = initialPageId,
+    username = "You"
   ) {
     this.board = board;
     this.role = role;
     this.pageid = pageid;
+    this.username = username;
     this.switchTypeToViewer(); // 設定初始工具
 
     if (board.socketCtrl && role === "self") {

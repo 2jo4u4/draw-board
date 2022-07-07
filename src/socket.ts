@@ -16,7 +16,7 @@ type PageId = string;
 export type PageRollData = Map<PageId, PageRoll>;
 export type PageShapesData = Map<PageId, BoardShapeLog>;
 export type ToolsData = PageShapesData;
-export type OtherManager = Map<PageId, Map<AcountId, ToolsManagement>>;
+export type OtherManager = Map<AcountId, ToolsManagement>;
 export type DataType =
   | Record<string | keyof ReceviceData, unknown>
   | Record<string | keyof ReceviceData, unknown>[];
@@ -160,9 +160,7 @@ export class Socket implements SocketMiddle {
   }
 
   findManagerInstance(accountid: string): ToolsManagement | undefined {
-    return Array.from(this.otherManager)
-      .find(([pageid, instance]) => instance.has(accountid))?.[1]
-      .get(accountid);
+    return this.otherManager.get(accountid);
   }
 
   addAnyShape(type: "common" | "special", pageid: string, bs: BaseShape) {
@@ -218,25 +216,32 @@ export class Socket implements SocketMiddle {
     this.findManagerInstance(accountid)?.changePage(pageid);
   }
 
-  managerEnterSession(accountid: string, pageid: string) {
-    if (!this.otherManager.has(pageid)) {
-      const tools = new ToolsManagement(this.board, accountid, pageid);
-      tools.switchTypeToSelect();
-      this.otherManager.set(pageid, new Map([[accountid, tools]]));
+  managerEnterSession(accountid: string, username: string) {
+    if (!this.otherManager.has(accountid)) {
+      this.otherManager.set(
+        accountid,
+        new ToolsManagement(this.board, accountid, this.pageId, username)
+      );
     }
   }
 
   managerLeaveSession(accountid: string) {
-    const managers = Array.from(this.otherManager);
-    for (let index = 0; index < managers.length; index++) {
-      const [pageid, manager] = managers[index];
-      if (manager.delete(accountid)) break;
-    }
+    this.otherManager.delete(accountid);
   }
 
   changePage(pageid: string) {
     this.pageId = pageid;
     this.__localManager.changePage(pageid);
+    this.checkPageIdExist(pageid);
+  }
+
+  changePageOtherManager(accountid: string, nextPageid: string) {
+    const manager = this.otherManager.get(accountid);
+    if (manager) {
+      manager.changePage(nextPageid);
+    } else {
+      console.warn("not found manager id", accountid);
+    }
   }
 
   private checkPageIdExist(pageid: string) {

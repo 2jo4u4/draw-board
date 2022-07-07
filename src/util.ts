@@ -2,6 +2,7 @@ export const initialPageId = "initialPage";
 export interface Styles {
   lineColor: string;
   lineWidth: number;
+  opacity?: number;
   fillColor?: string;
   lineDash?: number[];
   lineCap?: "butt" | "round" | "square";
@@ -333,6 +334,7 @@ export class UtilTools {
     const {
       lineColor,
       lineWidth,
+      opacity = 1,
       lineDash = [],
       fillColor = "",
       lineCap = "round",
@@ -342,6 +344,7 @@ export class UtilTools {
     ctx.lineWidth = lineWidth;
     ctx.setLineDash(lineDash);
     ctx.fillStyle = fillColor;
+    ctx.globalAlpha = opacity;
   }
 
   /**

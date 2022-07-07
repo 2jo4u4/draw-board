@@ -288,6 +288,7 @@ function develop() {
         div.append(pg.HTMLElement);
       }
     });
+    socket.pageRollIsFreeze = false;
     document.body.append(div);
   })();
 
