@@ -1,4 +1,4 @@
-import { Board, UtilTools, Rect, defaultZoom } from "..";
+import { Board, UtilTools, defaultTransform, defaultZoom } from "..";
 import { BaseShape } from "../shape";
 
 const defaultSolidboxStyle: Styles = {
@@ -42,18 +42,7 @@ export class ViewportRect extends BaseShape {
   }
 
   /** 設定路徑\矩形\畫出框框, 並打開控制欄位 */
-  settingAndOpen(mrv: Rect = this.coveredRect) {
-    const { x, y, k } = this.board.previewCtrl.getPreviewZoom(
-      this.board.zoom,
-      this.windowRatio
-    );
-    // this.coveredRect = UtilTools.generateMinRect(
-    //   { x: 0, y: 0 },
-    //   {
-    //     x: this.board.canvas.width,
-    //     y: this.board.canvas.height,
-    //   }
-    // );
+  render() {
     this.assignPathAndDraw();
   }
 
@@ -78,7 +67,7 @@ export class ViewportRect extends BaseShape {
       default:
     }
   }
-  getNextPreviewZoom({ x, y }: Vec2) {
+  getNextPageZoom({ x, y }: Vec2) {
     const { prevPreviewZoom } = this;
     return {
       x: this.zoom.x + x / prevPreviewZoom.k,
@@ -86,26 +75,33 @@ export class ViewportRect extends BaseShape {
       k: this.zoom.k,
     };
   }
-  getPreviousPreviewZoom(width: number, height: number): Zoom {
+  getPreviousPageZoom(width: number, height: number): Zoom {
     const {
       zoom: { k },
       prevPreviewZoom,
     } = this;
     return {
-      x: prevPreviewZoom.x + width * (1 / prevPreviewZoom.k - 1 / (k * 1)),
-      y: prevPreviewZoom.y + height * (1 / prevPreviewZoom.k - 1 / (k * 1)),
+      x:
+        prevPreviewZoom.x +
+        (width / prevPreviewZoom.k) *
+          (1 / prevPreviewZoom.k - 1 / (k * this.windowRatio)),
+      y:
+        prevPreviewZoom.y +
+        (height / prevPreviewZoom.k) *
+          (1 / prevPreviewZoom.k - 1 / (k * this.windowRatio)),
       k,
     };
   }
   updatePageZoom(
-    nextPreviewZoom: Zoom,
-    previousPreviewZoom: Zoom,
-    isMaskZoomLimited = false
+    nextPageZoom: Zoom,
+    previousPageZoom: Zoom,
+    isMaskZoomLimited = true
   ) {
     const { prevPreviewZoom } = this;
-    const { x, y, k } = this.board.zoom;
-    const { x: nx, y: ny } = nextPreviewZoom;
-    const { x: px, y: py } = previousPreviewZoom;
+    const { k } = this.board.zoom;
+    const { x: nx, y: ny } = nextPageZoom;
+    const { x: px, y: py } = previousPageZoom;
+
     if (isMaskZoomLimited) {
       if (
         (nx < prevPreviewZoom.x || nx > px) &&
@@ -126,23 +122,24 @@ export class ViewportRect extends BaseShape {
       });
     }
   }
+
   handleActive(v: Vec2) {
     const prevPreviewZoom = this.board.previewCtrl.getPreviewZoom(
-      this.board.zoom,
+      this.board,
       this.windowRatio
     );
     this.prevPreviewZoom = prevPreviewZoom;
     const [width, height] = this.coveredRect.size;
-    const previousPreviewZoom = this.getPreviousPreviewZoom(
+    const previousPageZoom = this.getPreviousPageZoom(
       width * this.windowRatio,
       height * this.windowRatio
     );
-    const nextPreviewZoom = this.getNextPreviewZoom({
+    const nextPageZoom = this.getNextPageZoom({
       x: v.x - this.startPosition.x,
       y: v.y - this.startPosition.y,
     });
 
-    this.updatePageZoom(nextPreviewZoom, previousPreviewZoom);
+    this.updatePageZoom(nextPageZoom, previousPageZoom);
   }
   handleInactive(v: Vec2) {
     if (this.shapes.length > 0) {
@@ -186,40 +183,48 @@ export class ViewportRect extends BaseShape {
   private assignPathAndDraw(path: Path2D | undefined = undefined) {
     const coveredPath = new Path2D();
     const { nw, ne, sw, se } = this.coveredRect;
+    const previewZoom = this.getViewportZoom(this.board, this.windowRatio);
+
     coveredPath.moveTo(nw.x, nw.y);
     coveredPath.lineTo(ne.x, ne.y);
     coveredPath.lineTo(se.x, se.y);
     coveredPath.lineTo(sw.x, sw.y);
     coveredPath.lineTo(nw.x, nw.y);
 
-    const { x, y, k } = this.board.zoom;
-    const previewZoom = this.board.previewCtrl.getPreviewZoom(
-      this.board.zoom,
-      this.windowRatio
-    );
-    const mp = new Path2D(),
-      m = new DOMMatrix();
-
-    mp.addPath(
-      coveredPath,
-      m.preMultiplySelf(
-        new DOMMatrix()
-          .translate(
-            -defaultZoom.x * previewZoom.k,
-            -defaultZoom.y * previewZoom.k
-          )
-          .translate(x * previewZoom.k, y * previewZoom.k)
-          .scale(1 / k)
-      )
-    );
-
-    this.bindingBox = mp;
+    this.bindingBox = coveredPath;
     this.path = this.bindingBox;
     this.board.previewCtrl.renderPathToEvent(
       path || this.bindingBox,
       defaultSolidboxStyle,
-      new DOMMatrix()
+      previewZoom
     );
+  }
+
+  private getViewportZoom(board: Board, ratio: number) {
+    const {
+      zoom: currentPageZoom,
+      previewCtrl: { previewZoom },
+    } = board;
+    const transform = UtilTools.nextTransform(
+      UtilTools.nextTransform(
+        UtilTools.nextTransform(
+          UtilTools.nextTransform(defaultTransform, {
+            rScale: 1 / currentPageZoom.k,
+          }),
+          { rScale: 1 / ratio }
+        ),
+        {
+          dx: currentPageZoom.x,
+          dy: currentPageZoom.y,
+        }
+      ),
+      {
+        dx: -previewZoom.x,
+        dy: -previewZoom.y,
+        rScale: previewZoom.k,
+      }
+    );
+    return transform as DOMMatrix;
   }
 
   private clearAllPath() {

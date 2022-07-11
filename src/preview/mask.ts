@@ -22,7 +22,6 @@ export class PreviewMask {
   private activeFlag: ActiveFlag;
   /** 板子實例 */
   private board: Board;
-  private zoom: Zoom; // previewZoom
   private prevPreviewZoom!: Zoom;
   /** 像素密度 */
   readonly devicePixelRatio!: number;
@@ -45,7 +44,6 @@ export class PreviewMask {
     this.devicePixelRatio = window.devicePixelRatio;
     this.board = board;
     this.activeFlag = false;
-    this.zoom = board.previewCtrl.getPreviewZoom(board.zoom, 1);
     this.onEventStart = this.onEventStart.bind(this);
     this.onEventMove = this.onEventMove.bind(this);
     this.onEventEnd = this.onEventEnd.bind(this);
@@ -126,9 +124,8 @@ export class PreviewMask {
   private onEventStart(event: TouchEvent | MouseEvent): void {
     const position = this.eventToPosition(event);
     this.activeFlag = true;
-    this.zoom = this.board.previewCtrl.getPreviewZoom(this.board.zoom, 1);
     this.startPosition = position;
-    this.prevPreviewZoom = this.zoom;
+    this.prevPreviewZoom = this.board.zoom;
   }
   private onEventMove(event: TouchEvent | MouseEvent) {
     const position = this.eventToPosition(event);
@@ -200,52 +197,26 @@ export class PreviewMask {
   getNextPreviewZoom({ x, y }: Vec2) {
     const { prevPreviewZoom } = this;
     return {
-      x: this.zoom.x + x / prevPreviewZoom.k,
-      y: this.zoom.y + y / prevPreviewZoom.k,
-      k: this.zoom.k,
+      x: prevPreviewZoom.x + x / prevPreviewZoom.k,
+      y: prevPreviewZoom.y + y / prevPreviewZoom.k,
+      k: prevPreviewZoom.k,
     };
   }
-  getPreviousPreviewZoom(width: number, height: number): Zoom {
-    const {
-      zoom: { k },
-      prevPreviewZoom,
-    } = this;
-    return {
-      x: prevPreviewZoom.x + width * (1 / prevPreviewZoom.k - 1 / k),
-      y: prevPreviewZoom.y + height * (1 / prevPreviewZoom.k - 1 / k),
-      k,
-    };
-  }
-  updatePageZoom(position: Vec2, isMaskZoomLimited = false) {
-    const { width, height } = this.ctx.canvas;
-    const { k } = this.board.zoom;
-    const x = -(position.x - this.startPosition.x) / k;
-    const y = -(position.y - this.startPosition.y) / k;
-    const nextPreviewZoom = this.getNextPreviewZoom({ x, y });
-    const previousPreviewZoom = this.getPreviousPreviewZoom(width, height);
-    const { prevPreviewZoom } = this;
-    const { x: nx, y: ny } = nextPreviewZoom;
-    const { x: px, y: py } = previousPreviewZoom;
-    if (isMaskZoomLimited) {
-      if (
-        (nx < prevPreviewZoom.x || nx > px) &&
-        (ny < prevPreviewZoom.y || ny > py)
-      )
-        return;
 
-      this.board.updateZoom({
-        x: nx < prevPreviewZoom.x ? prevPreviewZoom.x : nx > px ? px : nx,
-        y: ny < prevPreviewZoom.y ? prevPreviewZoom.y : ny > py ? py : ny,
-        k,
-      });
-    } else {
-      this.board.updateZoom({
-        x: nx,
-        y: ny,
-        k,
-      });
-    }
+  updatePageZoom(position: Vec2) {
+    const { k } = this.board.zoom;
+    const x = -(position.x - this.startPosition.x) / 1;
+    const y = -(position.y - this.startPosition.y) / 1;
+    const nextPreviewZoom = this.getNextPreviewZoom({ x, y });
+    const { x: nx, y: ny } = nextPreviewZoom;
+
+    this.board.updateZoom({
+      x: nx,
+      y: ny,
+      k,
+    });
   }
+
   changeZoomLevel(e: WheelEvent) {
     const { zoom: currentPageZoom } = this.board;
     const { width, height } = this.ctx.canvas;

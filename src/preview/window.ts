@@ -48,10 +48,10 @@ export class PreviewWindow {
   private activeFlag: ActiveFlag;
   /** 板子實例 */
   private board: Board;
-  private zoom: Zoom; // previewZoom
+  previewZoom: Zoom;
   readonly windowRatio: number;
   get previewRatio() {
-    return `${this.zoom.k * 100}`;
+    return `${this.board.zoom.k * 100}`;
   }
   private __mask!: PreviewMask;
   get maskCtrl() {
@@ -92,7 +92,7 @@ export class PreviewWindow {
     this.__tools = new PreviewTools(board, this.windowRatio);
     this.initial();
     this.activeFlag = false;
-    this.zoom = this.getPreviewZoom(board.zoom, this.windowRatio);
+    this.previewZoom = this.getPreviewZoom(board, this.windowRatio);
     this.onEventStart = this.onEventStart.bind(this);
     this.onEventMove = this.onEventMove.bind(this);
     this.onEventEnd = this.onEventEnd.bind(this);
@@ -129,7 +129,7 @@ export class PreviewWindow {
   }
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
-    const previewZoomMatrix = UtilTools.getZoomMatrix(this.zoom); //.preMultiplySelf(UtilTools.getZoomMatrix(this.zoom));
+    const previewZoomMatrix = UtilTools.getZoomMatrix(this.previewZoom);
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
@@ -150,7 +150,7 @@ export class PreviewWindow {
     }
   }
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
-    this.ctx.setTransform(m);
+    this.ctx.setTransform(m || new DOMMatrix());
     UtilTools.injectStyle(this.ctx, s);
     if (s.fillColor) {
       this.ctx.fill(p);
@@ -173,6 +173,7 @@ export class PreviewWindow {
 
   open() {
     this.isOpen = true;
+    this.updatePreviewZoom();
     this.maskCtrl.open();
     this.display();
   }
@@ -331,19 +332,28 @@ export class PreviewWindow {
     this.rootBlock.appendChild(this.canvas);
   }
 
-  getPreviewZoom(currentPageZoom: Zoom, ratio: number = this.windowRatio) {
-    const canvas = this.canvas;
-    const viewportArea = UtilTools.getPointsBox([
-      { x: 0, y: 0 },
-      {
-        x: canvas.width,
-        y: canvas.height,
-      },
-    ]);
-    const transform = UtilTools.nextTransform(
+  updatePreviewZoom() {
+    this.previewZoom = this.getPreviewZoom(this.board, this.windowRatio);
+  }
+
+  getPreviewZoom(board: Board, ratio: number) {
+    const { canvas, zoom: currentPageZoom } = board;
+    const rightBottomTransform = UtilTools.nextTransform(
       UtilTools.nextTransform(
         UtilTools.nextTransform(defaultTransform, {
-          rScale: 1,
+          rScale: 1 / currentPageZoom.k,
+        }),
+        { rScale: 1 / ratio }
+      ),
+      {
+        dx: currentPageZoom.x / ratio,
+        dy: currentPageZoom.y / ratio,
+      }
+    );
+    const leftTopTransform = UtilTools.nextTransform(
+      UtilTools.nextTransform(
+        UtilTools.nextTransform(defaultTransform, {
+          rScale: 1 / currentPageZoom.k,
         }),
         { rScale: 1 / ratio }
       ),
@@ -352,37 +362,64 @@ export class PreviewWindow {
         dy: currentPageZoom.y,
       }
     );
-    const { x: vRight, y: vTop } = UtilTools.applyTransform(
-      { x: viewportArea.right, y: viewportArea.top },
-      transform
-    );
-    const { x: vLeft, y: vBottom } = UtilTools.applyTransform(
+    const previewTransform = UtilTools.nextTransform(
+      UtilTools.nextTransform(
+        UtilTools.nextTransform(
+          UtilTools.nextTransform(defaultTransform, {
+            rScale: 1 / board.zoom.k,
+          }),
+          { rScale: 1 / ratio }
+        ),
+        {
+          dx: board.zoom.x,
+          dy: board.zoom.y,
+        }
+      ),
       {
-        x: viewportArea.left,
-        y: viewportArea.bottom,
-      },
-      transform
+        dx: -board.zoom.x,
+        dy: -board.zoom.y,
+        rScale: board.zoom.k,
+      }
     );
-
-    // const topLefts = Array.from(this.shapes).map(([_id, shape]) => {
-    //   const { ne, nw, se } = shape.coveredRect;
-    //   return { y: ne.y || nw.y, x: ne.x || se.x };
-    // });
-    // const bottomRights = Array.from(this.shapes).map(([_id, shape]) => {
-    //   const { ne, se, sw } = shape.coveredRect;
-
-    //   return { y: se.y || sw.y, x: ne.x || se.x };
-    // });
-    const { top, right, bottom, left } = UtilTools.getPointsBox([
-      // ...topLefts,
-      // ...bottomRights,
-      { x: vRight, y: vTop },
-      { x: vLeft, y: vBottom },
-    ]);
-    const width = right - left;
-    const height = bottom - top;
-    const x = left;
-    const y = top;
+    const { x: vLeft, y: vTop } = UtilTools.applyTransform(
+      { x: 0, y: 0 },
+      leftTopTransform
+    );
+    const { x: vRight, y: vBottom } = UtilTools.applyTransform(
+      { x: canvas.width, y: canvas.height },
+      rightBottomTransform
+    );
+    const viewportRect: MinRectVec = {
+      leftTop: { x: vLeft, y: vTop },
+      rightBottom: {
+        x: vRight,
+        y: vBottom,
+      },
+    };
+    const { x: cLeft, y: cTop } = UtilTools.applyTransform(
+      { x: 0, y: 0 },
+      previewTransform
+    );
+    const { x: cRight, y: cBottom } = UtilTools.applyTransform(
+      { x: canvas.width, y: canvas.height },
+      previewTransform
+    );
+    const previewRect: MinRectVec = {
+      leftTop: { x: cLeft, y: cTop },
+      rightBottom: {
+        x: cRight,
+        y: cBottom,
+      },
+    };
+    const minRectVec = UtilTools.mergeMinRect(
+      viewportRect,
+      previewRect,
+      ...Array.from(board.shapes).map((bs) => {
+        return bs[1].coveredRectWithmatrix.rectPoint;
+      })
+    );
+    const [width, height] = minRectVec.size;
+    const { x, y } = minRectVec.rectPoint.leftTop;
     const k =
       canvas.width / width < canvas.height / height
         ? canvas.width / width
