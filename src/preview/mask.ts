@@ -61,10 +61,12 @@ export class PreviewMask {
 
   open() {
     this.isOpen = true;
+    this.addWheelListener();
   }
 
   close() {
     this.isOpen = false;
+    this.removeWheelListener();
   }
 
   toggle() {
@@ -89,6 +91,10 @@ export class PreviewMask {
     this.canvas.addEventListener("touchend", this.onEventEnd);
     this.canvas.addEventListener("touchcancel", this.onEventEnd);
 
+    this.addWheelListener();
+  }
+
+  private addWheelListener() {
     window.addEventListener("wheel", this.changeZoomLevel);
     window.addEventListener("wheel", this.disableWindowWheel, {
       passive: false,
@@ -109,6 +115,10 @@ export class PreviewMask {
     this.canvas.removeEventListener("touchend", this.onEventEnd);
     this.canvas.removeEventListener("touchcancel", this.onEventEnd);
 
+    this.removeWheelListener();
+  }
+
+  private removeWheelListener() {
     window.removeEventListener("wheel", this.changeZoomLevel);
     window.removeEventListener("wheel", this.disableWindowWheel);
     window.removeEventListener("resize", this.resizeCanvas);

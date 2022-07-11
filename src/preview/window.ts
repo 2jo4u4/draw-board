@@ -160,9 +160,10 @@ export class PreviewWindow {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  initialMask(canvas: HTMLCanvasElement) {
-    this.__maskCanvas = canvas;
-    this.__mask = new PreviewMask(canvas, this.board);
+  initialMask() {
+    const mask = document.createElement("canvas");
+    this.__maskCanvas = mask;
+    this.__mask = new PreviewMask(mask, this.board);
     this.rootBlock.insertAdjacentElement("beforebegin", this.__maskCanvas);
   }
 
