@@ -5,8 +5,9 @@ import {
   BaseShape,
   ImageShape,
   PDFShape,
+  SelectSolidRect,
 } from ".";
-import type { SendData, SocketMiddle, Rect } from ".";
+import type { SendData, SocketMiddle, Rect, Styles, Vec2, Zoom } from ".";
 import { PreviewWindow } from "./preview";
 import { pencil, earser } from "./assets";
 
@@ -55,30 +56,29 @@ export class Board {
   private mouseFlag: MouseFlag = "inactive";
   zoom: Zoom;
   /** 像素密度 */
-  readonly devicePixelRatio!: number;
+  get devicePixelRatio() {
+    return window.devicePixelRatio;
+  }
   /** 所有被繪製的圖形 */
   private __shapes: BoardShapeLog = new Map<string, BaseShape>();
   get shapes(): BoardShapeLog {
-    return this.__socket?.getShapes || this.__shapes;
+    return this.__socket?.shapes || this.__shapes;
   }
 
-  private __toolsShape: BoardShapeLog = new Map<string, BaseShape>();
-  get toolsShape(): BoardShapeLog {
-    return this.__socket?.getToolsShapes || this.__toolsShape;
+  private __toolsShapes: BoardShapeLog = new Map<string, BaseShape>();
+  get toolsShapes(): BoardShapeLog {
+    return this.__socket?.toolsShapes || this.__toolsShapes;
   }
-  /** 紀錄行為 */
-  __actionStore: ActionStore[] = [];
-  get actionStore(): ActionStore[] {
-    return this.__actionStore;
-  }
-  /** 可記錄步驟總數 */
-  readonly actionStoreLimit = 10;
-  /** 計數器 */
-  actionStoreCount = 0;
 
   /** 工具包中間件 */
   private __tools: ToolsManagement;
+  /**
+   * @deprecated 與 socket 上的local manager同名
+   */
   get toolsCtrl() {
+    return this.__tools;
+  }
+  get localManager() {
     return this.__tools;
   }
   /** Preview中間件 */
@@ -92,23 +92,13 @@ export class Board {
     return this.__socket;
   }
 
-  private __canEdit = true;
-  get canEdit() {
-    return this.__canEdit;
-  }
-  set canEdit(b: boolean) {
-    this.__canEdit = b;
-    if (!this.__canEdit) {
-      this.toolsCtrl.switchTypeToViewer();
-    }
-  }
-
   private cancelLoopId: number;
-
   get size(): [number, number] {
     const { width, height } = this.__canvasStatic;
     return [width, height];
   }
+
+  refZoomMatrix = new DOMMatrix();
 
   constructor(
     canvas: HTMLCanvasElement | string,
@@ -120,7 +110,6 @@ export class Board {
     this.__canvas = UtilTools.getCnavasElement(canvas);
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
-    this.devicePixelRatio = window.devicePixelRatio;
     this.zoom = defaultZoom; // pageZoom, default { x: 0, y: 0, k: 1 }
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__socket = Socket || null;
@@ -142,53 +131,42 @@ export class Board {
 
   loop(t: number) {
     this.loopClear();
+    this.refZoomMatrix = UtilTools.getZoomMatrix(this.zoom);
     this.shapes.forEach((bs) => {
       bs.updata(t);
     });
-    this.toolsShape.forEach((bs) => {
+    this.toolsShapes.forEach((bs) => {
       bs.updata(t);
     });
 
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
-  /** 變更Page */
-  changePage(shapes: BoardShapeLog) {
-    this.__shapes = shapes;
-  }
-
   /** 工具用圖形 */
   addToolsShape(bs: BaseShape) {
-    this.toolsShape.set(bs.id, bs);
+    this.toolsShapes.set(bs.id, bs);
   }
 
-  /** 取得圖形物件 */
-  getShapeById(id: string): BaseShape | undefined {
-    return this.shapes.get(id);
+  removeToolsShape(bs: BaseShape) {
+    this.toolsShapes.delete(bs.id);
   }
-  /** 添加圖形到圖層級 & 紀錄 */
+
   addShape(p: Path2D, s: Styles, m: Rect) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys())),
       bs = new BaseShape(id, this, p, s, m);
     this.addShapeByBs(bs);
   }
 
-  /** 添加圖形到圖層級 & 紀錄 */
   addShapeByBs(bs: BaseShape) {
     this.shapes.set(bs.id, bs);
-    this.logAction("draw", bs.id);
   }
 
-  /** 刪除已選圖形 */
   deleteShape(shapes: BaseShape[]) {
     const id: string[] = [];
     shapes.forEach((bs) => {
-      if (bs.canSelect && (bs.isSelect || bs.willDelete)) {
-        id.push(bs.id);
-        bs.isDelete = true;
-      }
+      id.push(bs.id);
+      bs.isDelete = true;
     });
-    this.logAction("delete", ...id);
   }
 
   renderBaseShape(bs: BaseShape) {
@@ -203,16 +181,21 @@ export class Board {
 
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
-    const zoomMatrix = UtilTools.getZoomMatrix(this.zoom);
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
       useCtx.setTransform(
-        DOMMatrix.fromMatrix(bs.finallyMatrix).preMultiplySelf(zoomMatrix)
+        DOMMatrix.fromMatrix(bs.finallyMatrix).preMultiplySelf(
+          this.refZoomMatrix
+        )
       );
       useCtx.drawImage(bs.htmlEl, x, y, width, height);
+    } else if (bs instanceof SelectSolidRect) {
+      const p = new Path2D();
+      p.addPath(bs.pathWithMatrix, this.refZoomMatrix);
+      useCtx.stroke(p);
     } else {
-      useCtx.setTransform(zoomMatrix);
+      useCtx.setTransform(this.refZoomMatrix);
       if (bs.style.fillColor) {
         useCtx.fill(bs.pathWithMatrix);
       } else {
@@ -223,7 +206,9 @@ export class Board {
   }
 
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
-    this.ctx.setTransform(DOMMatrix.fromMatrix(m));
+    this.ctx.setTransform(
+      DOMMatrix.fromMatrix(this.refZoomMatrix).preMultiplySelf(m)
+    );
     UtilTools.injectStyle(this.ctx, s);
     if (s.fillColor) {
       this.ctx.fill(p);
@@ -233,22 +218,9 @@ export class Board {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  /** 紀錄行為 */
-  logAction(type: Action, ...id: string[]) {
-    const actionNumber = this.actionStoreCount++;
-    this.actionStore.push({ type, actionNumber, shapeId: id });
-    if (this.actionStore.length > this.actionStoreLimit) {
-      const [store, ...other] = this.actionStore;
-      this.__actionStore = other;
-      if (store.type === "delete") {
-        store.shapeId.forEach((id) => {
-          const bs = this.getShapeById(id);
-          if (bs && bs.isDelete) {
-            this.shapes.delete(id);
-          }
-        });
-      }
-    }
+  /** 取得圖形物件 */
+  getShapeById(id: string): BaseShape | undefined {
+    return this.shapes.get(id);
   }
 
   /** 變更鼠標樣式 */
@@ -280,17 +252,6 @@ export class Board {
       this.ctx.isPointInPath(p, v.x, v.y) ||
       this.ctx.isPointInStroke(p, v.x, v.y)
     );
-  }
-
-  /** 上一步 */
-  undo() {}
-  /** 下一步 */
-  redo() {}
-
-  /** 統一與socket middleware溝通 */
-  sendEvent(p: SendData) {
-    // console.log("sendEvent", UserAction[p.type], p);
-    this.socketCtrl?.postData(p);
   }
 
   initialPreview(canvas: HTMLCanvasElement, options: { className?: string }) {

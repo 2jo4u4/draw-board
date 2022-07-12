@@ -1,4 +1,37 @@
-import { Board } from ".";
+export const initialPageId = "initialPage";
+export interface Styles {
+  lineColor: string;
+  lineWidth: number;
+  opacity?: number;
+  fillColor?: string;
+  lineDash?: number[];
+  lineCap?: "butt" | "round" | "square";
+}
+
+export interface Vec2 {
+  x: number;
+  y: number;
+}
+
+export interface MinRectVec {
+  leftTop: Vec2;
+  rightBottom: Vec2;
+}
+
+export interface Transform {
+  a?: number;
+  b?: number;
+  c?: number;
+  d?: number;
+  e?: number;
+  f?: number;
+}
+
+export interface Zoom {
+  x: number;
+  y: number;
+  k: number;
+}
 
 const dashedLine = [10, 10];
 export const padding = 16; // px
@@ -53,6 +86,11 @@ export enum UserAction {
   "橡皮擦(移動)",
   "橡皮擦(結束)",
   "刪除圖形(用選擇器刪除)",
+  "Undo/Redo(刪除圖形)",
+  "Undo/Redo(刪除整頁圖形)",
+  "Undo/Redo(新增圖形)",
+  "Undo/Redo(新增整頁圖形)",
+  "Undo/Redo(變形圖形)",
 }
 export const defaultTransform: Transform = {
   a: 1.0,
@@ -311,6 +349,7 @@ export class UtilTools {
     const {
       lineColor,
       lineWidth,
+      opacity = 1,
       lineDash = [],
       fillColor = "",
       lineCap = "round",
@@ -320,6 +359,7 @@ export class UtilTools {
     ctx.lineWidth = lineWidth;
     ctx.setLineDash(lineDash);
     ctx.fillStyle = fillColor;
+    ctx.globalAlpha = opacity;
   }
 
   /**
@@ -478,6 +518,10 @@ export class Rect {
     const width = Math.sqrt(Math.pow(wx - ox, 2) + Math.pow(wy - oy, 2));
     const height = Math.sqrt(Math.pow(hx - ox, 2) + Math.pow(hy - oy, 2));
     return [width, height];
+  }
+
+  get path2D() {
+    return UtilTools.minRectToPath(this);
   }
 
   clone(): Rect {

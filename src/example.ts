@@ -9,200 +9,32 @@ import {
   ImageData,
   PdfData,
   PenData,
+  Styles,
+  MinRectVec,
+  Socket,
 } from ".";
 
 const canvas = document.createElement("canvas");
 const grid = document.createElement("canvas");
 const tools = document.createElement("ul");
-const p = document.createElement("p");
-const src = "https://i.imgur.com/m5c8KGt.jpeg";
-const pdfsrc =
-  "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/examples/learning/helloworld.pdf";
+tools.style.position = "absolute";
+tools.style.top = "0px";
 const gridCtx = grid.getContext("2d") as CanvasRenderingContext2D;
 
-const fakePdf: PdfData = {
-  objecturl: pdfsrc,
-  objectid: "w_406015b3-14e1-42c5-be40",
-  tools: "pdf",
-  type: "confirmobject",
-  x1: "564",
-  y1: "136",
-  width: "1024",
-  height: "792",
-  pagenumber: "1",
-  application: "TeamShare Preproduction",
-  request_datetime: "2022-06-21T01:55:59",
-  wbid: "wb202204110850301SXIIglv7Q",
-  pageid: "pg202204110850306N57UoQZEV",
-  teamid: "wb202204110850301SXIIglv7Q",
-  accountid: "96172c6e-7ab5-48e3-8656-e77c5dee1354",
-  transform:
-    "0.3276638415638503,0.0,282.24188109562317,0.0,0.3276638415638503,426.5934059065347,0.0,0.0,1.0",
-  socketid: "7n4CLPNxE-y6PSe8AAAF",
-};
-
+const src = "https://i.imgur.com/m5c8KGt.jpeg";
 const fakeImage: ImageData = {
   objecturl: src,
   objectid: "w_a552ffbf-cc75-4f62-b33a",
-  tools: "image",
-  type: "confirmobject",
-  x1: "0",
-  y1: "-198",
-  width: "1920",
-  height: "1280",
-  application: "TeamShare Preproduction",
-  request_datetime: "2022-06-21T01:55:46",
-  wbid: "wb202204110850301SXIIglv7Q",
+  x1: 0,
+  y1: 0,
+  width: 1920,
+  height: 1280,
   pageid: "pg202204110850306N57UoQZEV",
-  teamid: "wb202204110850301SXIIglv7Q",
-  accountid: "96172c6e-7ab5-48e3-8656-e77c5dee1354",
-  transform:
-    "0.18015437495431605,0.0,452.29945734047203,0.0,0.18015437495431605,221.73341292915825,0.0,0.0,1.0",
-  socketid: "7n4CLPNxE-y6PSe8AAAF",
-};
-
-const fakePen: PenData = {
-  objectid: "w_2bcb67cd-4c18-4de9-aca5",
-  tools: "pen",
-  type: "confirmobject",
-  children: [
-    {
-      x: "921",
-      y: "300.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "300.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "300.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "300.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "300.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "301.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-    {
-      x: "921",
-      y: "300.015625",
-      parentid: "w_2bcb67cd-4c18-4de9-aca5",
-      tools: "pen",
-    },
-  ],
-  linewidth: "12",
-  linecolor: "#000000",
-  lineopacity: "ff",
-  application: "TeamShare Preproduction",
-  request_datetime: "2022-06-08T09:15:15",
-  wbid: "wb202204110850301SXIIglv7Q",
-  pageid: "pg202204110850306N57UoQZEV",
-  teamid: "wb202204110850301SXIIglv7Q",
-  accountid: "960acf57-285c-47ad-801b-5128e45db100",
-  transform:
-    "223.60000000000014,0.0,-205014.60000000012,0.0,223.60000000000014,-66894.77812500004,0.0,0.0,1.0",
-  socketid: "BmqFu7DSo6pu92lyAABT",
+  transform: new DOMMatrix().scaleSelf(0.13, 0.13),
 };
 
 function drawGrid() {
-  document.body.append(grid, canvas, p, tools);
+  document.body.append(grid, canvas, tools);
   const { innerWidth, innerHeight, devicePixelRatio } = window;
   grid.setAttribute("width", `${innerWidth * devicePixelRatio}px`);
   grid.setAttribute("height", `${innerHeight * devicePixelRatio}px`);
@@ -244,19 +76,83 @@ function drawGrid() {
     gridCtx.stroke();
   }
 }
-
+declare global {
+  interface Window {
+    socket: Socket;
+    board: Board;
+    openPageRoll: () => void;
+  }
+}
 function develop() {
-  const board = new Board(canvas);
+  const socket = new Socket(canvas);
+  const board = socket.board;
+  window["socket"] = socket;
+
+  // const board = new Board(canvas);
+  // window["board"] = board;
+
+  const manager = board.localManager;
   initialTools();
   initialPreview();
 
-  const pdf = toPdfShape(fakePdf, board);
-  board.addShapeByBs(pdf);
-  const image = toImageShape(fakeImage, board);
-  board.addShapeByBs(image);
+  window["openPageRoll"] = openPageRoll;
+  const image = new ImageShape(fakeImage.objectid, board, fakeImage.objecturl, {
+    x: fakeImage.x1,
+    y: fakeImage.y1,
+    width: fakeImage.width,
+    height: fakeImage.height,
+    transform: fakeImage.transform,
+  });
+  manager.addBaseShape(image);
 
-  const pen = toBaseShape(fakePen, board);
-  board.addShapeByBs(pen);
+  let isOpen = false;
+  let close: () => void;
+  function openPageRoll() {
+    if (isOpen) {
+      close();
+      openPageRoll();
+      return;
+    }
+    const div = document.createElement("div");
+    div.style.position = "absolute";
+    div.style.bottom = "30px";
+    div.style.left = "30px";
+    div.style.background = "#ffffff";
+    socket.pageRollArray.forEach(([pageid, pg]) => {
+      if (pg.HTMLElement) {
+        pg.HTMLElement.style.border = "1px red solid";
+        pg.HTMLElement.style.width = "200px";
+        pg.HTMLElement.style.height = "100px";
+        div.append(pg.HTMLElement);
+      }
+    });
+    socket.pageRollIsFreeze = false;
+    document.body.append(div);
+    isOpen = true;
+    close = () => {
+      isOpen = false;
+      div.remove();
+    };
+  }
+
+  (function () {
+    const undo = document.createElement("button");
+    const redo = document.createElement("button");
+    const clearAll = document.createElement("button");
+    undo.innerText = "上一步";
+    undo.onclick = () => {
+      manager.undo();
+    };
+    redo.innerText = "下一步";
+    redo.onclick = () => {
+      manager.redo();
+    };
+    clearAll.innerText = "清除";
+    clearAll.onclick = () => {
+      manager.clearAllPageShape();
+    };
+    tools.append(undo, redo, clearAll);
+  })();
 
   function AddTools(v: ToolsEnum) {
     const child = document.createElement("li");
@@ -265,16 +161,14 @@ function develop() {
       "未定義工具";
     child.innerText = text;
     child.addEventListener("click", () => {
-      p.innerText = `目前工具：${text}`;
-      board.toolsCtrl.switchTypeTo(v);
+      manager.switchTypeTo(v);
     });
     tools.appendChild(child);
   }
 
   function initialTools() {
     tools.style.cursor = "pointer";
-    board.toolsCtrl.switchTypeToViewer();
-    p.innerText = `目前工具： 觀察者`;
+    board.localManager.switchTypeToViewer();
     AddTools(ToolsEnum.觀察者);
     AddTools(ToolsEnum.鉛筆);
     AddTools(ToolsEnum.選擇器);
@@ -307,64 +201,6 @@ function develop() {
     const { previewCtrl: previewWindow } = board;
     button.onclick = () => previewWindow.toggle();
   }
-}
-
-function toImageShape(data: ImageData, board: Board): ImageShape {
-  const image = new ImageShape(data.objectid, board, data.objecturl, {
-    x: parseInt(data.x1),
-    y: parseInt(data.y1),
-    width: parseInt(data.width),
-    height: parseInt(data.height),
-    transform: getMatrix(data.transform),
-  });
-  return image;
-}
-
-function toPdfShape(data: PdfData, board: Board): PDFShape {
-  const pdf = new PDFShape(data.objectid, board, data.objecturl, {
-    x: parseInt(data.x1),
-    y: parseInt(data.y1),
-    width: parseInt(data.width),
-    height: parseInt(data.height),
-    transform: getMatrix(data.transform),
-  });
-  return pdf;
-}
-
-function toBaseShape(data: PenData, board: Board): BaseShape {
-  const p = new Path2D(),
-    [p1, ...ps] = data.children,
-    s: Styles = {
-      lineColor: data.linecolor,
-      lineWidth: parseInt(data.linewidth),
-      lineDash: [],
-    },
-    x = parseInt(p1.x),
-    y = parseInt(p1.y),
-    matrix = getMatrix(data.transform);
-  let minRect: MinRectVec = {
-    leftTop: { x, y },
-    rightBottom: { x, y },
-  };
-
-  p.moveTo(x, y);
-
-  ps.forEach((point) => {
-    const x = parseInt(point.x);
-    const y = parseInt(point.y);
-    p.lineTo(x, y);
-    minRect = UtilTools.newMinRect({ x, y }, minRect);
-  });
-
-  const bs = new BaseShape(
-    data.objectid,
-    board,
-    p,
-    s,
-    new Rect(minRect),
-    matrix
-  );
-  return bs;
 }
 
 function getMatrix(t: string) {

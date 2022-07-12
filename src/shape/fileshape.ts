@@ -1,6 +1,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import { BaseShape } from ".";
-import { Board, defaultFileShapeStyle, Rect, UtilTools } from "..";
+import { defaultFileShapeStyle, Rect, UtilTools } from "..";
+import type { Board, Vec2, MinRectVec } from "..";
 
 type URLString = string;
 interface FileConfig {
@@ -34,6 +35,9 @@ export class ImageShape extends BaseShape implements FileShape {
     return DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(
       this.stagingMatrix
     );
+  }
+  override set matrix(m: DOMMatrix) {
+    this.__matrix = m;
   }
 
   constructor(
@@ -70,7 +74,6 @@ export class ImageShape extends BaseShape implements FileShape {
     this.$type = "image-shape";
     this.htmlEl = new Image();
     this.startPoint = startPoint;
-    this.board.addShapeByBs(this);
     this.htmlEl.onload = (event) => {
       this.changeLoadStatue();
     };
@@ -116,6 +119,9 @@ export class PDFShape extends BaseShape implements FileShape {
     return DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(
       this.stagingMatrix
     );
+  }
+  override set matrix(m: DOMMatrix) {
+    this.__matrix = m;
   }
   htmlEl: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;

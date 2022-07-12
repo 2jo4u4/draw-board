@@ -1,5 +1,5 @@
 import type { BaseTools, ToolsManagement } from ".";
-import type { Board } from "..";
+import type { Board, Vec2 } from "..";
 import { BaseShape, UserAction } from "..";
 
 /** 擦子 */
@@ -21,12 +21,12 @@ export class EarserTools implements BaseTools {
   onEventStart(v: Vec2): void {
     this.checkAndRender(v);
     this.willDeleteShapes = [];
-    this.board.sendEvent({ type: UserAction["橡皮擦(開始)"], v, bss: [] });
+    this.manager.sendEvent({ type: UserAction["橡皮擦(開始)"], v, bss: [] });
   }
 
   onEventMoveActive(v: Vec2): void {
     this.checkAndRender(v);
-    this.board.sendEvent({
+    this.manager.sendEvent({
       type: UserAction["橡皮擦(移動)"],
       v,
       bss: this.willDeleteShapes,
@@ -36,8 +36,8 @@ export class EarserTools implements BaseTools {
   onEventMoveInActive(v: Vec2): void {}
 
   onEventEnd(v: Vec2): void {
-    this.manager.deleteShape(this.willDeleteShapes);
-    this.board.sendEvent({
+    this.manager.deleteBaseShape(this.willDeleteShapes);
+    this.manager.sendEvent({
       type: UserAction["橡皮擦(結束)"],
       v,
       bss: this.willDeleteShapes,

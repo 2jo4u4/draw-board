@@ -1,5 +1,5 @@
 import type { ToolsManagement } from ".";
-import type { Board, BaseTools } from "..";
+import type { Board, BaseTools, Styles, Vec2, MinRectVec } from "..";
 import { defaultStyle, Rect, UtilTools, UserAction, BaseShape } from "..";
 
 /** 鉛筆 */
@@ -43,18 +43,24 @@ export class PencilTools implements BaseTools {
     const path = new Path2D();
     path.arc(x, y, this.drawStyle.lineWidth / 2, 0, Math.PI * 2);
     this.shape = new BaseShape(
-      UtilTools.RandomID(),
+      this.manager.specifyNextShapeId,
       this.board,
       path,
-      { ...this.drawStyle, fillColor: this.drawStyle.lineColor },
+      this.drawStyle,
       new Rect(this.minRect)
     );
-    this.manager.addBaaseShape(this.shape);
-    this.board.sendEvent({
+    this.manager.addBaseShape(this.shape);
+    this.shape.style = {
+      ...this.drawStyle,
+      fillColor: this.drawStyle.lineColor,
+    };
+
+    this.manager.sendEvent({
       type: UserAction["筆(開始)"],
       v,
       bss: [this.shape],
     });
+    this.manager.specifyNextShapeId = undefined;
   }
 
   onEventMoveActive(v: Vec2): void {
@@ -63,7 +69,7 @@ export class PencilTools implements BaseTools {
     this.path.lineTo(x, y);
     this.shape.reInit(this.path, new Rect(this.minRect));
     this.shape.style = this.drawStyle;
-    this.board.sendEvent({
+    this.manager.sendEvent({
       type: UserAction["筆(移動)"],
       v,
       bss: [this.shape],
@@ -80,7 +86,7 @@ export class PencilTools implements BaseTools {
     const p = new Path2D(this.shape.path);
     p.lineTo(x, y);
     this.shape.reInit(p, new Rect(this.minRect));
-    this.board.sendEvent({
+    this.manager.sendEvent({
       type: UserAction["筆(結束)"],
       v,
       bss: [this.shape],

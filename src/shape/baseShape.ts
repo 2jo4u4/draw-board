@@ -1,3 +1,4 @@
+import type { Styles, Vec2, MinRectVec } from "..";
 import { Board, defaultStyle, UtilTools, Rect } from "..";
 
 interface ShapeAction {
@@ -125,9 +126,6 @@ export class BaseShape {
       this.stagingMatrix
     );
   }
-  /** 紀錄 */
-  private shapeActionLog: ShapeAction[] = [];
-  private shapeActionLimit: number;
   startPosition: Vec2 = { x: 0, y: 0 };
   regPosition: Vec2 = { x: 0, y: 0 };
 
@@ -144,7 +142,6 @@ export class BaseShape {
     this.board = board;
     this.canSelect = true;
     this.__style = style;
-    this.shapeActionLimit = board.actionStoreLimit;
     this.__matrix = DOMMatrix.fromMatrix(matrix);
     this.__path = new Path2D(path);
     this.__coveredRect = coveredRect.clone();
@@ -169,18 +166,6 @@ export class BaseShape {
   updata(t: number) {
     if (!this.isDelete) {
       this.board.renderBaseShape(this);
-    }
-  }
-
-  undo() {}
-  redo() {}
-
-  logAction(type: ShapeActionType, matrix: DOMMatrix) {
-    this.shapeActionLog.push({ type, matrix });
-
-    if (this.shapeActionLog.length > this.shapeActionLimit) {
-      const [remove, ...keep] = this.shapeActionLog;
-      this.shapeActionLog = keep;
     }
   }
 

@@ -1,8 +1,8 @@
+import type { MinRectVec, Styles, Vec2, Zoom } from "..";
 import {
   Board,
   BaseShape,
   BoardShapeLog,
-  BaseTools,
   defaultTransform,
   UtilTools,
   ImageShape,

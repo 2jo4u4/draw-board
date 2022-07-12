@@ -1,4 +1,4 @@
-import { Board } from "..";
+import type { Board, Styles, Vec2 } from "..";
 import { BaseTools } from "..";
 import { ViewportRect } from "./viewportRect";
 

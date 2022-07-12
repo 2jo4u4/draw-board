@@ -1,9 +1,11 @@
-import type { Board, BaseShape } from "..";
+import { UtilTools, initialPageId, UserAction } from "..";
+import type { SendData, Vec2, Board, BaseShape, Styles } from "..";
 import type { BaseTools } from "./base";
 import { PencilTools } from "./pencil";
 import { SelectTools } from "./select";
 import { EarserTools } from "./earser";
 import { ViewerTools } from "./viewer";
+import { LogStore } from "./logStore";
 
 export enum ToolsEnum {
   "選擇器" = "select",
@@ -25,23 +27,43 @@ export enum LineWidth {
  */
 export class ToolsManagement {
   readonly role: ManagerRole;
+  readonly board: Board;
   pageid: string;
+  readonly username: string;
   private __toolsType!: ToolsEnum; // 建構時初始化
   get toolsType(): ToolsEnum {
     return this.__toolsType;
   }
-  /** 板子實例 */
-  readonly board: Board;
-  /** 儲存當前選擇的工具 */
   private __usingTools!: BaseTools;
   get tools() {
     return this.__usingTools;
   }
-  constructor(board: Board, role: ManagerRole = "self", pageid = "") {
+  private __specifyNextShapeId: string | undefined = undefined;
+  get specifyNextShapeId(): string {
+    return this.__specifyNextShapeId || UtilTools.RandomID();
+  }
+  set specifyNextShapeId(id: string | undefined) {
+    if (this.role !== "self") {
+      this.__specifyNextShapeId = id;
+    }
+  }
+  private logStores: Map<string, LogStore>;
+  constructor(
+    board: Board,
+    role: ManagerRole = "self",
+    pageid = initialPageId,
+    username = "You"
+  ) {
     this.board = board;
     this.role = role;
     this.pageid = pageid;
+    this.username = username;
     this.switchTypeToViewer(); // 設定初始工具
+    if (role === "self") {
+      this.logStores = new Map([[pageid, new LogStore()]]);
+    } else {
+      this.logStores = new Map();
+    }
   }
   /** 觸摸/滑鼠下壓 */
   onEventStart(v: Vec2): void {
@@ -67,7 +89,7 @@ export class ToolsManagement {
   }
 
   switchTypeTo(v: ToolsEnum): void {
-    if (this.__toolsType !== v && this.board.canEdit) {
+    if (this.__toolsType !== v) {
       this.__usingTools?.onDestroy();
       this.__toolsType = v;
       switch (v) {
@@ -97,45 +119,136 @@ export class ToolsManagement {
   switchTypeToSelect(): void {
     this.switchTypeTo(ToolsEnum.選擇器);
   }
-
   switchTypeToPencil(): void {
     this.switchTypeTo(ToolsEnum.鉛筆);
   }
-
   switchTypeToShapeGenerate(): void {
     this.switchTypeTo(ToolsEnum.圖形生成);
   }
-
   switchTypeToTextRect(): void {
     this.switchTypeTo(ToolsEnum.文字框);
   }
-
   switchTypeToEraser(): void {
     this.switchTypeTo(ToolsEnum.擦子);
   }
-
   switchTypeToViewer(): void {
     this.switchTypeTo(ToolsEnum.觀察者);
   }
 
-  addBaaseShape(bs: BaseShape) {
-    if (this.role === "self") {
-      this.board.addShapeByBs(bs);
-    } else if (this.board.socketCtrl) {
+  changePage(pageid: string) {
+    const toolsType = this.__toolsType;
+    this.switchTypeToViewer();
+    this.pageid = pageid;
+    this.switchTypeTo(toolsType);
+    if (this.role === "self" && !this.logStores.has(pageid)) {
+      this.logStores.set(pageid, new LogStore());
+    }
+  }
+  addBaseShape(bs: BaseShape) {
+    if (this.board.socketCtrl) {
       this.board.socketCtrl.addBaseShape(this.pageid, bs);
+    } else if (this.role === "self") {
+      this.board.addShapeByBs(bs);
+    }
+    if (this.role === "self") {
+      this.logStores.get(this.pageid)?.log("addShape", { affectShape: [bs] });
+    }
+  }
+  deleteBaseShape(bss: BaseShape[]) {
+    if (this.board.socketCtrl) {
+      this.board.socketCtrl.deleteBaseShape(this.pageid, bss);
+    } else if (this.role === "self") {
+      this.board.deleteShape(bss);
+    }
+    if (this.role === "self") {
+      this.logStores.get(this.pageid)?.log("deleteShape", { affectShape: bss });
+    }
+  }
+  clearAllPageShape() {
+    if (this.board.socketCtrl && this.role !== "self") {
+      this.board.socketCtrl.clearAllPageShape();
+    } else if (this.role === "self") {
+      const bss = Array.from(this.board.shapes)
+        .filter(([id, bs]) => !bs.isDelete)
+        .map(([id, bs]) => {
+          bs.isDelete = true;
+          return bs;
+        });
+      if (bss.length !== 0) {
+        this.logStores
+          .get(this.pageid)
+          ?.log("deleteAllShape", { affectShape: bss });
+      }
     }
   }
   addToolsShape(bs: BaseShape) {
-    if (this.role === "self") {
-    } else if (this.board.socketCtrl) {
+    if (this.board.socketCtrl) {
       this.board.socketCtrl.addToolsShape(this.pageid, bs);
+    } else if (this.role === "self") {
+      this.board.addToolsShape(bs);
     }
   }
-  deleteShape(bss: BaseShape[]) {
+  removeToolsShape(bs: BaseShape) {
+    if (this.board.socketCtrl) {
+      this.board.socketCtrl.removeToolsShape(this.pageid, bs);
+    } else if (this.role === "self") {
+      this.board.removeToolsShape(bs);
+    }
+  }
+  sendEvent(p: SendData) {
+    if (this.role === "self" && this.board.socketCtrl) {
+      this.board.socketCtrl.postData(p);
+    }
+  }
+
+  undo() {
     if (this.role === "self") {
-      this.board.deleteShape(bss);
-    } else if (this.board.socketCtrl) {
-      this.board.socketCtrl.deleteBaseShape(this.pageid, bss);
+      const { type: logtype, bss } =
+        this.logStores.get(this.pageid)?.undo() || {};
+      if (logtype && bss) {
+        let type: UserAction;
+        switch (logtype) {
+          case "addShape":
+            type = UserAction["Undo/Redo(刪除圖形)"];
+            break;
+          case "deleteShape":
+            type = UserAction["Undo/Redo(新增圖形)"];
+            break;
+          case "translateShape":
+            type = UserAction["Undo/Redo(變形圖形)"];
+            break;
+          case "deleteAllShape":
+            type = UserAction["Undo/Redo(新增整頁圖形)"];
+            break;
+        }
+
+        this.sendEvent({ type, bss, v: { x: 0, y: 0 } });
+      }
+    }
+  }
+  redo() {
+    if (this.role === "self") {
+      const { type: logtype, bss } =
+        this.logStores.get(this.pageid)?.redo() || {};
+      if (logtype && bss) {
+        let type: UserAction;
+        switch (logtype) {
+          case "addShape":
+            type = UserAction["Undo/Redo(新增圖形)"];
+            break;
+          case "deleteShape":
+            type = UserAction["Undo/Redo(刪除圖形)"];
+            break;
+          case "translateShape":
+            type = UserAction["Undo/Redo(變形圖形)"];
+            break;
+          case "deleteAllShape":
+            type = UserAction["Undo/Redo(刪除整頁圖形)"];
+            break;
+        }
+
+        this.sendEvent({ type, bss, v: { x: 0, y: 0 } });
+      }
     }
   }
 }

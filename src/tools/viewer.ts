@@ -1,5 +1,5 @@
 import type { BaseTools, ToolsManagement } from ".";
-import type { Board } from "..";
+import type { Board, Vec2 } from "..";
 import { UserAction } from "..";
 
 export class ViewerTools implements BaseTools {
@@ -24,7 +24,7 @@ export class ViewerTools implements BaseTools {
   private justMove(v: Vec2) {
     if (this.regPoint.x !== v.x && this.regPoint.y !== v.y) {
       this.regPoint = v;
-      this.board.sendEvent({ type: UserAction.純移動, v, bss: [] });
+      this.manager.sendEvent({ type: UserAction.純移動, v, bss: [] });
     }
   }
 }

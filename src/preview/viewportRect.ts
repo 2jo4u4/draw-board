@@ -1,4 +1,5 @@
-import { Board, UtilTools, defaultTransform, defaultZoom } from "..";
+import type { Styles, Vec2, Zoom } from "..";
+import { Board, UtilTools, Rect, defaultTransform, defaultZoom } from "..";
 import { BaseShape } from "../shape";
 
 const defaultSolidboxStyle: Styles = {
