@@ -102,9 +102,9 @@ export const defaultTransform: Transform = {
 };
 
 export const defaultZoom: Zoom = {
-  x: 200,
-  y: 100,
-  k: 3,
+  x: 0,
+  y: 0,
+  k: 1,
 };
 
 /** 計算函式 / 工具函式 */
@@ -217,6 +217,16 @@ export class UtilTools {
       dy: pageZoom.y,
     });
     return this.applyTransform({ x, y }, unZoomedTransform);
+  }
+
+  static getZoomMatrix(zoom: Zoom) {
+    return UtilTools.translate({ x: zoom.x, y: zoom.y }, { x: 0, y: 0 }).scale(
+      zoom.k,
+      zoom.k,
+      1,
+      zoom.x,
+      zoom.y
+    );
   }
 
   static getZoomedPath(path: Path2D, zoom: Zoom, windowRatio: number = 1) {

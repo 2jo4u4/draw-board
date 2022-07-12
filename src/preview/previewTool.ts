@@ -29,7 +29,7 @@ export class PreviewTools implements BaseTools {
   }
 
   renderViewport(): void {
-    this.viewportRect.settingAndOpen();
+    this.viewportRect.render();
   }
 
   onDestroy(): void {

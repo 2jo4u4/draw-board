@@ -111,12 +111,15 @@ export class Board {
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
     this.zoom = defaultZoom; // pageZoom, default { x: 0, y: 0, k: 1 }
-    this.initial();
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
     this.__socket = Socket || null;
     this.__tools = new Tools(this);
+    this.onEventStart = this.onEventStart.bind(this);
+    this.onEventMove = this.onEventMove.bind(this);
+    this.onEventEnd = this.onEventEnd.bind(this);
+    this.resizeCanvas = this.resizeCanvas.bind(this);
 
-    this.addListener();
+    this.initial();
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
   }
 
@@ -128,10 +131,7 @@ export class Board {
 
   loop(t: number) {
     this.loopClear();
-    this.refZoomMatrix = UtilTools.translate(
-      { x: this.zoom.x, y: this.zoom.y },
-      { x: 0, y: 0 }
-    ).scale(this.zoom.k, this.zoom.k, 1, this.zoom.x, this.zoom.y);
+    this.refZoomMatrix = UtilTools.getZoomMatrix(this.zoom);
     this.shapes.forEach((bs) => {
       bs.updata(t);
     });
@@ -185,7 +185,9 @@ export class Board {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
       useCtx.setTransform(
-        DOMMatrix.fromMatrix(this.refZoomMatrix).multiply(bs.matrix)
+        DOMMatrix.fromMatrix(bs.finallyMatrix).preMultiplySelf(
+          this.refZoomMatrix
+        )
       );
       useCtx.drawImage(bs.htmlEl, x, y, width, height);
     } else if (bs instanceof SelectSolidRect) {
@@ -193,7 +195,7 @@ export class Board {
       p.addPath(bs.pathWithMatrix, this.refZoomMatrix);
       useCtx.stroke(p);
     } else {
-      useCtx.setTransform(DOMMatrix.fromMatrix(this.refZoomMatrix));
+      useCtx.setTransform(this.refZoomMatrix);
       if (bs.style.fillColor) {
         useCtx.fill(bs.pathWithMatrix);
       } else {
@@ -274,33 +276,33 @@ export class Board {
   }
 
   private addListener() {
-    this.canvas.addEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.addEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.addEventListener("mousedown", this.onEventStart);
+    this.canvas.addEventListener("touchstart", this.onEventStart);
 
-    this.canvas.addEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.addEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.addEventListener("mousemove", this.onEventMove);
+    this.canvas.addEventListener("touchmove", this.onEventMove);
 
-    this.canvas.addEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.addEventListener("mouseup", this.onEventEnd);
+    this.canvas.addEventListener("mouseleave", this.onEventEnd);
+    this.canvas.addEventListener("touchend", this.onEventEnd);
+    this.canvas.addEventListener("touchcancel", this.onEventEnd);
 
-    window.addEventListener("resize", this.resizeCanvas.bind(this));
+    window.addEventListener("resize", this.resizeCanvas);
   }
 
   private removeListener() {
-    this.canvas.removeEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.removeEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.removeEventListener("mousedown", this.onEventStart);
+    this.canvas.removeEventListener("touchstart", this.onEventStart);
 
-    this.canvas.removeEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.removeEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.removeEventListener("mousemove", this.onEventMove);
+    this.canvas.removeEventListener("touchmove", this.onEventMove);
 
-    this.canvas.removeEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.removeEventListener("mouseup", this.onEventEnd);
+    this.canvas.removeEventListener("mouseleave", this.onEventEnd);
+    this.canvas.removeEventListener("touchend", this.onEventEnd);
+    this.canvas.removeEventListener("touchcancel", this.onEventEnd);
 
-    window.removeEventListener("resize", this.resizeCanvas.bind(this));
+    window.removeEventListener("resize", this.resizeCanvas);
   }
 
   private onEventStart(event: TouchEvent | MouseEvent) {

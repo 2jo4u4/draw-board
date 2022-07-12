@@ -197,8 +197,7 @@ function develop() {
   }
 
   function initialMask(button: HTMLButtonElement) {
-    const mask = document.createElement("canvas");
-    board.previewCtrl.initialMask(mask);
+    board.previewCtrl.initialMask();
     const { previewCtrl: previewWindow } = board;
     button.onclick = () => previewWindow.toggle();
   }
