@@ -22,7 +22,6 @@ export class PreviewMask {
   private activeFlag: ActiveFlag;
   /** 板子實例 */
   private board: Board;
-  private zoom: Zoom; // previewZoom
   private prevPreviewZoom!: Zoom;
   /** 像素密度 */
   readonly devicePixelRatio!: number;
@@ -44,27 +43,35 @@ export class PreviewMask {
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.devicePixelRatio = window.devicePixelRatio;
     this.board = board;
-    this.initial();
     this.activeFlag = false;
-    this.zoom = board.previewCtrl.getPreviewZoom(board.zoom, 1);
+    this.onEventStart = this.onEventStart.bind(this);
+    this.onEventMove = this.onEventMove.bind(this);
+    this.onEventEnd = this.onEventEnd.bind(this);
+    this.resizeCanvas = this.resizeCanvas.bind(this);
+    this.disableWindowWheel = this.disableWindowWheel.bind(this);
+    this.changeZoomLevel = this.changeZoomLevel.bind(this);
 
-    this.addListener();
+    this.initial();
   }
 
   private initial() {
     this.settingChild();
+    this.addListener();
   }
 
   open() {
     this.isOpen = true;
+    this.addWheelListener();
   }
 
   close() {
     this.isOpen = false;
+    this.removeWheelListener();
   }
 
   toggle() {
-    this.isOpen = !this.isOpen;
+    if (this.board.previewCtrl.isOpen) this.close();
+    else this.open();
   }
 
   destroy() {
@@ -73,41 +80,48 @@ export class PreviewMask {
 
   // same as Board.addListener
   private addListener() {
-    this.canvas.addEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.addEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.addEventListener("mousedown", this.onEventStart);
+    this.canvas.addEventListener("touchstart", this.onEventStart);
 
-    this.canvas.addEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.addEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.addEventListener("mousemove", this.onEventMove);
+    this.canvas.addEventListener("touchmove", this.onEventMove);
 
-    this.canvas.addEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.addEventListener("mouseup", this.onEventEnd);
+    this.canvas.addEventListener("mouseleave", this.onEventEnd);
+    this.canvas.addEventListener("touchend", this.onEventEnd);
+    this.canvas.addEventListener("touchcancel", this.onEventEnd);
 
-    this.canvas.addEventListener("wheel", this.changeZoomLevel.bind(this));
+    this.addWheelListener();
+  }
 
-    window.addEventListener("wheel", this.disableWindowWheel.bind(this), {
+  private addWheelListener() {
+    window.addEventListener("wheel", this.changeZoomLevel);
+    window.addEventListener("wheel", this.disableWindowWheel, {
       passive: false,
     });
-    window.addEventListener("resize", this.resizeCanvas.bind(this));
+    window.addEventListener("resize", this.resizeCanvas);
   }
 
   // same as Board.removeListener
   private removeListener() {
-    this.canvas.removeEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.removeEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.removeEventListener("mousedown", this.onEventStart);
+    this.canvas.removeEventListener("touchstart", this.onEventStart);
 
-    this.canvas.removeEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.removeEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.removeEventListener("mousemove", this.onEventMove);
+    this.canvas.removeEventListener("touchmove", this.onEventMove);
 
-    this.canvas.removeEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.removeEventListener("mouseup", this.onEventEnd);
+    this.canvas.removeEventListener("mouseleave", this.onEventEnd);
+    this.canvas.removeEventListener("touchend", this.onEventEnd);
+    this.canvas.removeEventListener("touchcancel", this.onEventEnd);
 
-    this.canvas.removeEventListener("wheel", this.changeZoomLevel.bind(this));
-    window.removeEventListener("wheel", this.disableWindowWheel.bind(this));
-    window.removeEventListener("resize", this.resizeCanvas.bind(this));
+    this.removeWheelListener();
+  }
+
+  private removeWheelListener() {
+    window.removeEventListener("wheel", this.changeZoomLevel);
+    window.removeEventListener("wheel", this.disableWindowWheel);
+    window.removeEventListener("resize", this.resizeCanvas);
   }
 
   private disableWindowWheel(e: Event) {
@@ -120,13 +134,13 @@ export class PreviewMask {
   private onEventStart(event: TouchEvent | MouseEvent): void {
     const position = this.eventToPosition(event);
     this.activeFlag = true;
-    this.zoom = this.board.previewCtrl.getPreviewZoom(this.board.zoom, 1);
     this.startPosition = position;
+    this.prevPreviewZoom = this.board.zoom;
   }
   private onEventMove(event: TouchEvent | MouseEvent) {
     const position = this.eventToPosition(event);
-    // TODO move viewport or wheel
     if (this.activeFlag) {
+      this.board.previewCtrl.hideWindow();
       this.updatePageZoom(position);
     } else {
       this.startPosition = position;
@@ -139,7 +153,6 @@ export class PreviewMask {
     if (this.activeFlag) {
       this.activeFlag = false;
     }
-    this.prevPreviewZoom = this.zoom;
   }
 
   // same as Board.eventToPosition
@@ -194,52 +207,26 @@ export class PreviewMask {
   getNextPreviewZoom({ x, y }: Vec2) {
     const { prevPreviewZoom } = this;
     return {
-      x: this.zoom.x + x / prevPreviewZoom.k,
-      y: this.zoom.y + y / prevPreviewZoom.k,
-      k: this.zoom.k,
+      x: prevPreviewZoom.x + x / prevPreviewZoom.k,
+      y: prevPreviewZoom.y + y / prevPreviewZoom.k,
+      k: prevPreviewZoom.k,
     };
   }
-  getPreviousPreviewZoom(width: number, height: number): Zoom {
-    const {
-      zoom: { k },
-      prevPreviewZoom,
-    } = this;
-    return {
-      x: prevPreviewZoom.x + width * (1 / prevPreviewZoom.k - 1 / k),
-      y: prevPreviewZoom.y + height * (1 / prevPreviewZoom.k - 1 / k),
-      k,
-    };
-  }
-  updatePageZoom(position: Vec2, isMaskZoomLimited = false) {
-    const { width, height } = this.ctx.canvas;
-    const { k } = this.board.zoom;
-    const x = -(position.x - this.startPosition.x) / k;
-    const y = -(position.y - this.startPosition.y) / k;
-    const nextPreviewZoom = this.getNextPreviewZoom({ x, y });
-    const previousPreviewZoom = this.getPreviousPreviewZoom(width, height);
-    const { prevPreviewZoom } = this;
-    const { x: nx, y: ny } = nextPreviewZoom;
-    const { x: px, y: py } = previousPreviewZoom;
-    if (isMaskZoomLimited) {
-      if (
-        (nx < prevPreviewZoom.x || nx > px) &&
-        (ny < prevPreviewZoom.y || ny > py)
-      )
-        return;
 
-      this.board.updateZoom({
-        x: nx < prevPreviewZoom.x ? prevPreviewZoom.x : nx > px ? px : nx,
-        y: ny < prevPreviewZoom.y ? prevPreviewZoom.y : ny > py ? py : ny,
-        k,
-      });
-    } else {
-      this.board.updateZoom({
-        x: nx,
-        y: ny,
-        k,
-      });
-    }
+  updatePageZoom(position: Vec2) {
+    const { k } = this.board.zoom;
+    const x = -(position.x - this.startPosition.x) / 1;
+    const y = -(position.y - this.startPosition.y) / 1;
+    const nextPreviewZoom = this.getNextPreviewZoom({ x, y });
+    const { x: nx, y: ny } = nextPreviewZoom;
+
+    this.board.updateZoom({
+      x: nx,
+      y: ny,
+      k,
+    });
   }
+
   changeZoomLevel(e: WheelEvent) {
     const { zoom: currentPageZoom } = this.board;
     const { width, height } = this.ctx.canvas;

@@ -48,10 +48,10 @@ export class PreviewWindow {
   private activeFlag: ActiveFlag;
   /** 板子實例 */
   private board: Board;
-  private zoom: Zoom; // previewZoom
+  previewZoom: Zoom;
   readonly windowRatio: number;
   get previewRatio() {
-    return `${this.zoom.k * 100}`;
+    return `${this.board.zoom.k * 100}`;
   }
   private __mask!: PreviewMask;
   get maskCtrl() {
@@ -92,7 +92,11 @@ export class PreviewWindow {
     this.__tools = new PreviewTools(board, this.windowRatio);
     this.initial();
     this.activeFlag = false;
-    this.zoom = this.getPreviewZoom(board.zoom, this.windowRatio);
+    this.previewZoom = this.getPreviewZoom(board, this.windowRatio);
+    this.onEventStart = this.onEventStart.bind(this);
+    this.onEventMove = this.onEventMove.bind(this);
+    this.onEventEnd = this.onEventEnd.bind(this);
+    this.resizeCanvas = this.resizeCanvas.bind(this);
 
     this.addListener();
     this.cancelLoopId = requestAnimationFrame(this.loop.bind(this));
@@ -125,16 +129,18 @@ export class PreviewWindow {
   }
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
-    const previewZoomMatrix = UtilTools.translate(
-      { x: this.zoom.x, y: this.zoom.y },
-      { x: 0, y: 0 }
-    ).scale(1 / this.zoom.k, 1 / this.zoom.k, 1, this.zoom.x, this.zoom.y);
-    useCtx.setTransform(DOMMatrix.fromMatrix(previewZoomMatrix));
+    const previewZoomMatrix = UtilTools.getZoomMatrix(this.previewZoom);
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
       const { x, y } = bs.coveredRect.nw;
       const [width, height] = bs.coveredRect.size;
+      useCtx.setTransform(
+        DOMMatrix.fromMatrix(bs.finallyMatrix).preMultiplySelf(
+          previewZoomMatrix
+        )
+      );
       useCtx.drawImage(bs.htmlEl, x, y, width, height);
     } else {
+      useCtx.setTransform(previewZoomMatrix);
       if (bs.style.fillColor) {
         useCtx.fill(bs.pathWithMatrix);
       } else {
@@ -144,8 +150,7 @@ export class PreviewWindow {
     }
   }
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
-    this.ctx.setTransform(DOMMatrix.fromMatrix(m));
-    // const path = UtilTools.getZoomedPreviewPath(p, this.board.zoom, this.zoom);
+    this.ctx.setTransform(m || new DOMMatrix());
     UtilTools.injectStyle(this.ctx, s);
     if (s.fillColor) {
       this.ctx.fill(p);
@@ -155,9 +160,10 @@ export class PreviewWindow {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  initialMask(canvas: HTMLCanvasElement = document.createElement("canvas")) {
-    this.__maskCanvas = canvas;
-    this.__mask = new PreviewMask(canvas, this.board);
+  initialMask() {
+    const mask = document.createElement("canvas");
+    this.__maskCanvas = mask;
+    this.__mask = new PreviewMask(mask, this.board);
     this.rootBlock.insertAdjacentElement("beforebegin", this.__maskCanvas);
   }
 
@@ -168,26 +174,32 @@ export class PreviewWindow {
 
   open() {
     this.isOpen = true;
+    this.updatePreviewZoom();
     this.maskCtrl.open();
     this.display();
   }
 
-  close() {
+  hideWindow() {
     this.isOpen = false;
+    this.display();
+  }
+
+  close() {
+    this.hideWindow();
     this.maskCtrl.close();
     this.display();
   }
 
   toggle() {
-    this.isOpen = !this.isOpen;
     this.maskCtrl.toggle();
+    if (this.isOpen) this.close();
+    else this.open();
     this.display();
   }
 
   display() {
-    const display = this.isOpen ? "inline-flex" : "none";
-    this.rootBlock.style.display = display;
-    this.mask.style.display = display;
+    this.mask.style.display = this.maskCtrl.isOpen ? "inline-flex" : "none";
+    this.rootBlock.style.display = this.isOpen ? "inline-flex" : "none";
   }
 
   destroy() {
@@ -200,34 +212,34 @@ export class PreviewWindow {
 
   // same as Board.addListener
   private addListener() {
-    this.canvas.addEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.addEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.addEventListener("mousedown", this.onEventStart);
+    this.canvas.addEventListener("touchstart", this.onEventStart);
 
-    this.canvas.addEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.addEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.addEventListener("mousemove", this.onEventMove);
+    this.canvas.addEventListener("touchmove", this.onEventMove);
 
-    this.canvas.addEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.addEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.addEventListener("mouseup", this.onEventEnd);
+    this.canvas.addEventListener("mouseleave", this.onEventEnd);
+    this.canvas.addEventListener("touchend", this.onEventEnd);
+    this.canvas.addEventListener("touchcancel", this.onEventEnd);
 
-    window.addEventListener("resize", this.resizeCanvas.bind(this));
+    window.addEventListener("resize", this.resizeCanvas);
   }
 
   // same as Board.removeListener
   private removeListener() {
-    this.canvas.removeEventListener("mousedown", this.onEventStart.bind(this));
-    this.canvas.removeEventListener("touchstart", this.onEventStart.bind(this));
+    this.canvas.removeEventListener("mousedown", this.onEventStart);
+    this.canvas.removeEventListener("touchstart", this.onEventStart);
 
-    this.canvas.removeEventListener("mousemove", this.onEventMove.bind(this));
-    this.canvas.removeEventListener("touchmove", this.onEventMove.bind(this));
+    this.canvas.removeEventListener("mousemove", this.onEventMove);
+    this.canvas.removeEventListener("touchmove", this.onEventMove);
 
-    this.canvas.removeEventListener("mouseup", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("mouseleave", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchend", this.onEventEnd.bind(this));
-    this.canvas.removeEventListener("touchcancel", this.onEventEnd.bind(this));
+    this.canvas.removeEventListener("mouseup", this.onEventEnd);
+    this.canvas.removeEventListener("mouseleave", this.onEventEnd);
+    this.canvas.removeEventListener("touchend", this.onEventEnd);
+    this.canvas.removeEventListener("touchcancel", this.onEventEnd);
 
-    window.removeEventListener("resize", this.resizeCanvas.bind(this));
+    window.removeEventListener("resize", this.resizeCanvas);
   }
 
   /** 觸摸/滑鼠下壓 */
@@ -321,16 +333,25 @@ export class PreviewWindow {
     this.rootBlock.appendChild(this.canvas);
   }
 
-  getPreviewZoom(currentPageZoom: Zoom, ratio: number = this.windowRatio) {
-    const canvas = this.canvas;
-    const viewportArea = UtilTools.getPointsBox([
-      { x: 0, y: 0 },
+  updatePreviewZoom() {
+    this.previewZoom = this.getPreviewZoom(this.board, this.windowRatio);
+  }
+
+  getPreviewZoom(board: Board, ratio: number) {
+    const { canvas, zoom: currentPageZoom } = board;
+    const rightBottomTransform = UtilTools.nextTransform(
+      UtilTools.nextTransform(
+        UtilTools.nextTransform(defaultTransform, {
+          rScale: 1 / currentPageZoom.k,
+        }),
+        { rScale: 1 / ratio }
+      ),
       {
-        x: canvas.width,
-        y: canvas.height,
-      },
-    ]);
-    const transform = UtilTools.nextTransform(
+        dx: currentPageZoom.x / ratio,
+        dy: currentPageZoom.y / ratio,
+      }
+    );
+    const leftTopTransform = UtilTools.nextTransform(
       UtilTools.nextTransform(
         UtilTools.nextTransform(defaultTransform, {
           rScale: 1 / currentPageZoom.k,
@@ -342,37 +363,64 @@ export class PreviewWindow {
         dy: currentPageZoom.y,
       }
     );
-    const { x: vRight, y: vTop } = UtilTools.applyTransform(
-      { x: viewportArea.right, y: viewportArea.top },
-      transform
-    );
-    const { x: vLeft, y: vBottom } = UtilTools.applyTransform(
+    const previewTransform = UtilTools.nextTransform(
+      UtilTools.nextTransform(
+        UtilTools.nextTransform(
+          UtilTools.nextTransform(defaultTransform, {
+            rScale: 1 / board.zoom.k,
+          }),
+          { rScale: 1 / ratio }
+        ),
+        {
+          dx: board.zoom.x,
+          dy: board.zoom.y,
+        }
+      ),
       {
-        x: viewportArea.left,
-        y: viewportArea.bottom,
-      },
-      transform
+        dx: -board.zoom.x,
+        dy: -board.zoom.y,
+        rScale: board.zoom.k,
+      }
     );
-
-    // const topLefts = Array.from(this.shapes).map(([_id, shape]) => {
-    //   const { ne, nw, se } = shape.coveredRect;
-    //   return { y: ne.y || nw.y, x: ne.x || se.x };
-    // });
-    // const bottomRights = Array.from(this.shapes).map(([_id, shape]) => {
-    //   const { ne, se, sw } = shape.coveredRect;
-
-    //   return { y: se.y || sw.y, x: ne.x || se.x };
-    // });
-    const { top, right, bottom, left } = UtilTools.getPointsBox([
-      // ...topLefts,
-      // ...bottomRights,
-      { x: vRight, y: vTop },
-      { x: vLeft, y: vBottom },
-    ]);
-    const width = right - left;
-    const height = bottom - top;
-    const x = left;
-    const y = top;
+    const { x: vLeft, y: vTop } = UtilTools.applyTransform(
+      { x: 0, y: 0 },
+      leftTopTransform
+    );
+    const { x: vRight, y: vBottom } = UtilTools.applyTransform(
+      { x: canvas.width, y: canvas.height },
+      rightBottomTransform
+    );
+    const viewportRect: MinRectVec = {
+      leftTop: { x: vLeft, y: vTop },
+      rightBottom: {
+        x: vRight,
+        y: vBottom,
+      },
+    };
+    const { x: cLeft, y: cTop } = UtilTools.applyTransform(
+      { x: 0, y: 0 },
+      previewTransform
+    );
+    const { x: cRight, y: cBottom } = UtilTools.applyTransform(
+      { x: canvas.width, y: canvas.height },
+      previewTransform
+    );
+    const previewRect: MinRectVec = {
+      leftTop: { x: cLeft, y: cTop },
+      rightBottom: {
+        x: cRight,
+        y: cBottom,
+      },
+    };
+    const minRectVec = UtilTools.mergeMinRect(
+      viewportRect,
+      previewRect,
+      ...Array.from(board.shapes).map((bs) => {
+        return bs[1].coveredRectWithmatrix.rectPoint;
+      })
+    );
+    const [width, height] = minRectVec.size;
+    const { x, y } = minRectVec.rectPoint.leftTop;
     const k =
       canvas.width / width < canvas.height / height
         ? canvas.width / width
