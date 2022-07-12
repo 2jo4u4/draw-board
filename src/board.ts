@@ -56,7 +56,9 @@ export class Board {
   private mouseFlag: MouseFlag = "inactive";
   zoom: Zoom;
   /** 像素密度 */
-  readonly devicePixelRatio!: number;
+  get devicePixelRatio() {
+    return window.devicePixelRatio;
+  }
   /** 所有被繪製的圖形 */
   private __shapes: BoardShapeLog = new Map<string, BaseShape>();
   get shapes(): BoardShapeLog {
@@ -67,19 +69,16 @@ export class Board {
   get toolsShapes(): BoardShapeLog {
     return this.__socket?.toolsShapes || this.__toolsShapes;
   }
-  /** 紀錄行為 */
-  __actionStore: ActionStore[] = [];
-  get actionStore(): ActionStore[] {
-    return this.__actionStore;
-  }
-  /** 可記錄步驟總數 */
-  readonly actionStoreLimit = 10;
-  /** 計數器 */
-  actionStoreCount = 0;
 
   /** 工具包中間件 */
   private __tools: ToolsManagement;
+  /**
+   * @deprecated 與 socket 上的local manager同名
+   */
   get toolsCtrl() {
+    return this.__tools;
+  }
+  get localManager() {
     return this.__tools;
   }
   /** Preview中間件 */
@@ -111,7 +110,6 @@ export class Board {
     this.__canvas = UtilTools.getCnavasElement(canvas);
     this.__ctx = UtilTools.checkCanvasContext(this.__canvas);
     this.setStaticCanvas();
-    this.devicePixelRatio = window.devicePixelRatio;
     this.zoom = defaultZoom; // pageZoom, default { x: 0, y: 0, k: 1 }
     this.initial();
     const { Socket, Tools = ToolsManagement } = Object.assign({}, config);
@@ -153,27 +151,22 @@ export class Board {
     this.toolsShapes.delete(bs.id);
   }
 
-  /** 添加圖形到圖層級 & 紀錄 */
   addShape(p: Path2D, s: Styles, m: Rect) {
     const id = UtilTools.RandomID(Array.from(this.shapes.keys())),
       bs = new BaseShape(id, this, p, s, m);
     this.addShapeByBs(bs);
   }
 
-  /** 添加圖形到圖層級 & 紀錄 */
   addShapeByBs(bs: BaseShape) {
     this.shapes.set(bs.id, bs);
-    this.logAction("draw", bs.id);
   }
 
-  /** 刪除已選圖形 */
   deleteShape(shapes: BaseShape[]) {
     const id: string[] = [];
     shapes.forEach((bs) => {
       id.push(bs.id);
       bs.isDelete = true;
     });
-    this.logAction("delete", ...id);
   }
 
   renderBaseShape(bs: BaseShape) {
@@ -228,24 +221,6 @@ export class Board {
     return this.shapes.get(id);
   }
 
-  /** 紀錄行為 */
-  logAction(type: Action, ...id: string[]) {
-    const actionNumber = this.actionStoreCount++;
-    this.actionStore.push({ type, actionNumber, shapeId: id });
-    if (this.actionStore.length > this.actionStoreLimit) {
-      const [store, ...other] = this.actionStore;
-      this.__actionStore = other;
-      if (store.type === "delete") {
-        store.shapeId.forEach((id) => {
-          const bs = this.getShapeById(id);
-          if (bs && bs.isDelete) {
-            this.shapes.delete(id);
-          }
-        });
-      }
-    }
-  }
-
   /** 變更鼠標樣式 */
   changeCursor(
     type:
@@ -275,17 +250,6 @@ export class Board {
       this.ctx.isPointInPath(p, v.x, v.y) ||
       this.ctx.isPointInStroke(p, v.x, v.y)
     );
-  }
-
-  /** 上一步 */
-  undo() {}
-  /** 下一步 */
-  redo() {}
-
-  /** 統一與socket middleware溝通 */
-  sendEvent(p: SendData) {
-    // console.log("sendEvent", UserAction[p.type], p);
-    this.socketCtrl?.postData(p);
   }
 
   initialPreview(canvas: HTMLCanvasElement, options: { className?: string }) {

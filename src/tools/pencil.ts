@@ -46,10 +46,15 @@ export class PencilTools implements BaseTools {
       this.manager.specifyNextShapeId,
       this.board,
       path,
-      { ...this.drawStyle, fillColor: this.drawStyle.lineColor },
+      this.drawStyle,
       new Rect(this.minRect)
     );
-    this.manager.addBaaseShape(this.shape);
+    this.manager.addBaseShape(this.shape);
+    this.shape.style = {
+      ...this.drawStyle,
+      fillColor: this.drawStyle.lineColor,
+    };
+
     this.manager.sendEvent({
       type: UserAction["筆(開始)"],
       v,

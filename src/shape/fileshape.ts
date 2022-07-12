@@ -36,6 +36,9 @@ export class ImageShape extends BaseShape implements FileShape {
       this.stagingMatrix
     );
   }
+  override set matrix(m: DOMMatrix) {
+    this.__matrix = m;
+  }
 
   constructor(
     id: string,
@@ -116,6 +119,9 @@ export class PDFShape extends BaseShape implements FileShape {
     return DOMMatrix.fromMatrix(this.__matrix).preMultiplySelf(
       this.stagingMatrix
     );
+  }
+  override set matrix(m: DOMMatrix) {
+    this.__matrix = m;
   }
   htmlEl: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;

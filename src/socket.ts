@@ -8,7 +8,6 @@ import {
   ToolsManagement,
   ImageShape,
   PDFShape,
-  initialPageId,
 } from ".";
 
 type AcountId = string;
@@ -21,50 +20,45 @@ export type DataType =
   | Record<string | keyof ReceviceData, unknown>
   | Record<string | keyof ReceviceData, unknown>[];
 export type DrawData = PenData | ImageData | PdfData;
+export interface CanvasStyle {
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundPosition?: string;
+  backgroundRepeat?: string;
+}
 export interface ReceviceData {
   pen: PenData;
   image: ImageData;
   pdf: PdfData;
 }
 
-export interface ReceviceSyncBase
-  extends Record<string | keyof ReceviceData, unknown> {
-  objectid: string;
-  tools: "pen" | "pdf" | "image";
-  type: "new" | "confirmobject";
-  application: string;
-  request_datetime: string;
-  wbid: string;
+export interface ReceviceSyncBase {
   pageid: string;
-  teamid: string;
-  accountid: string;
-  transform: string;
-  socketid: string;
+  objectid: string;
+  transform: DOMMatrix;
 }
 
 export interface PenData extends ReceviceSyncBase {
-  linewidth: string;
   linecolor: string;
-  lineopacity: string;
+  linewidth: number;
+  lineopacity: number;
   children: {
-    parentid: string;
-    tools: string;
-    x: string;
-    y: string;
+    x: number | string;
+    y: number | string;
   }[];
 }
 
 export interface FileData extends ReceviceSyncBase {
   objecturl: string;
-  x1: string;
-  y1: string;
-  width: string;
-  height: string;
+  x1: number;
+  y1: number;
+  width: number;
+  height: number;
 }
 
 export interface ImageData extends FileData {}
 export interface PdfData extends FileData {
-  pagenumber: string;
+  pagenumber: number;
 }
 
 export interface SendData {
@@ -113,21 +107,22 @@ export abstract class SocketMiddle {
   abstract addToolsShape(pageid: string, bs: BaseShape): void;
   abstract deleteBaseShape(pageid: string, bss: BaseShape[]): void;
   abstract removeToolsShape(pageid: string, bs: BaseShape): void;
-  abstract localManagerEnter(manager: ToolsManagement): void;
+  abstract clearAllPageShape(): void;
 }
 
-const regexp = new RegExp(/^([0-9]*)((\[")([a-zA-Z]*)(",)([\S\s]*)(]))?/);
+const regexp = new RegExp(/^([0-9]*)([\s\S]*)?/);
 export class Socket implements SocketMiddle {
   readonly board: Board;
   readonly otherManager: OtherManager;
   readonly pageShapes: PageShapesData;
   readonly pageRolls: PageRollData;
   readonly pageToolsShapes: ToolsData;
-  private __localManager!: ToolsManagement;
   get localManager() {
-    return this.__localManager;
+    return this.board.localManager;
   }
-  pageId: string;
+  get pageId() {
+    return this.board.localManager.pageid;
+  }
   get toolsShapes(): BoardShapeLog | undefined {
     return this.pageToolsShapes.get(this.pageId);
   }
@@ -154,7 +149,6 @@ export class Socket implements SocketMiddle {
     this.otherManager = new Map();
     this.pageToolsShapes = new Map();
     this.pageRolls = new Map();
-    this.pageId = initialPageId;
 
     this.board = new Board(canvas, { Socket: this });
   }
@@ -200,16 +194,16 @@ export class Socket implements SocketMiddle {
     this.deleteBaseShape(pageid, bss);
   }
 
+  clearAllPageShape() {
+    this.pageShapes.get(this.pageId)?.clear();
+  }
+
   addToolsShape(pageid: string, bs: BaseShape): void {
     this.addAnyShape("special", pageid, bs);
   }
 
   removeToolsShape(pageid: string, bs: BaseShape) {
     this.pageToolsShapes.get(pageid)?.delete(bs.id);
-  }
-
-  localManagerEnter(manager: ToolsManagement) {
-    this.__localManager = manager;
   }
 
   otherManagerChangePage(accountid: string, pageid: string) {
@@ -230,9 +224,8 @@ export class Socket implements SocketMiddle {
   }
 
   changePage(pageid: string) {
-    this.pageId = pageid;
-    this.__localManager.changePage(pageid);
     this.checkPageIdExist(pageid);
+    this.localManager.changePage(pageid);
   }
 
   changePageOtherManager(accountid: string, nextPageid: string) {
@@ -265,12 +258,35 @@ export class Socket implements SocketMiddle {
 
   addNewPageBySelf(pageid: string) {
     this.checkPageIdExist(pageid);
-    this.__localManager.changePage(pageid);
+    (this.pageRolls.get(pageid) as PageRoll).setInLineStyle({
+      backgroundColor: this.board.rootBlock.style.backgroundColor,
+      backgroundImage: this.board.rootBlock.style.backgroundImage,
+    });
+    this.localManager.changePage(pageid);
   }
 
   addNewPageByOther(pageid: string, account: string) {
     this.checkPageIdExist(pageid);
     this.findManagerInstance(account)?.changePage(pageid);
+  }
+
+  setBoardInLineStyle(style: CanvasStyle) {
+    const {
+      backgroundImage,
+      backgroundColor,
+      backgroundPosition = "center",
+      backgroundRepeat = "no-repeat",
+    } = style;
+    backgroundColor &&
+      (this.board.rootBlock.style.backgroundColor = backgroundColor);
+    backgroundImage &&
+      (this.board.rootBlock.style.backgroundImage = backgroundImage);
+    this.board.rootBlock.style.backgroundPosition = backgroundPosition;
+    this.board.rootBlock.style.backgroundRepeat = backgroundRepeat;
+  }
+
+  setPageRollInLineStyle(pageid: string, style: CanvasStyle) {
+    this.pageRolls.get(pageid)?.setInLineStyle(style);
   }
 
   deletePage(pageid: string) {
@@ -279,30 +295,7 @@ export class Socket implements SocketMiddle {
     this.pageToolsShapes.delete(pageid);
   }
 
-  postData(action: SendData): void {
-    switch (action.type) {
-      case UserAction["刪除圖形(用選擇器刪除)"]:
-        break;
-      case UserAction["筆(開始)"]:
-        break;
-      case UserAction["筆(移動)"]:
-        break;
-      case UserAction["筆(結束)"]:
-        break;
-      case UserAction["選取圖形(開始)"]:
-        break;
-      case UserAction["選取圖形(結束)"]:
-        break;
-      case UserAction["變形(開始)"]:
-        break;
-      case UserAction["變形(過程)"]:
-        break;
-      case UserAction["變形(結束)"]:
-        break;
-      default:
-        break;
-    }
-  }
+  postData(action: SendData): void {}
 
   destroy() {
     this.pageRolls.forEach((item) => {
@@ -314,24 +307,6 @@ export class Socket implements SocketMiddle {
     this.board.destroy();
   }
 
-  protected dataToCanvas<T extends DrawData>(data: T[]) {
-    data.forEach((item) => {
-      switch (item.tools) {
-        case "pdf":
-          this.toPdfShape(item as PdfData);
-          break;
-        case "image":
-          this.toImageShape(item as ImageData);
-          break;
-        case "pen":
-          this.toBaseShape(item as PenData);
-          break;
-        default:
-          break;
-      }
-    });
-  }
-
   messageFormat(s: string): {
     number: number;
     event: ReceivceEvent;
@@ -340,24 +315,20 @@ export class Socket implements SocketMiddle {
     let number = -1;
     let event = ReceivceEvent.未知;
     let data: DataType = {};
-    s.replace(
-      regexp,
-      (
-        os: string,
-        _number: string,
-        p2?: string,
-        p3?: string,
-        _event?: ReceivceEvent,
-        p4?: string,
-        _data?: string
-      ) => {
-        number = Number(_number);
-        _event && (event = _event);
-        _data && (data = JSON.parse(_data));
-
-        return os;
+    s.replace(regexp, (os: string, _number: string, _d?: string) => {
+      number = Number(_number);
+      if (_d) {
+        const d = JSON.parse(_d);
+        if (Array.isArray(d)) {
+          event = d[0];
+          data = d[1];
+        } else {
+          data = d;
+        }
       }
-    );
+
+      return os;
+    });
 
     return { number, event, data };
   }
@@ -367,12 +338,13 @@ export class Socket implements SocketMiddle {
       [p1, ...ps] = data.children,
       s: Styles = {
         lineColor: data.linecolor,
-        lineWidth: parseInt(data.linewidth),
+        lineWidth: data.linewidth,
         lineDash: [],
+        opacity: data.lineopacity,
       },
-      x = parseInt(p1.x),
-      y = parseInt(p1.y),
-      matrix = this.getMatrix(data.transform);
+      x = parseInt(p1.x as string),
+      y = parseInt(p1.y as string),
+      matrix = data.transform;
     let minRect: MinRectVec = {
       leftTop: { x, y },
       rightBottom: { x, y },
@@ -381,8 +353,8 @@ export class Socket implements SocketMiddle {
     p.moveTo(x, y);
 
     ps.forEach((point) => {
-      const x = parseInt(point.x);
-      const y = parseInt(point.y);
+      const x = parseInt(point.x as string);
+      const y = parseInt(point.y as string);
       p.lineTo(x, y);
       minRect = UtilTools.newMinRect({ x, y }, minRect);
     });
@@ -401,11 +373,11 @@ export class Socket implements SocketMiddle {
 
   protected toImageShape(data: ImageData) {
     const bs = new ImageShape(data.objectid, this.board, data.objecturl, {
-      x: parseInt(data.x1),
-      y: parseInt(data.y1),
-      width: parseInt(data.width),
-      height: parseInt(data.height),
-      transform: this.getMatrix(data.transform),
+      x: data.x1,
+      y: data.y1,
+      width: data.width,
+      height: data.height,
+      transform: data.transform,
     });
 
     this.addBaseShape(data.pageid, bs);
@@ -413,11 +385,11 @@ export class Socket implements SocketMiddle {
 
   protected toPdfShape(data: PdfData) {
     const bs = new PDFShape(data.objectid, this.board, data.objecturl, {
-      x: parseInt(data.x1),
-      y: parseInt(data.y1),
-      width: parseInt(data.width),
-      height: parseInt(data.height),
-      transform: this.getMatrix(data.transform),
+      x: data.x1,
+      y: data.y1,
+      width: data.width,
+      height: data.height,
+      transform: data.transform,
     });
     this.addBaseShape(data.pageid, bs);
   }
@@ -446,31 +418,57 @@ export class Socket implements SocketMiddle {
  */
 export const DemoSocket = Socket;
 export class PageRoll {
-  private cancelLoopId: number;
+  private cancelLoopId: number | null = null;
   private socket: Socket;
   private canvas: HTMLCanvasElement | null;
   private ctx: CanvasRenderingContext2D | null;
   private pageid: string;
-  freeze: boolean;
+  private __freeze!: boolean;
+  get freeze() {
+    return this.__freeze;
+  }
+  set freeze(b: boolean) {
+    this.__freeze = b;
+    if (this.__freeze) {
+      this.cancelLoopId && cancelAnimationFrame(this.cancelLoopId);
+      this.cancelLoopId = null;
+    } else {
+      this.cancelLoopId = requestAnimationFrame(this.render.bind(this));
+    }
+  }
   get HTMLElement() {
     return this.canvas;
   }
-  constructor(socket: Socket, pageid: string, freeze = true) {
+  constructor(socket: Socket, pageid: string, freeze = false) {
     this.canvas = document.createElement("canvas");
     this.ctx = this.canvas.getContext("2d");
     this.socket = socket;
     this.pageid = pageid;
     this.freeze = freeze;
-    this.cancelLoopId = requestAnimationFrame(this.render.bind(this));
+  }
+
+  setInLineStyle(style: CanvasStyle) {
+    if (this.canvas) {
+      const {
+        backgroundImage,
+        backgroundColor,
+        backgroundPosition = "center",
+        backgroundRepeat = "no-repeat",
+      } = style;
+      backgroundColor && (this.canvas.style.backgroundColor = backgroundColor);
+      backgroundImage && (this.canvas.style.backgroundImage = backgroundImage);
+      this.canvas.style.backgroundPosition = backgroundPosition;
+      this.canvas.style.backgroundRepeat = backgroundRepeat;
+    }
   }
 
   private render(t: number) {
     if (!this.freeze) {
       const [width, height] = this.socket.board.size;
       const canvas = this.canvas as HTMLCanvasElement;
-      const ctx = this.ctx as CanvasRenderingContext2D;
       canvas.width = width;
       canvas.height = height;
+      const ctx = this.ctx as CanvasRenderingContext2D;
       this.socket.pageShapes.get(this.pageid)?.forEach((bs) => {
         if (!bs.isDelete) {
           UtilTools.injectStyle(ctx, bs.style);
@@ -493,14 +491,14 @@ export class PageRoll {
           ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
       });
+      this.cancelLoopId = requestAnimationFrame(this.render.bind(this));
     }
-    this.cancelLoopId = requestAnimationFrame(this.render.bind(this));
   }
 
   destory() {
+    this.cancelLoopId && cancelAnimationFrame(this.cancelLoopId);
     this.canvas?.remove();
     this.canvas = null;
     this.ctx = null;
-    cancelAnimationFrame(this.cancelLoopId);
   }
 }

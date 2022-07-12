@@ -86,6 +86,11 @@ export enum UserAction {
   "橡皮擦(移動)",
   "橡皮擦(結束)",
   "刪除圖形(用選擇器刪除)",
+  "Undo/Redo(刪除圖形)",
+  "Undo/Redo(刪除整頁圖形)",
+  "Undo/Redo(新增圖形)",
+  "Undo/Redo(新增整頁圖形)",
+  "Undo/Redo(變形圖形)",
 }
 export const defaultTransform: Transform = {
   a: 1.0,
