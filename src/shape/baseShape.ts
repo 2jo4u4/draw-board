@@ -1,15 +1,6 @@
 import type { Styles, Vec2, MinRectVec } from "..";
 import { Board, defaultStyle, UtilTools, Rect } from "..";
 
-interface ShapeAction {
-  type: ShapeActionType;
-  matrix: DOMMatrix;
-}
-
-const defWillDeleteStyle: Styles = {
-  ...defaultStyle,
-  lineColor: "red",
-};
 /**
  * 圖形基本類
  */
@@ -21,7 +12,7 @@ export class BaseShape {
   private __style: Styles;
   get style() {
     if (this.__willDelete) {
-      return defWillDeleteStyle;
+      return { ...this.__style, lineColor: "red" };
     } else {
       return this.__style;
     }
@@ -51,6 +42,7 @@ export class BaseShape {
   get coveredRectWithmatrix(): Rect {
     return this.__coveredRect.clone().transferSelf(this.finallyMatrix);
   }
+
   set coveredRect(r: Rect) {
     this.__coveredRect = r;
   }
@@ -59,17 +51,11 @@ export class BaseShape {
   }
   set minRect(v: MinRectVec) {}
   /** 判斷是否被選取的路徑 */
-  private __bindingBox: Path2D;
   get bindingBox(): Path2D {
-    return this.__bindingBox;
+    return UtilTools.minRectToPath(this.coveredRect);
   }
   get bindingBoxWithMatrix(): Path2D {
-    const p = new Path2D();
-    p.addPath(this.__bindingBox, this.finallyMatrix);
-    return p;
-  }
-  set bindingBox(p: Path2D) {
-    this.__bindingBox = p;
+    return UtilTools.minRectToPath(this.coveredRectWithmatrix);
   }
 
   /** 可否選取 */
@@ -129,6 +115,14 @@ export class BaseShape {
   startPosition: Vec2 = { x: 0, y: 0 };
   regPosition: Vec2 = { x: 0, y: 0 };
 
+  get ctxContent() {
+    return this.isSelect ? this.board.ctx : this.board.ctxStatic;
+  }
+
+  get zoomMatrix() {
+    return this.board.refZoomMatrix;
+  }
+
   constructor(
     id: string,
     board: Board,
@@ -145,7 +139,6 @@ export class BaseShape {
     this.__matrix = DOMMatrix.fromMatrix(matrix);
     this.__path = new Path2D(path);
     this.__coveredRect = coveredRect.clone();
-    this.__bindingBox = UtilTools.minRectToPath(coveredRect);
   }
 
   transferStart(v: Vec2, m: DOMMatrix, type: ShapeActionType | null): void {
@@ -165,7 +158,15 @@ export class BaseShape {
 
   updata(t: number) {
     if (!this.isDelete) {
-      this.board.renderBaseShape(this);
+      const ctx = this.ctxContent;
+      UtilTools.injectStyle(ctx, this.style);
+      ctx.setTransform(this.zoomMatrix);
+      if (this.style.fillColor) {
+        ctx.fill(this.pathWithMatrix);
+      } else {
+        ctx.stroke(this.pathWithMatrix);
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
   }
 
@@ -173,6 +174,5 @@ export class BaseShape {
     this.__path = new Path2D(path);
     const newRect = minRect.clone();
     this.coveredRect = newRect;
-    this.bindingBox = UtilTools.minRectToPath(newRect);
   }
 }

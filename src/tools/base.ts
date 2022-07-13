@@ -7,4 +7,5 @@ export abstract class BaseTools {
   abstract onEventMoveInActive(v: Vec2): void;
   abstract onEventEnd(v: Vec2): void;
   abstract onDestroy(): void;
+  abstract onInit(): void;
 }

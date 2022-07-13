@@ -192,10 +192,9 @@ export class ViewportRect extends BaseShape {
     coveredPath.lineTo(sw.x, sw.y);
     coveredPath.lineTo(nw.x, nw.y);
 
-    this.bindingBox = coveredPath;
-    this.path = this.bindingBox;
+    this.path = coveredPath;
     this.board.previewCtrl.renderPathToEvent(
-      path || this.bindingBox,
+      path || this.path,
       defaultSolidboxStyle,
       previewZoom
     );
@@ -230,7 +229,6 @@ export class ViewportRect extends BaseShape {
 
   private clearAllPath() {
     const once = new Path2D();
-    this.bindingBox = once;
     this.path = once;
   }
 }

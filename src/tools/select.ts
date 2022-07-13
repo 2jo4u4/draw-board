@@ -27,6 +27,9 @@ export class SelectTools implements BaseTools {
     manager.addToolsShape(this.selectSolidRect);
   }
 
+  onInit(): void {
+    this.manager.addToolsShape(this.selectSolidRect);
+  }
   onDestroy(): void {
     this.recoverShapesStatus();
     this.selectSolidRect.closeSolidRect();
@@ -88,25 +91,19 @@ export class SelectTools implements BaseTools {
 
   private select(v: Vec2) {
     const p = new Path2D();
-    const { x, y } = UtilTools.unZoomPosition(
-      this.board.zoom,
-      this.startPosition
-    );
-    const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
-    p.rect(x, y, nX - x, nY - y);
+    const { x: x1, y: y1 } = this.startPosition;
+    const { x: x2, y: y2 } = v;
+    p.rect(x1, y1, x2 - x1, y2 - y1);
     this.selectSolidRect.path = p;
+    this.manager.sendEvent({ type: UserAction["選取圖形(移動)"], v, bss: [] });
   }
 
   private selectEnd(v: Vec2) {
     this.selectSolidRect.path = new Path2D();
     let minRectVec!: Rect, // 紀錄最小矩形
       shape: [string, BaseShape][] = [];
-    const { x, y } = UtilTools.unZoomPosition(
-      this.board.zoom,
-      this.startPosition
-    );
-    const { x: nX, y: nY } = UtilTools.unZoomPosition(this.board.zoom, v);
-    if (x === nX && y === nY) {
+
+    if (this.startPosition.x === v.x && this.startPosition.y === v.y) {
       // 單點選擇圖形
       const single = Array.from(this.board.shapes)
         .reverse()
@@ -122,7 +119,10 @@ export class SelectTools implements BaseTools {
       }
     } else {
       // 移動結束
-      const minRect = UtilTools.generateMinRect({ x: nX, y: nY }, { x, y }); // 伸縮框的範圍
+      const minRect = UtilTools.generateMinRect(
+        { x: v.x, y: v.y },
+        { x: this.startPosition.x, y: this.startPosition.y }
+      ); // 伸縮框的範圍
       // 判定是否有圖形在此路徑內
       const regBS = Array.from(this.board.shapes).filter(
         (item) =>
@@ -192,8 +192,7 @@ export class SelectTools implements BaseTools {
   /** 是否選中 */
   private isSelected(v: Vec2 | Rect, bs: BaseShape): Boolean {
     if (UtilTools.isVec2(v)) {
-      const nV = UtilTools.unZoomPosition(this.board.zoom, v as Vec2);
-      return this.board.checkPointInPath(bs.bindingBoxWithMatrix, nV);
+      return this.board.checkPointInPath(bs.bindingBoxWithMatrix, v);
     } else {
       return this.isInRectBlock(v, bs);
     }

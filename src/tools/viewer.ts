@@ -11,6 +11,7 @@ export class ViewerTools implements BaseTools {
     this.board = board;
     this.manager = manager;
   }
+  onInit(): void {}
   onDestroy(): void {}
   onEventStart(v: Vec2): void {}
   onEventMoveActive(v: Vec2): void {

@@ -32,13 +32,12 @@ export interface ReceviceData {
   pdf: PdfData;
 }
 
-export interface ReceviceSyncBase {
-  pageid: string;
+export interface ShapeBase {
   objectid: string;
   transform: DOMMatrix;
 }
 
-export interface PenData extends ReceviceSyncBase {
+export interface PenData extends ShapeBase {
   linecolor: string;
   linewidth: number;
   lineopacity: number;
@@ -48,7 +47,7 @@ export interface PenData extends ReceviceSyncBase {
   }[];
 }
 
-export interface FileData extends ReceviceSyncBase {
+export interface FileData extends ShapeBase {
   objecturl: string;
   x1: number;
   y1: number;
@@ -295,7 +294,11 @@ export class Socket implements SocketMiddle {
     this.pageToolsShapes.delete(pageid);
   }
 
-  postData(action: SendData): void {}
+  postData(action: SendData): void {
+    if (action.type !== UserAction.純移動) {
+      // console.log(UserAction[action.type], action);
+    }
+  }
 
   destroy() {
     this.pageRolls.forEach((item) => {
@@ -333,7 +336,7 @@ export class Socket implements SocketMiddle {
     return { number, event, data };
   }
 
-  protected toBaseShape(data: PenData) {
+  protected toBaseShape(pageid: string, data: PenData) {
     const p = new Path2D(),
       [p1, ...ps] = data.children,
       s: Styles = {
@@ -368,10 +371,10 @@ export class Socket implements SocketMiddle {
       matrix
     );
 
-    this.addBaseShape(data.pageid, bs);
+    this.addBaseShape(pageid, bs);
   }
 
-  protected toImageShape(data: ImageData) {
+  protected toImageShape(pageid: string, data: ImageData) {
     const bs = new ImageShape(data.objectid, this.board, data.objecturl, {
       x: data.x1,
       y: data.y1,
@@ -380,10 +383,10 @@ export class Socket implements SocketMiddle {
       transform: data.transform,
     });
 
-    this.addBaseShape(data.pageid, bs);
+    this.addBaseShape(pageid, bs);
   }
 
-  protected toPdfShape(data: PdfData) {
+  protected toPdfShape(pageid: string, data: PdfData) {
     const bs = new PDFShape(data.objectid, this.board, data.objecturl, {
       x: data.x1,
       y: data.y1,
@@ -391,7 +394,7 @@ export class Socket implements SocketMiddle {
       height: data.height,
       transform: data.transform,
     });
-    this.addBaseShape(data.pageid, bs);
+    this.addBaseShape(pageid, bs);
   }
 
   protected getMatrix(t: string) {

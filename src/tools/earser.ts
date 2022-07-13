@@ -13,7 +13,7 @@ export class EarserTools implements BaseTools {
     this.manager = manager;
     board.changeCursor("earser");
   }
-
+  onInit(): void {}
   onDestroy(): void {
     this.board.changeCursor("default");
   }

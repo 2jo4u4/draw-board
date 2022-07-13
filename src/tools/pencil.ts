@@ -28,6 +28,7 @@ export class PencilTools implements BaseTools {
     board.changeCursor("pencil");
   }
 
+  onInit(): void {}
   onDestroy(): void {
     this.board.changeCursor("default");
   }
@@ -37,7 +38,7 @@ export class PencilTools implements BaseTools {
   }
 
   onEventStart(v: Vec2): void {
-    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+    const { x, y } = v;
     this.minRect = { leftTop: { x, y }, rightBottom: { x, y } };
     this.path = UtilTools.minRectToPath(this.minRect);
     const path = new Path2D();
@@ -49,6 +50,7 @@ export class PencilTools implements BaseTools {
       this.drawStyle,
       new Rect(this.minRect)
     );
+    this.shape.canSelect = false;
     this.manager.addBaseShape(this.shape);
     this.shape.style = {
       ...this.drawStyle,
@@ -64,7 +66,7 @@ export class PencilTools implements BaseTools {
   }
 
   onEventMoveActive(v: Vec2): void {
-    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+    const { x, y } = v;
     this.minRect = UtilTools.newMinRect({ x, y }, this.minRect);
     this.path.lineTo(x, y);
     this.shape.reInit(this.path, new Rect(this.minRect));
@@ -81,11 +83,12 @@ export class PencilTools implements BaseTools {
   }
 
   onEventEnd(v: Vec2): void {
-    const { x, y } = UtilTools.unZoomPosition(this.board.zoom, v);
+    const { x, y } = v;
     this.minRect = UtilTools.newMinRect({ x, y }, this.minRect);
     const p = new Path2D(this.shape.path);
     p.lineTo(x, y);
     this.shape.reInit(p, new Rect(this.minRect));
+    this.shape.canSelect = true;
     this.manager.sendEvent({
       type: UserAction["筆(結束)"],
       v,

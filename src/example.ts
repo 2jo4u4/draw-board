@@ -1,18 +1,14 @@
 import {
   Board,
-  Rect,
   ToolsEnum,
-  UtilTools,
-  BaseShape,
   ImageShape,
   PDFShape,
   ImageData,
   PdfData,
-  PenData,
-  Styles,
-  MinRectVec,
   Socket,
 } from ".";
+
+console.clear();
 
 const canvas = document.createElement("canvas");
 const grid = document.createElement("canvas");
@@ -22,15 +18,27 @@ tools.style.top = "0px";
 const gridCtx = grid.getContext("2d") as CanvasRenderingContext2D;
 
 const src = "https://i.imgur.com/m5c8KGt.jpeg";
+const pdfsrc =
+  "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/examples/learning/helloworld.pdf";
 const fakeImage: ImageData = {
   objecturl: src,
-  objectid: "w_a552ffbf-cc75-4f62-b33a",
+  objectid: "image-asdwdwd",
   x1: 0,
   y1: 0,
   width: 1920,
   height: 1280,
-  pageid: "pg202204110850306N57UoQZEV",
   transform: new DOMMatrix().scaleSelf(0.13, 0.13),
+};
+
+const fakePDF: PdfData = {
+  objecturl: pdfsrc,
+  objectid: "pdf-dfefdc",
+  x1: 200,
+  y1: 200,
+  width: 1920,
+  height: 1280,
+  transform: new DOMMatrix(),
+  pagenumber: 1,
 };
 
 function drawGrid() {
@@ -42,12 +50,15 @@ function drawGrid() {
   grid.style.height = `${innerHeight}px`;
   grid.style.position = "absolute";
 
+  const style = "#ff0000";
   const style1 = "#ff000030";
   const style2 = "#00000030";
   const style3 = "#00000010";
 
   for (let x = 0; x < innerWidth * devicePixelRatio; x += 10) {
-    if (x % 50 === 0 && x % 100 === 0) {
+    if (x % 200 === 0) {
+      gridCtx.strokeStyle = style;
+    } else if (x % 100 === 0) {
       gridCtx.strokeStyle = style1;
     } else if (x % 50 === 0) {
       gridCtx.strokeStyle = style2;
@@ -62,7 +73,9 @@ function drawGrid() {
   }
 
   for (let y = 0; y < innerWidth * devicePixelRatio; y += 10) {
-    if (y % 50 === 0 && y % 100 === 0) {
+    if (y % 200 === 0) {
+      gridCtx.strokeStyle = style;
+    } else if (y % 100 === 0) {
       gridCtx.strokeStyle = style1;
     } else if (y % 50 === 0) {
       gridCtx.strokeStyle = style2;
@@ -87,7 +100,7 @@ function develop() {
   const socket = new Socket(canvas);
   const board = socket.board;
   window["socket"] = socket;
-
+  socket.board.zoom = { x: 0, y: 150, k: 3 };
   // const board = new Board(canvas);
   // window["board"] = board;
 
@@ -96,14 +109,24 @@ function develop() {
   initialPreview();
 
   window["openPageRoll"] = openPageRoll;
-  const image = new ImageShape(fakeImage.objectid, board, fakeImage.objecturl, {
-    x: fakeImage.x1,
-    y: fakeImage.y1,
-    width: fakeImage.width,
-    height: fakeImage.height,
-    transform: fakeImage.transform,
-  });
-  manager.addBaseShape(image);
+  // const image = new ImageShape(fakeImage.objectid, board, fakeImage.objecturl, {
+  //   x: fakeImage.x1,
+  //   y: fakeImage.y1,
+  //   width: fakeImage.width,
+  //   height: fakeImage.height,
+  //   transform: fakeImage.transform,
+  // });
+  // manager.addBaseShape(image);
+
+  // const pdf = new PDFShape(fakePDF.objectid, board, fakePDF.objecturl, {
+  //   x: 200,
+  //   y: 200,
+  //   width: 300,
+  //   height: 300,
+  //   transform: fakePDF.transform,
+  //   fileName: "helloworld",
+  // });
+  // manager.addBaseShape(pdf);
 
   let isOpen = false;
   let close: () => void;
@@ -137,21 +160,33 @@ function develop() {
 
   (function () {
     const undo = document.createElement("button");
-    const redo = document.createElement("button");
-    const clearAll = document.createElement("button");
     undo.innerText = "上一步";
     undo.onclick = () => {
       manager.undo();
     };
+
+    const redo = document.createElement("button");
     redo.innerText = "下一步";
     redo.onclick = () => {
       manager.redo();
     };
+
+    const clearAll = document.createElement("button");
     clearAll.innerText = "清除";
     clearAll.onclick = () => {
       manager.clearAllPageShape();
     };
-    tools.append(undo, redo, clearAll);
+
+    const inputFile = document.createElement("input");
+    inputFile.type = "file";
+    inputFile.addEventListener("change", function () {
+      const file = this.files ? this.files[0] : undefined;
+      if (file) {
+        manager.importFile(file);
+      }
+    });
+
+    tools.append(undo, redo, clearAll, inputFile);
   })();
 
   function AddTools(v: ToolsEnum) {
@@ -203,72 +238,5 @@ function develop() {
   }
 }
 
-function getMatrix(t: string) {
-  const [a = 1, c = 0, e = 0, b = 0, d = 1, f = 0] = t
-    .split(",")
-    .map((s) => parseFloat(s));
-
-  return new DOMMatrix([a, b, c, d, e, f]);
-}
-
-function draw(
-  ctx: CanvasRenderingContext2D,
-  path: Path2D,
-  coloe: string,
-  m?: DOMMatrix
-) {
-  ctx.strokeStyle = coloe;
-  const p = new Path2D();
-  p.addPath(path, DOMMatrix.fromMatrix(m));
-  ctx.stroke(p);
-}
-
-function testbase() {
-  const clientWidth = window.innerWidth;
-  const clientHeight = window.innerHeight;
-  canvas.setAttribute("width", `${clientWidth * devicePixelRatio}px`);
-  canvas.setAttribute("height", `${clientHeight * devicePixelRatio}px`);
-  canvas.style.width = `${clientWidth}px`;
-  canvas.style.height = `${clientHeight}px`;
-  canvas.style.border = "1px #000 solid";
-
-  return canvas.getContext("2d") as CanvasRenderingContext2D;
-}
-function myTest() {
-  const ctx = testbase();
-
-  const r1 = new Rect({
-    leftTop: { x: 50, y: 50 },
-    rightBottom: { x: 150, y: 150 },
-  });
-
-  const p1 = UtilTools.minRectToPath(r1);
-  draw(ctx, p1, "red");
-
-  const p2 = new Path2D();
-
-  const sm = UtilTools.scale({ x: 1, y: 1 }, { x: 100, y: 100 }, r1);
-  const rm = UtilTools.rotate(r1.centerPoint, { x: 10, y: 10 });
-  sm.multiplySelf(rm);
-  console.log("sm", sm.toString());
-
-  p2.addPath(p1, sm);
-  draw(ctx, p2, "blue");
-
-  const p22 = new Path2D();
-  const sm1 = UtilTools.scale({ x: 1, y: 1 }, { x: 100, y: 100 }, r1);
-  console.log("sm1", sm1.toString());
-
-  p22.addPath(p2, sm1);
-  draw(ctx, p22, "green");
-
-  const p11 = new Path2D();
-  const m11 = DOMMatrix.fromMatrix(sm).multiplySelf(sm1);
-  p11.addPath(p1, m11);
-  console.log("m11", m11.toString());
-  draw(ctx, p11, "#000");
-}
-
 drawGrid();
 develop();
-// myTest();

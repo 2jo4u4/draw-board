@@ -1,3 +1,4 @@
+import { PDFShape, ImageShape } from "./../shape/fileshape";
 import { UtilTools, initialPageId, UserAction } from "..";
 import type { SendData, Vec2, Board, BaseShape, Styles } from "..";
 import type { BaseTools } from "./base";
@@ -22,6 +23,8 @@ export enum LineWidth {
   "粗" = 4,
 }
 
+const fileTypeIsPdf = new RegExp(/application\/pdf/);
+const fileTypeIsImage = new RegExp(/image\/(png|jpeg|jpg)/);
 /**
  * 控制插件
  */
@@ -165,6 +168,7 @@ export class ToolsManagement {
     }
   }
   clearAllPageShape() {
+    this.toolsReBuild();
     if (this.board.socketCtrl && this.role !== "self") {
       this.board.socketCtrl.clearAllPageShape();
     } else if (this.role === "self") {
@@ -179,6 +183,11 @@ export class ToolsManagement {
           .get(this.pageid)
           ?.log("deleteAllShape", { affectShape: bss });
       }
+      this.sendEvent({
+        type: UserAction["clearAllPage"],
+        bss,
+        v: { x: 0, y: 0 },
+      });
     }
   }
   addToolsShape(bs: BaseShape) {
@@ -202,6 +211,7 @@ export class ToolsManagement {
   }
 
   undo() {
+    this.toolsReBuild();
     if (this.role === "self") {
       const { type: logtype, bss } =
         this.logStores.get(this.pageid)?.undo() || {};
@@ -227,6 +237,7 @@ export class ToolsManagement {
     }
   }
   redo() {
+    this.toolsReBuild();
     if (this.role === "self") {
       const { type: logtype, bss } =
         this.logStores.get(this.pageid)?.redo() || {};
@@ -250,5 +261,24 @@ export class ToolsManagement {
         this.sendEvent({ type, bss, v: { x: 0, y: 0 } });
       }
     }
+  }
+
+  importFile(file: File) {
+    if (fileTypeIsPdf.test(file.type)) {
+      const pdf = new PDFShape(UtilTools.RandomID(), this.board, file, {
+        fileName: file.name,
+      });
+      this.addBaseShape(pdf);
+    } else if (fileTypeIsImage.test(file.type)) {
+      const pdf = new ImageShape(UtilTools.RandomID(), this.board, file, {
+        fileName: file.name,
+      });
+      this.addBaseShape(pdf);
+    }
+  }
+
+  private toolsReBuild() {
+    this.__usingTools.onDestroy();
+    this.__usingTools.onInit();
   }
 }

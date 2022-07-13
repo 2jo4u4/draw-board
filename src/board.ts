@@ -169,6 +169,7 @@ export class Board {
     });
   }
 
+  /** @deprecated */
   renderBaseShape(bs: BaseShape) {
     let ctx: CanvasRenderingContext2D;
     if (bs.isSelect || bs.willDelete) {
@@ -179,6 +180,7 @@ export class Board {
     this.render(ctx, bs);
   }
 
+  /** @deprecated */
   render(useCtx: CanvasRenderingContext2D, bs: BaseShape) {
     UtilTools.injectStyle(useCtx, bs.style);
     if ((bs instanceof ImageShape || bs instanceof PDFShape) && bs.isLoad) {
@@ -205,6 +207,7 @@ export class Board {
     useCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
+  /** @deprecated */
   renderPathToEvent(p: Path2D, s: Styles, m?: DOMMatrix) {
     this.ctx.setTransform(
       DOMMatrix.fromMatrix(this.refZoomMatrix).preMultiplySelf(m)
@@ -308,25 +311,28 @@ export class Board {
   private onEventStart(event: TouchEvent | MouseEvent) {
     if (this.mouseFlag === "inactive") {
       this.mouseFlag = "active";
-      const position = this.eventToPosition(event);
-      this.toolsCtrl.onEventStart(position);
+      const len = this.eventToPosition(event);
+      const world = UtilTools.unZoomPosition(this.zoom, len);
+      this.localManager.onEventStart(world);
     }
   }
 
   private onEventMove(event: TouchEvent | MouseEvent) {
-    const position = this.eventToPosition(event);
+    const len = this.eventToPosition(event);
+    const world = UtilTools.unZoomPosition(this.zoom, len);
     if (this.mouseFlag === "active") {
-      this.toolsCtrl.onEventMoveActive(position);
+      this.localManager.onEventMoveActive(world);
     } else {
-      this.toolsCtrl.onEventMoveInActive(position);
+      this.localManager.onEventMoveInActive(world);
     }
   }
 
   private onEventEnd(event: TouchEvent | MouseEvent) {
     if (this.mouseFlag === "active") {
       this.mouseFlag = "inactive";
-      const position = this.eventToPosition(event);
-      this.toolsCtrl.onEventEnd(position);
+      const len = this.eventToPosition(event);
+      const world = UtilTools.unZoomPosition(this.zoom, len);
+      this.localManager.onEventEnd(world);
     }
   }
 

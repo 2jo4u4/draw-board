@@ -60,9 +60,9 @@ export const defaultDeleteStyle: Styles = {
 // 選擇固定框預設樣式
 export const defaultSolidboxStyle: Styles = {
   lineWidth: 2,
-  lineColor: "#00000080",
+  lineColor: "#000",
   lineDash: dashedLine,
-  fillColor: undefined,
+  fillColor: "#00000030",
 };
 
 // 選擇伸縮框預設樣式
@@ -76,7 +76,14 @@ export enum UserAction {
   "筆(開始)",
   "筆(移動)",
   "筆(結束)",
+  "馬克筆(開始)",
+  "馬克筆(移動)",
+  "馬克筆(結束)",
+  "貼圖(開始)",
+  "貼圖(移動)",
+  "貼圖(結束)",
   "選取圖形(開始)",
+  "選取圖形(移動)",
   "選取圖形(結束)",
   "變形(開始)",
   "變形(過程)",
@@ -91,6 +98,7 @@ export enum UserAction {
   "Undo/Redo(新增圖形)",
   "Undo/Redo(新增整頁圖形)",
   "Undo/Redo(變形圖形)",
+  "clearAllPage",
 }
 export const defaultTransform: Transform = {
   a: 1.0,
@@ -445,7 +453,11 @@ export class Rect {
   sw: DOMPoint;
   se: DOMPoint;
 
-  rotatePoint: DOMPoint;
+  getRotatePoint(ratio: number) {
+    const x = Math.min(this.nw.x, this.ne.x, this.sw.x, this.se.x) - 20 * ratio;
+    const y = Math.max(this.nw.y, this.ne.y, this.sw.y, this.se.y) + 20 * ratio;
+    return new DOMPoint(x, y);
+  }
   constructor(
     nw?: Vec2 | MinRectVec | DOMPoint,
     ne?: Vec2 | DOMPoint,
@@ -464,13 +476,11 @@ export class Rect {
         this.sw = sw ? new DOMPoint(sw.x, sw.y) : new DOMPoint(nw.x, nw.y);
         this.se = se ? new DOMPoint(se.x, se.y) : new DOMPoint(nw.x, nw.y);
       }
-      this.rotatePoint = new DOMPoint(this.sw.x - padding, this.sw.y + padding);
     } else {
       this.nw = new DOMPoint();
       this.ne = new DOMPoint();
       this.sw = new DOMPoint();
       this.se = new DOMPoint();
-      this.rotatePoint = new DOMPoint();
     }
   }
 
@@ -533,7 +543,6 @@ export class Rect {
     this.ne = this.ne.matrixTransform(matrix);
     this.sw = this.sw.matrixTransform(matrix);
     this.se = this.se.matrixTransform(matrix);
-    this.rotatePoint = this.rotatePoint.matrixTransform(matrix);
     return this;
   }
 

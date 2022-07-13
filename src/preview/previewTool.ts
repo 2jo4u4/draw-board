@@ -31,7 +31,7 @@ export class PreviewTools implements BaseTools {
   renderViewport(): void {
     this.viewportRect.render();
   }
-
+  onInit(): void {}
   onDestroy(): void {
     // this.board.rerender();
     // this.closeWindow();
